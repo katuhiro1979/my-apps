@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>掃除タスクマネージャー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F4F5F7;
+    --ink: #1B2333;
+    --ink-soft: #5B6478;
+    --paper: #FFFFFF;
+    --line: #D7DBE3;
+    --ok: #2E7D5B;
+    --warn: #C97A1A;
+    --danger: #C0392B;
+    --radius: 14px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Noto Sans JP', sans-serif;
+    line-height:1.6;
+    min-height:100vh;
+  }
+  .app{
+    max-width:920px;
+    margin:0 auto;
+    padding:32px 20px 80px;
+  }
+
+  /* ---------- Header ---------- */
+  .app-header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:28px;
+    border-bottom:3px solid var(--ink);
+    padding-bottom:16px;
+  }
+  .app-header h1{
+    font-size:26px;
+    font-weight:900;
+    margin:0;
+    letter-spacing:.02em;
+  }
+  .app-header .sub{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:4px;
+  }
+  .add-btn{
+    background:var(--ink);
+    color:#fff;
+    border:none;
+    border-radius:999px;
+    padding:11px 22px;
+    font-size:14px;
+    font-weight:700;
+    font-family:inherit;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:transform .12s ease, background .12s ease;
+  }
+  .add-btn:hover{ background:#333d54; transform:translateY(-1px); }
+  .add-btn:active{ transform:translateY(0); }
+
+  .header-actions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .autosave-bar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin:-14px 0 22px;
+  }
+  .autosave-dot{
+    width:8px; height:8px;
+    border-radius:50%;
+    background:var(--line);
+    flex-shrink:0;
+  }
+  .autosave-dot.on{ background:var(--ok); }
+  .autosave-dot.paused{ background:var(--warn); }
+  .autosave-dot.error{ background:var(--danger); }
+
+  /* ---------- Mini calendar ---------- */
+  .mini-calendar{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px 16px 16px;
+    margin-bottom:28px;
+  }
+  .mc-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .mc-title{
+    font-size:14.5px;
+    font-weight:700;
+  }
+  .mc-nav{
+    border:1.5px solid var(--line);
+    background:none;
+    border-radius:8px;
+    width:28px; height:28px;
+    font-size:15px;
+    line-height:1;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .mc-nav:hover{ border-color:var(--ink); color:var(--ink); }
+  .mc-weekdays{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    text-align:center;
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-bottom:4px;
+  }
+  .mc-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:2px;
+    width:100%;
+  }
+  .mc-day{
+    position:relative;
+    width:100%;
+    min-height:46px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:3px 2px 4px;
+    gap:2px;
+    border-radius:8px;
+    font-size:11px;
+    color:var(--ink);
+    cursor:default;
+  }
+  .mc-day.blank{ visibility:hidden; }
+  .mc-day.has-event{ cursor:pointer; }
+  .mc-day.has-event:hover{ background:var(--bg); }
+  .mc-day.today .mc-daynum{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:18px; height:18px;
+    border-radius:50%;
+    background:var(--ink);
+    color:#fff;
+  }
+  .mc-day.selected{ background:var(--bg); border:1.5px solid var(--ink); }
+  .mc-daynum{ flex-shrink:0; line-height:1.3; }
+  .mc-chips{
+    display:flex;
+    flex-direction:column;
+    gap:1px;
+    width:100%;
+  }
+  .mc-chip{
+    display:block;
+    width:100%;
+    font-size:8.5px;
+    line-height:1.3;
+    padding:1px 3px;
+    border-radius:4px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    color:#fff;
+    text-align:center;
+    box-sizing:border-box;
+    cursor:pointer;
+  }
+  .mc-chip.mc-done{ background:var(--ok); }
+  .mc-more{
+    font-size:8px;
+    color:var(--ink-soft);
+    line-height:1.2;
+  }
+  .mc-legend{
+    display:flex;
+    gap:16px;
+    margin-top:10px;
+    font-size:11.5px;
+    color:var(--ink-soft);
+  }
+  .mc-legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .mc-legend .mc-swatch{
+    display:inline-block;
+    width:9px; height:9px;
+    border-radius:3px;
+  }
+  .mc-day-detail{
+    margin-top:10px;
+  }
+  .mc-day-detail:empty{ margin-top:0; }
+  .mc-detail-block{
+    font-size:12.5px;
+    margin-bottom:6px;
+  }
+  .mc-detail-block .mc-detail-label{
+    color:var(--ink-soft);
+    margin-right:6px;
+  }
+  .mc-detail-tag{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    background:var(--bg);
+    border-radius:999px;
+    padding:2px 10px 2px 6px;
+    margin:2px 4px 2px 0;
+    font-size:12px;
+    cursor:pointer;
+    border:1.5px solid transparent;
+    transition:border-color .12s ease;
+  }
+  .mc-detail-tag:hover{ border-color:var(--ink); }
+  .mc-detail-tag .mc-swatch{
+    width:8px; height:8px; border-radius:50%;
+  }
+
+  @keyframes ticketHighlight{
+    0%, 100%{ box-shadow:none; }
+    15%, 85%{ box-shadow:0 0 0 3px var(--ink); }
+  }
+  .ticket.ticket-highlight{
+    animation:ticketHighlight 1.6s ease;
+  }
+
+  /* ---------- Summary strip ---------- */
+  .summary{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    margin-bottom:28px;
+  }
+  .summary-cell{
+    background:var(--paper);
+    padding:10px 16px;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+  }
+  .summary-cell .label{
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-bottom:0;
+    white-space:nowrap;
+  }
+  .summary-cell .value{
+    font-family:'Space Mono', monospace;
+    font-size:17px;
+    font-weight:700;
+  }
+  .summary-cell.warn .value{ color:var(--warn); }
+
+  /* ---------- Member filter ---------- */
+  .member-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:0;
+  }
+  .list-controls{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:22px;
+  }
+  .sort-toggle{
+    flex-shrink:0;
+    background:none;
+    border:1.5px solid var(--line);
+    border-radius:999px;
+    padding:7px 14px;
+    font-size:12.5px;
+    font-weight:700;
+    font-family:inherit;
+    color:var(--ink-soft);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .sort-toggle:hover{ border-color:var(--ink); color:var(--ink); }
+  .chip{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    padding:7px 14px 7px 10px;
+    border-radius:999px;
+    border:1.5px solid var(--line);
+    background:var(--paper);
+    font-size:13px;
+    font-weight:500;
+    cursor:pointer;
+    color:var(--ink-soft);
+    transition:border-color .12s ease, color .12s ease;
+  }
+  .chip .dot{
+    width:9px; height:9px; border-radius:50%;
+    flex-shrink:0;
+  }
+  .chip.active{
+    border-color:var(--ink);
+    color:var(--ink);
+    font-weight:700;
+  }
+
+  /* ---------- Task list ---------- */
+  .list{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .empty{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--ink-soft);
+    border:1.5px dashed var(--line);
+    border-radius:var(--radius);
+  }
+  .empty .big{
+    font-size:15px;
+    color:var(--ink);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+
+  .ticket{
+    position:relative;
+    background:var(--paper);
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    display:grid;
+    grid-template-columns:5px 1fr auto;
+    overflow:hidden;
+  }
+  .ticket .stripe{ background:var(--member-color, var(--ink)); }
+  .ticket-body{ padding:16px 18px; min-width:0; }
+  .ticket-top{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:10px;
+  }
+  .member-tag{
+    font-size:11.5px;
+    font-weight:700;
+    padding:2px 9px;
+    border-radius:999px;
+    color:#fff;
+    background:var(--member-color, var(--ink));
+  }
+  .route{
+    font-size:16.5px;
+    font-weight:700;
+    letter-spacing:.01em;
+  }
+  .status-tag{
+    margin-left:auto;
+    font-size:11.5px;
+    font-weight:700;
+    padding:3px 10px;
+    border-radius:999px;
+  }
+  .status-ok{ background:#E4F1EA; color:var(--ok); }
+  .status-warn{ background:#FBEBD6; color:var(--warn); }
+  .status-danger{ background:#F8E2DE; color:var(--danger); }
+
+  .timeline{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:'Space Mono', monospace;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:4px;
+  }
+  .timeline .start-date{ flex-shrink:0; }
+  .timeline .track{
+    flex:1;
+    height:8px;
+    background:var(--line);
+    border-radius:999px;
+    position:relative;
+    min-width:90px;
+  }
+  .timeline .track .fill{
+    position:absolute; left:0; top:0; bottom:0;
+    background:var(--member-color, var(--ink));
+    border-radius:999px;
+    transition:width .2s ease;
+  }
+  .timeline .track .marker{
+    position:absolute;
+    top:50%;
+    width:14px; height:14px;
+    background:#fff;
+    border:3px solid var(--member-color, var(--ink));
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    box-shadow:0 0 0 2px #fff;
+  }
+  .timeline .end-date{ color:var(--ink); font-weight:700; flex-shrink:0; }
+  .timeline .pct-label{
+    font-size:13px;
+    font-weight:800;
+    color:var(--member-color, var(--ink));
+    background:color-mix(in srgb, var(--member-color, var(--ink)) 14%, white);
+    flex-shrink:0;
+    padding:3px 10px;
+    border-radius:999px;
+    text-align:center;
+    white-space:nowrap;
+  }
+
+  .meta-row{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:8px;
+  }
+  .meta-row b{
+    color:var(--ink);
+    font-family:'Space Mono', monospace;
+    font-weight:700;
+  }
+
+  .ticket-actions{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:8px;
+    padding:16px 14px;
+    border-left:1px dashed var(--line);
+  }
+  .icon-btn{
+    border:1.5px solid var(--line);
+    border-radius:8px;
+    background:none;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:700;
+    color:var(--ink-soft);
+    font-family:inherit;
+    text-align:center;
+    padding:7px 16px;
+    white-space:nowrap;
+  }
+  .icon-btn:hover{ color:var(--ink); border-color:var(--ink); }
+  .icon-btn.danger:hover{ color:var(--danger); border-color:var(--danger); }
+  .icon-btn.primary{
+    color:var(--ok);
+    border-color:var(--ok);
+    font-weight:700;
+  }
+  .icon-btn.primary:hover{ color:#fff; background:var(--ok); }
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(27,35,51,.45);
+    display:none;
+    align-items:flex-start;
+    justify-content:center;
+    padding:40px 16px;
+    overflow-y:auto;
+    z-index:50;
+  }
+  .overlay.show{ display:flex; }
+  .modal{
+    background:var(--paper);
+    border-radius:16px;
+    width:100%;
+    max-width:460px;
+    padding:26px 24px 24px;
+  }
+  .modal h2{
+    margin:0 0 18px;
+    font-size:19px;
+    font-weight:900;
+  }
+  .field{ margin-bottom:14px; }
+  .field label{
+    display:block;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin-bottom:5px;
+  }
+  .field input, .field select{
+    width:100%;
+    padding:10px 11px;
+    border:1.5px solid var(--line);
+    border-radius:9px;
+    font-family:inherit;
+    font-size:14px;
+    color:var(--ink);
+    background:var(--paper);
+  }
+  .field input:focus, .field select:focus{
+    outline:2px solid var(--ink);
+    outline-offset:1px;
+  }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .freq-presets{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-top:8px;
+  }
+  .freq-chip{
+    border:1.5px solid var(--line);
+    background:var(--paper);
+    border-radius:999px;
+    padding:5px 12px;
+    font-size:12px;
+    font-weight:700;
+    font-family:inherit;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .freq-chip:hover, .freq-chip.active{
+    border-color:var(--ink);
+    color:var(--ink);
+  }
+  .color-picker{ display:flex; gap:8px; flex-wrap:wrap; }
+  .color-swatch{
+    width:28px; height:28px; border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+  }
+  .color-swatch.selected{ border-color:var(--ink); }
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:20px;
+  }
+  .history-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    max-height:320px;
+    overflow-y:auto;
+  }
+  .history-empty{
+    text-align:center;
+    padding:30px 10px;
+    color:var(--ink-soft);
+    font-size:13.5px;
+  }
+  .history-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:9px 12px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    font-size:13.5px;
+  }
+  .history-item .h-date{
+    font-family:'Space Mono', monospace;
+    font-weight:700;
+  }
+  .history-item .h-delete,
+  .history-item .h-edit,
+  .history-item .h-save,
+  .history-item .h-cancel{
+    border:none;
+    background:none;
+    cursor:pointer;
+    font-size:12px;
+    color:var(--ink-soft);
+    font-family:inherit;
+  }
+  .history-item .h-btns{ display:flex; gap:6px; flex-shrink:0; }
+  .history-item .h-edit:hover, .history-item .h-save:hover{ color:var(--ink); }
+  .history-item .h-delete:hover{ color:var(--danger); }
+  .history-item .h-save{ font-weight:700; color:var(--ok); }
+  .history-item .h-input{
+    flex:1;
+    min-width:0;
+    padding:5px 8px;
+    border:1.5px solid var(--line);
+    border-radius:8px;
+    font-family:inherit;
+    font-size:13.5px;
+  }
+  .history-add{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    margin-top:12px;
+  }
+  .history-add input{
+    flex:1;
+    min-width:0;
+    padding:8px 10px;
+    border:1.5px solid var(--line);
+    border-radius:9px;
+    font-family:inherit;
+    font-size:13.5px;
+  }
+  .btn-secondary{
+    background:none;
+    border:1.5px solid var(--line);
+    border-radius:999px;
+    padding:9px 18px;
+    font-size:13.5px;
+    font-weight:700;
+    font-family:inherit;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .btn-primary{
+    background:var(--ink);
+    color:#fff;
+    border:none;
+    border-radius:999px;
+    padding:9px 20px;
+    font-size:13.5px;
+    font-weight:700;
+    font-family:inherit;
+    cursor:pointer;
+  }
+
+  @media (max-width:520px){
+    .app{ padding:20px 14px 60px; }
+    .app-header{ flex-wrap:wrap; }
+    .app-header h1{ font-size:22px; }
+    .header-actions{
+      width:100%;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .header-actions > *{ flex:1 1 auto; min-width:130px; text-align:center; }
+    .header-actions .add-btn{ flex-basis:100%; }
+    .list-controls{ flex-direction:column; align-items:stretch; }
+    .mini-calendar{ padding:12px 12px 14px; }
+    .mc-title{ font-size:15px; }
+    .mc-nav{ width:32px; height:32px; font-size:17px; }
+    .mc-day{ min-height:50px; font-size:11px; }
+    .mc-chip{ font-size:9px; }
+    .mc-legend{ font-size:12.5px; }
+    .sort-toggle{ width:100%; }
+    .timeline{ flex-wrap:wrap; row-gap:4px; }
+    .timeline .track{ order:3; flex-basis:100%; }
+    .ticket{ grid-template-columns:5px 1fr; }
+    .ticket-actions{
+      border-left:none;
+      border-top:1px dashed var(--line);
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      grid-column:1 / -1;
+      padding:12px 14px;
+    }
+    .icon-btn{ width:100%; padding:9px 10px; font-size:14px; }
+    .summary{ grid-template-columns:1fr; }
+    .two-col{ grid-template-columns:1fr; }
+  }
+
+  .visually-hidden{
+    position:absolute; width:1px; height:1px;
+    overflow:hidden; clip:rect(0,0,0,0);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="app-header">
+    <div>
+      <h1>掃除タスクマネージャー</h1>
+      <div class="sub">家族の掃除タスクをまとめて管理</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-secondary" id="autosaveBtn">自動保存ファイルを設定</button>
+      <button class="btn-secondary" id="exportBtn">エクスポート</button>
+      <button class="btn-secondary" id="importBtn">インポート</button>
+      <button class="btn-secondary" id="importUndoBtn" style="display:none;">直前のインポートを取り消す</button>
+      <input type="file" id="importInput" accept="application/json" class="visually-hidden">
+      <button class="add-btn" id="openAdd">＋ タスクを追加</button>
+    </div>
+  </div>
+
+  <div class="autosave-bar" id="autosaveBar" style="display:none;">
+    <span class="autosave-dot" id="autosaveDot"></span>
+    <span id="autosaveStatus"></span>
+  </div>
+
+  <div class="mini-calendar">
+    <div class="mc-header">
+      <button type="button" class="mc-nav" id="mcPrev">‹</button>
+      <div class="mc-title" id="mcTitle"></div>
+      <button type="button" class="mc-nav" id="mcNext">›</button>
+    </div>
+    <div class="mc-weekdays">
+      <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+    </div>
+    <div class="mc-grid" id="mcGrid"></div>
+    <div class="mc-legend">
+      <span><span class="mc-swatch" style="background:var(--ok)"></span>実施日（緑）</span>
+      <span><span class="mc-swatch" style="background:var(--warn)"></span>予定日（担当者の色）</span>
+    </div>
+    <div class="mc-day-detail" id="mcDayDetail"></div>
+  </div>
+
+  <div class="summary">
+    <div class="summary-cell">
+      <div class="label">登録件数</div>
+      <div class="value" id="statTotal">0</div>
+    </div>
+    <div class="summary-cell warn">
+      <div class="label">要対応</div>
+      <div class="value" id="statWarn">0</div>
+    </div>
+    <div class="summary-cell">
+      <div class="label">合計所要時間</div>
+      <div class="value" id="statSum">0分</div>
+    </div>
+  </div>
+
+  <div class="list-controls">
+    <div class="member-row" id="memberRow"></div>
+    <button class="sort-toggle" id="sortToggle">予定日が近い順 ↑</button>
+  </div>
+
+  <div class="list" id="list"></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">タスクを追加</h2>
+    <form id="taskForm">
+      <div class="field">
+        <label for="f-member">担当者</label>
+        <input type="text" id="f-member" placeholder="例：花子" required list="memberSuggestions">
+        <datalist id="memberSuggestions"></datalist>
+      </div>
+      <div class="field">
+        <label>ラベルカラー</label>
+        <div class="color-picker" id="colorPicker"></div>
+      </div>
+      <div class="field">
+        <label for="f-title">タスク名（例：浴室掃除）</label>
+        <input type="text" id="f-title" placeholder="浴室掃除" required>
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label for="f-last">前回実施日</label>
+          <input type="date" id="f-last" required>
+        </div>
+        <div class="field">
+          <label for="f-freq">頻度（日ごと）</label>
+          <input type="number" id="f-freq" min="1" step="1" value="7" required>
+          <div class="freq-presets" id="freqPresets">
+            <button type="button" class="freq-chip" data-days="1">毎日</button>
+            <button type="button" class="freq-chip" data-days="2">2日</button>
+            <button type="button" class="freq-chip" data-days="3">3日</button>
+            <button type="button" class="freq-chip" data-days="7">1週間</button>
+            <button type="button" class="freq-chip" data-days="10">10日</button>
+            <button type="button" class="freq-chip" data-days="14">2週間</button>
+            <button type="button" class="freq-chip" data-days="30">1ヶ月</button>
+          </div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label for="f-next">次回予定日（自動計算・変更可）</label>
+          <input type="date" id="f-next" required>
+        </div>
+        <div class="field">
+          <label for="f-duration">所要時間（分）</label>
+          <input type="number" id="f-duration" min="0" step="1" placeholder="15" required>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="cancelBtn">キャンセル</button>
+        <button type="submit" class="btn-primary" id="submitBtn">保存する</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="overlay" id="historyOverlay">
+  <div class="modal">
+    <h2 id="historyTitle">実施履歴</h2>
+    <div class="history-list" id="historyList"></div>
+    <div class="history-add">
+      <input type="date" id="historyAddDate" aria-label="追加する実施日">
+      <button type="button" class="btn-secondary" id="historyAddBtn">実施日を追加</button>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="historyCloseBtn">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="importOverlay">
+  <div class="modal">
+    <h2>インポート方法を選択</h2>
+    <p id="importInfo" style="font-size:13.5px; margin:0 0 6px;"></p>
+    <p style="font-size:12.5px; color:var(--ink-soft); margin:0;">どちらの方法でも、実行前のデータは退避され、「直前のインポートを取り消す」で元に戻せます。</p>
+    <div class="modal-actions" style="flex-wrap:wrap;">
+      <button type="button" class="btn-secondary" id="importCancelBtn">中止</button>
+      <button type="button" class="btn-secondary" id="importReplaceBtn">置き換える</button>
+      <button type="button" class="btn-primary" id="importMergeBtn">現在のデータに追加</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const COLORS = ['#2B6CB8','#2E9E5B','#C97A1A','#C0392B','#7A5CC9','#1B8A8A'];
+  const FREQ_LABEL = { '1':'毎日', '3':'3日ごと', '7':'1週間ごと', '14':'2週間ごと', '30':'1ヶ月ごと' };
+  let tasks = [];
+  let activeMember = 'all';
+  let sortDir = 'asc';
+  let editingId = null;
+  let pendingImport = null; // 3択の選択待ちのインポートデータ
+  let historyTaskId = null;
+  let editingHistoryDate = null; // 履歴モーダルで修正中の日付
+  let autosaveHandle = null;
+  const autosaveSupported = ('showSaveFilePicker' in window);
+  const nowForCal = new Date();
+  let calYear = nowForCal.getFullYear();
+  let calMonth = nowForCal.getMonth(); // 0-indexed
+  let selectedCalDate = null;
+  let selectedColor = COLORS[0];
+
+  const $ = (sel) => document.querySelector(sel);
+
+  const listEl = $('#list');
+  const memberRow = $('#memberRow');
+  const overlay = $('#overlay');
+  const historyOverlay = $('#historyOverlay');
+  const importOverlay = $('#importOverlay');
+  const form = $('#taskForm');
+  const colorPicker = $('#colorPicker');
+
+  // ローカル日付を YYYY-MM-DD にする（toISOStringはUTCのため日本時間でずれる）
+  function toLocalISO(d){
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function todayISO(){ return toLocalISO(new Date()); }
+
+  function addDays(dateStr, days){
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() + Number(days));
+    return toLocalISO(d);
+  }
+
+  function daysUntil(dateStr){
+    const end = new Date(dateStr + 'T00:00:00');
+    const now = new Date(); now.setHours(0,0,0,0);
+    return Math.round((end - now) / 86400000);
+  }
+
+  function pctOf(t){
+    const totalSpan = Math.max(1, (new Date(t.next + 'T00:00:00') - new Date(t.last + 'T00:00:00')) / 86400000);
+    const elapsed = Math.max(0, (new Date() - new Date(t.last + 'T00:00:00')) / 86400000);
+    return Math.min(100, Math.round((elapsed/totalSpan)*100));
+  }
+
+  function statusOf(t){
+    const pct = pctOf(t);
+    if(pct >= 100) return 'danger';
+    if(pct >= 75) return 'warn';
+    return 'ok';
+  }
+
+  function statusLabel(t){
+    const d = daysUntil(t.next);
+    if(d < 0) return `期限切れ（${Math.abs(d)}日超過）`;
+    if(d === 0) return '本日';
+    return `あと${d}日`;
+  }
+
+  function fmtDate(s){
+    const [y,m,d] = s.split('-');
+    return `${y}/${Number(m)}/${Number(d)}`;
+  }
+
+  function colorForMember(name){
+    const existing = tasks.find(t => t.member === name);
+    if(existing) return existing.color;
+    return null;
+  }
+
+  function uniqueMembers(){
+    const map = new Map();
+    tasks.forEach(t => { if(!map.has(t.member)) map.set(t.member, t.color); });
+    return map;
+  }
+
+  // ---------- Persistence ----------
+  const STORAGE_KEY = 'soji-manager:tasks';
+
+  function loadTasks(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      tasks = Array.isArray(parsed) ? parsed.map(sanitizeTask).filter(Boolean) : [];
+    }catch(e){
+      console.error('読み込みに失敗しました', e);
+      tasks = [];
+    }
+    render();
+    restoreAutosaveHandle();
+  }
+
+  function saveLocalOnly(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    }catch(e){
+      console.error('保存に失敗しました', e);
+      alert('データの保存に失敗しました。ブラウザの設定をご確認ください。');
+    }
+  }
+
+  function saveTasks(){
+    saveLocalOnly();
+    writeAutosaveFile();
+  }
+
+  // ---------- Autosave to JSON file (Chrome / Edge only) ----------
+  const IDB_NAME = 'soji-manager-db';
+  const IDB_STORE = 'handles';
+  const IDB_KEY = 'autosaveFile';
+  const LAST_IO_KEY = 'lastIoHandle'; // エクスポート／インポートで最後に使ったフォルダの記憶用
+
+  function idbOpen(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore(IDB_STORE); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function idbSet(key, value){
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function idbGet(key){
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function verifyPermission(handle, requestIfNeeded){
+    const opts = { mode: 'readwrite' };
+    if((await handle.queryPermission(opts)) === 'granted') return true;
+    if(requestIfNeeded && (await handle.requestPermission(opts)) === 'granted') return true;
+    return false;
+  }
+
+  async function restoreAutosaveHandle(){
+    if(!autosaveSupported){
+      updateAutosaveUI('unsupported');
+      return;
+    }
+    try{
+      const handle = await idbGet(IDB_KEY);
+      if(!handle){
+        updateAutosaveUI('unset');
+        return;
+      }
+      const granted = await verifyPermission(handle, false);
+      if(granted){
+        autosaveHandle = handle;
+        await restoreFromFileIfEmpty();
+        updateAutosaveUI('on');
+      }else{
+        // 権限はページ再読み込み後は自動では再取得できないため、ユーザー操作を待つ
+        autosaveHandle = null;
+        updateAutosaveUI('paused', handle.name);
+      }
+    }catch(e){
+      console.error(e);
+      updateAutosaveUI('unset');
+    }
+  }
+
+  // 自動保存ファイルの中身を読む。{ empty } / { invalid } / { tasks } のいずれかを返す
+  async function readFileTasks(handle){
+    const text = await (await handle.getFile()).text();
+    if(!text.trim()) return { empty: true };
+    try{
+      const arr = JSON.parse(text);
+      if(!Array.isArray(arr)) return { invalid: true };
+      const list = arr.map(sanitizeTask).filter(Boolean);
+      return list.length ? { tasks: list } : { empty: true };
+    }catch(e){
+      return { invalid: true };
+    }
+  }
+
+  async function chooseAutosaveFile(){
+    if(!autosaveSupported){
+      alert('お使いのブラウザは自動保存ファイル機能に対応していません。Chrome または Edge でご利用ください。');
+      return;
+    }
+    try{
+      const handle = await window.showSaveFilePicker({
+        suggestedName: 'soji-data.json',
+        types: [{ description: 'JSON ファイル', accept: { 'application/json': ['.json'] } }]
+      });
+      const granted = await verifyPermission(handle, true);
+      if(!granted){
+        alert('ファイルへの書き込み権限が許可されませんでした。');
+        return;
+      }
+      // 既存ファイルの内容を確認してから設定する（データ消失防止）
+      const info = await readFileTasks(handle);
+      if(info.tasks){
+        if(tasks.length === 0){
+          tasks = info.tasks;
+          saveLocalOnly();
+          render();
+          alert(`ファイルから${info.tasks.length}件のデータを読み込みました。`);
+        }else if(confirm(`このファイルには${info.tasks.length}件のデータがあります。\n\n「OK」= ファイルの内容を読み込む（現在の${tasks.length}件は置き換わります）\n「キャンセル」= 次の確認へ`)){
+          tasks = info.tasks;
+          saveLocalOnly();
+          render();
+        }else if(!confirm('現在のデータでこのファイルを上書きしますか？\n（ファイル内の既存データは失われます）\n\n「キャンセル」= 自動保存の設定を中止')){
+          return;
+        }
+      }else if(info.invalid){
+        if(!confirm('このファイルは掃除タスクのデータではありません。上書きしてもよいですか？')) return;
+      }
+      autosaveHandle = handle;
+      await idbSet(IDB_KEY, handle);
+      await writeAutosaveFile();
+      updateAutosaveUI('on');
+    }catch(e){
+      if(e.name !== 'AbortError'){
+        console.error(e);
+        alert('ファイルの選択に失敗しました。');
+      }
+    }
+  }
+
+  // ブラウザ側のデータが空で、ファイルにデータがあれば復元する（空データでの上書き防止）
+  async function restoreFromFileIfEmpty(){
+    if(tasks.length > 0 || !autosaveHandle) return;
+    try{
+      const info = await readFileTasks(autosaveHandle);
+      if(info.tasks){
+        tasks = info.tasks;
+        saveLocalOnly();
+        render();
+      }
+    }catch(e){
+      console.error('自動保存ファイルの読み込みに失敗しました', e);
+    }
+  }
+
+  async function resumeAutosaveFile(){
+    try{
+      const handle = await idbGet(IDB_KEY);
+      if(!handle) return;
+      const granted = await verifyPermission(handle, true);
+      if(!granted){
+        alert('ファイルへの書き込み権限が許可されませんでした。');
+        return;
+      }
+      autosaveHandle = handle;
+      await restoreFromFileIfEmpty();
+      await writeAutosaveFile();
+      updateAutosaveUI('on');
+    }catch(e){
+      console.error(e);
+      alert('自動保存の再開に失敗しました。');
+    }
+  }
+
+  let autosaveWriting = false;
+  let autosaveQueued = false;
+  let autosaveError = null; // 直近の書き込み失敗メッセージ
+
+  // 書き込みが重なった場合は、実行中の処理の後にまとめて1回だけ再実行する
+  async function writeAutosaveFile(){
+    if(!autosaveHandle) return;
+    if(autosaveWriting){ autosaveQueued = true; return; }
+    autosaveWriting = true;
+    try{
+      do{
+        autosaveQueued = false;
+        await writeAutosaveOnce();
+      }while(autosaveQueued);
+    }finally{
+      autosaveWriting = false;
+    }
+  }
+
+  async function writeAutosaveOnce(){
+    try{
+      const granted = await verifyPermission(autosaveHandle, false);
+      if(!granted){
+        autosaveError = 'ファイルへの書き込み権限がありません。自動保存ファイルを設定し直してください（データはブラウザ内には保存済み）';
+        updateAutosaveUI('on');
+        return;
+      }
+      const writable = await autosaveHandle.createWritable();
+      await writable.write(JSON.stringify(tasks, null, 2));
+      await writable.close();
+      autosaveError = null;
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2,'0');
+      const mm = String(now.getMinutes()).padStart(2,'0');
+      const ss = String(now.getSeconds()).padStart(2,'0');
+      updateAutosaveUI('on', null, `${hh}:${mm}:${ss}に保存しました`);
+    }catch(e){
+      console.error('自動保存ファイルへの書き込みに失敗しました', e);
+      autosaveError = 'ファイルへの保存に失敗しました（データはブラウザ内には保存済み）';
+      updateAutosaveUI('on');
+    }
+  }
+
+  function updateAutosaveUI(state, fileName, statusText){
+    const btn = $('#autosaveBtn');
+    const bar = $('#autosaveBar');
+    const dot = $('#autosaveDot');
+    const status = $('#autosaveStatus');
+    dot.className = 'autosave-dot';
+    if(state === 'unsupported'){
+      bar.style.display = 'none';
+      btn.textContent = '自動保存ファイルを設定';
+      btn.title = 'お使いのブラウザは非対応です（Chrome / Edge推奨）';
+    }else if(state === 'unset'){
+      bar.style.display = 'none';
+      btn.textContent = '自動保存ファイルを設定';
+    }else if(state === 'on'){
+      bar.style.display = 'flex';
+      dot.classList.add('on');
+      btn.textContent = '自動保存ファイルを変更';
+      status.textContent = statusText || (autosaveHandle ? `${autosaveHandle.name} に自動保存中` : '自動保存中');
+      if(autosaveError){
+        dot.classList.remove('on');
+        dot.classList.add('error');
+        status.textContent = autosaveError;
+      }
+    }else if(state === 'paused'){
+      bar.style.display = 'flex';
+      dot.classList.add('paused');
+      btn.textContent = '自動保存ファイルを設定';
+      status.textContent = `自動保存が一時停止中です（${fileName || 'ファイル'}）。再開するには下のボタンを押してください`;
+      // ステータス行に再開ボタンを追加
+      if(!$('#autosaveResumeBtn')){
+        const resumeBtn = document.createElement('button');
+        resumeBtn.id = 'autosaveResumeBtn';
+        resumeBtn.type = 'button';
+        resumeBtn.className = 'btn-secondary';
+        resumeBtn.style.padding = '2px 10px';
+        resumeBtn.style.fontSize = '11.5px';
+        resumeBtn.textContent = '再開';
+        resumeBtn.addEventListener('click', resumeAutosaveFile);
+        bar.appendChild(resumeBtn);
+      }
+    }
+    if(state !== 'paused'){
+      const existingResume = $('#autosaveResumeBtn');
+      if(existingResume) existingResume.remove();
+    }
+  }
+
+  // ---------- Rendering ----------
+  function renderMemberFilter(){
+    const members = uniqueMembers();
+    let html = `<div class="chip ${activeMember==='all'?'active':''}" data-member="all">
+        <span class="dot" style="background:${'#1B2333'}"></span>すべて</div>`;
+    members.forEach((color, name) => {
+      html += `<div class="chip ${activeMember===name?'active':''}" data-member="${escapeHtml(name)}">
+        <span class="dot" style="background:${color}"></span>${escapeHtml(name)}</div>`;
+    });
+    memberRow.innerHTML = html;
+    memberRow.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        activeMember = chip.dataset.member;
+        render();
+      });
+    });
+  }
+
+  function renderStats(){
+    const visible = tasks;
+    $('#statTotal').textContent = visible.length;
+    $('#statWarn').textContent = visible.filter(t => statusOf(t) === 'warn' || statusOf(t) === 'danger').length;
+    const sum = visible.reduce((a,t) => a + Number(t.duration||0), 0);
+    $('#statSum').textContent = `${sum}分`;
+  }
+
+  function renderList(){
+    const filtered = activeMember === 'all' ? tasks : tasks.filter(t => t.member === activeMember);
+    const sorted = [...filtered].sort((a,b) =>
+      sortDir === 'asc' ? daysUntil(a.next) - daysUntil(b.next) : daysUntil(b.next) - daysUntil(a.next)
+    );
+
+    if(sorted.length === 0){
+      listEl.innerHTML = `<div class="empty">
+        <div class="big">まだタスクが登録されていません</div>
+        右上の「＋ タスクを追加」から登録してください
+      </div>`;
+      return;
+    }
+
+    listEl.innerHTML = sorted.map(t => {
+      const st = statusOf(t);
+      const label = statusLabel(t);
+      const statusClass = st === 'ok' ? 'status-ok' : (st === 'warn' ? 'status-warn' : 'status-danger');
+      const pct = pctOf(t);
+      return `
+      <div class="ticket" style="--member-color:${t.color}" data-id="${t.id}">
+        <div class="stripe"></div>
+        <div class="ticket-body">
+          <div class="ticket-top">
+            <span class="member-tag">${escapeHtml(t.member)}</span>
+            <span class="route">${escapeHtml(t.title)}</span>
+            <span class="status-tag ${statusClass}">${label}</span>
+          </div>
+          <div class="timeline">
+            <span class="start-date">${fmtDate(t.last)}</span>
+            <span class="track">
+              <span class="fill" style="width:${pct}%"></span>
+              <span class="marker" style="left:${pct}%"></span>
+            </span>
+            <span class="end-date">${fmtDate(t.next)}</span>
+            <span class="pct-label">${pct}%</span>
+          </div>
+          <div class="meta-row">
+            <span>頻度：<b>${FREQ_LABEL[t.freq] || t.freq + '日ごと'}</b></span>
+            <span>所要時間：<b>${t.duration}分</b></span>
+            <span>実施回数：<b>${(t.history||[]).length}回</b></span>
+          </div>
+        </div>
+        <div class="ticket-actions">
+          <button class="icon-btn primary done-btn">完了</button>
+          <button class="icon-btn history-btn">履歴</button>
+          <button class="icon-btn edit-btn">編集</button>
+          <button class="icon-btn danger delete-btn">削除</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    listEl.querySelectorAll('.done-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.closest('.ticket').dataset.id;
+        markDone(id);
+      });
+    });
+    listEl.querySelectorAll('.history-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.closest('.ticket').dataset.id;
+        openHistory(id);
+      });
+    });
+    listEl.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.closest('.ticket').dataset.id;
+        openEdit(id);
+      });
+    });
+    listEl.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.closest('.ticket').dataset.id;
+        deleteTask(id);
+      });
+    });
+  }
+
+  function render(){
+    renderMemberFilter();
+    renderStats();
+    renderList();
+    renderCalendar();
+  }
+
+  // ---------- Mini calendar ----------
+  function pad2c(n){ return String(n).padStart(2,'0'); }
+
+  function buildEventMaps(){
+    const dueMap = new Map();   // dateStr -> [task,...]
+    const doneMap = new Map();  // dateStr -> [task,...]
+    tasks.forEach(t => {
+      if(t.next){
+        if(!dueMap.has(t.next)) dueMap.set(t.next, []);
+        dueMap.get(t.next).push(t);
+      }
+      (t.history || []).forEach(d => {
+        if(!doneMap.has(d)) doneMap.set(d, []);
+        doneMap.get(d).push(t);
+      });
+    });
+    return { dueMap, doneMap };
+  }
+
+  function renderCalendar(){
+    const { dueMap, doneMap } = buildEventMaps();
+    $('#mcTitle').textContent = `${calYear}年${calMonth + 1}月`;
+
+    const firstOfMonth = new Date(calYear, calMonth, 1);
+    const startWeekday = firstOfMonth.getDay(); // 0=Sun
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const todayStr = todayISO();
+
+    let cells = '';
+    for(let i = 0; i < startWeekday; i++){
+      cells += `<div class="mc-day blank"></div>`;
+    }
+    for(let day = 1; day <= daysInMonth; day++){
+      const dateStr = `${calYear}-${pad2c(calMonth + 1)}-${pad2c(day)}`;
+      const due = dueMap.get(dateStr) || [];
+      const done = doneMap.get(dateStr) || [];
+      const hasEvent = due.length > 0 || done.length > 0;
+      const classes = ['mc-day'];
+      if(dateStr === todayStr) classes.push('today');
+      if(hasEvent) classes.push('has-event');
+      if(dateStr === selectedCalDate) classes.push('selected');
+
+      const chipItems = [
+        ...done.map(t => ({ id: t.id, text: t.title, style: 'background:var(--ok)' })),
+        ...due.map(t => ({ id: t.id, text: t.title, style: `background:${t.color}` }))
+      ];
+      const MAX_CHIPS = 2;
+      const shown = chipItems.slice(0, MAX_CHIPS);
+      const extraCount = chipItems.length - shown.length;
+      let chipsHtml = shown.map(c => `<span class="mc-chip" data-task-id="${c.id}" style="${c.style}">${escapeHtml(c.text)}</span>`).join('');
+      if(extraCount > 0) chipsHtml += `<span class="mc-more">+${extraCount}件</span>`;
+
+      cells += `<div class="${classes.join(' ')}" data-date="${dateStr}">
+        <span class="mc-daynum">${day}</span>
+        <span class="mc-chips">${chipsHtml}</span>
+      </div>`;
+    }
+    $('#mcGrid').innerHTML = cells;
+
+    $('#mcGrid').querySelectorAll('.mc-day.has-event').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const dateStr = cell.dataset.date;
+        selectedCalDate = (selectedCalDate === dateStr) ? null : dateStr;
+        renderCalendar();
+      });
+    });
+
+    $('#mcGrid').querySelectorAll('.mc-chip').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        scrollToTask(chip.dataset.taskId);
+      });
+    });
+
+    renderCalDayDetail(dueMap, doneMap);
+  }
+
+  function renderCalDayDetail(dueMap, doneMap){
+    const box = $('#mcDayDetail');
+    if(!selectedCalDate){
+      box.innerHTML = '';
+      return;
+    }
+    const due = dueMap.get(selectedCalDate) || [];
+    const done = doneMap.get(selectedCalDate) || [];
+    const [y,m,d] = selectedCalDate.split('-');
+    let html = `<div class="mc-detail-block"><b>${y}/${Number(m)}/${Number(d)}</b></div>`;
+    if(done.length){
+      html += `<div class="mc-detail-block"><span class="mc-detail-label">実施：</span>` +
+        done.map(t => `<span class="mc-detail-tag" data-task-id="${t.id}"><span class="mc-swatch" style="background:${t.color}"></span>${escapeHtml(t.title)}（${escapeHtml(t.member)}）</span>`).join('') +
+        `</div>`;
+    }
+    if(due.length){
+      html += `<div class="mc-detail-block"><span class="mc-detail-label">予定：</span>` +
+        due.map(t => `<span class="mc-detail-tag" data-task-id="${t.id}"><span class="mc-swatch" style="background:${t.color}"></span>${escapeHtml(t.title)}（${escapeHtml(t.member)}）</span>`).join('') +
+        `</div>`;
+    }
+    if(!done.length && !due.length){
+      html += `<div class="mc-detail-block">この日の記録はありません</div>`;
+    }
+    box.innerHTML = html;
+
+    box.querySelectorAll('.mc-detail-tag').forEach(tag => {
+      tag.addEventListener('click', () => {
+        scrollToTask(tag.dataset.taskId);
+      });
+    });
+  }
+
+  function scrollToTask(id){
+    const task = tasks.find(t => t.id === id);
+    if(!task) return;
+    if(activeMember !== 'all' && activeMember !== task.member){
+      activeMember = 'all';
+      render();
+    }
+    requestAnimationFrame(() => {
+      const el = listEl.querySelector(`.ticket[data-id="${id}"]`);
+      if(!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ticket-highlight');
+      setTimeout(() => el.classList.remove('ticket-highlight'), 1600);
+    });
+  }
+
+  // 属性値（"や'）にも安全に使えるようにエスケープする
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, c => (
+      { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
+    ));
+  }
+
+  function genId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  function isValidDateStr(s){
+    if(typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    return toLocalISO(new Date(s + 'T00:00:00')) === s;
+  }
+
+  // 読み込んだタスクを検証・整形する。不正なら null を返す
+  function sanitizeTask(t){
+    if(!t || typeof t !== 'object') return null;
+    const member = typeof t.member === 'string' ? t.member.trim() : '';
+    const title = typeof t.title === 'string' ? t.title.trim() : '';
+    if(!member || !title || !isValidDateStr(t.last) || !isValidDateStr(t.next)) return null;
+    const freqNum = Math.floor(Number(t.freq));
+    const durNum = Number(t.duration);
+    const id = (typeof t.id === 'string' && /^[\w-]{1,64}$/.test(t.id)) ? t.id : genId();
+    return {
+      id,
+      member,
+      color: (typeof t.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(t.color)) ? t.color : COLORS[0],
+      title,
+      last: t.last,
+      freq: String(freqNum >= 1 ? freqNum : 7),
+      next: t.next,
+      duration: (isFinite(durNum) && durNum >= 0) ? durNum : 0,
+      history: Array.isArray(t.history) ? t.history.filter(isValidDateStr) : []
+    };
+  }
+
+  // ---------- Modal ----------
+  function renderColorPicker(){
+    colorPicker.innerHTML = COLORS.map(c =>
+      `<span class="color-swatch ${c===selectedColor?'selected':''}" style="background:${c}" data-color="${c}"></span>`
+    ).join('');
+    colorPicker.querySelectorAll('.color-swatch').forEach(sw => {
+      sw.addEventListener('click', () => {
+        selectedColor = sw.dataset.color;
+        renderColorPicker();
+      });
+    });
+  }
+
+  function refreshMemberSuggestions(){
+    const dl = $('#memberSuggestions');
+    dl.innerHTML = [...uniqueMembers().keys()].map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+  }
+
+  function openAdd(){
+    editingId = null;
+    $('#modalTitle').textContent = 'タスクを追加';
+    $('#submitBtn').textContent = '保存する';
+    form.reset();
+    $('#f-last').value = todayISO();
+    $('#f-freq').value = '7';
+    $('#f-next').value = addDays(todayISO(), 7);
+    $('#f-duration').value = 15;
+    selectedColor = COLORS[tasks.length % COLORS.length];
+    renderColorPicker();
+    refreshMemberSuggestions();
+    updateFreqPresetHighlight();
+    overlay.classList.add('show');
+    $('#f-member').focus();
+  }
+
+  function openEdit(id){
+    const t = tasks.find(x => x.id === id);
+    if(!t) return;
+    editingId = id;
+    $('#modalTitle').textContent = 'タスクを編集';
+    $('#submitBtn').textContent = '更新する';
+    $('#f-member').value = t.member;
+    $('#f-title').value = t.title;
+    $('#f-last').value = t.last;
+    $('#f-freq').value = t.freq;
+    $('#f-next').value = t.next;
+    $('#f-duration').value = t.duration;
+    selectedColor = t.color;
+    renderColorPicker();
+    refreshMemberSuggestions();
+    updateFreqPresetHighlight();
+    overlay.classList.add('show');
+  }
+
+  function closeModal(){
+    overlay.classList.remove('show');
+  }
+
+  function deleteTask(id){
+    const target = tasks.find(t => t.id === id);
+    if(!target) return;
+    if(!confirm(`「${target.title}（${target.member}）」を削除します。履歴も失われます。よろしいですか？`)) return;
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks();
+    render();
+  }
+
+  function markDone(id){
+    const t = tasks.find(x => x.id === id);
+    if(!t) return;
+    const today = todayISO();
+    if(!Array.isArray(t.history)) t.history = t.last ? [t.last] : [];
+    if(t.history.includes(today)){
+      alert('今日の完了はすでに記録されています。');
+      return;
+    }
+    t.history.push(today);
+    t.last = today;
+    t.next = addDays(today, t.freq);
+    saveTasks();
+    render();
+  }
+
+  // ---------- History modal ----------
+  function openHistory(id){
+    historyTaskId = id;
+    renderHistoryList();
+    historyOverlay.classList.add('show');
+  }
+
+  function closeHistoryModal(){
+    historyOverlay.classList.remove('show');
+    historyTaskId = null;
+    editingHistoryDate = null;
+  }
+
+  function renderHistoryList(){
+    const t = tasks.find(x => x.id === historyTaskId);
+    const listBox = $('#historyList');
+    if(!t){ listBox.innerHTML = ''; return; }
+    $('#historyTitle').textContent = `実施履歴：${t.title}`;
+    const history = Array.isArray(t.history) ? t.history : [];
+    const sorted = [...history].sort((a,b) => b.localeCompare(a));
+    if(sorted.length === 0){
+      listBox.innerHTML = `<div class="history-empty">まだ実施記録がありません</div>`;
+      return;
+    }
+    listBox.innerHTML = sorted.map(dateStr => dateStr === editingHistoryDate ? `
+      <div class="history-item" data-date="${dateStr}">
+        <input type="date" class="h-input" value="${dateStr}" aria-label="実施日を修正">
+        <span class="h-btns">
+          <button type="button" class="h-save">保存</button>
+          <button type="button" class="h-cancel">取消</button>
+        </span>
+      </div>
+    ` : `
+      <div class="history-item" data-date="${dateStr}">
+        <span class="h-date">${fmtDate(dateStr)}</span>
+        <span class="h-btns">
+          <button type="button" class="h-edit">修正</button>
+          <button type="button" class="h-delete">削除</button>
+        </span>
+      </div>
+    `).join('');
+    const dateOf = (e) => e.target.closest('.history-item').dataset.date;
+    listBox.querySelectorAll('.h-delete').forEach(btn => {
+      btn.addEventListener('click', (e) => deleteHistoryEntry(dateOf(e)));
+    });
+    listBox.querySelectorAll('.h-edit').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        editingHistoryDate = dateOf(e);
+        renderHistoryList();
+      });
+    });
+    listBox.querySelectorAll('.h-cancel').forEach(btn => {
+      btn.addEventListener('click', () => {
+        editingHistoryDate = null;
+        renderHistoryList();
+      });
+    });
+    listBox.querySelectorAll('.h-save').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const item = e.target.closest('.history-item');
+        updateHistoryEntry(item.dataset.date, item.querySelector('.h-input').value);
+      });
+    });
+  }
+
+  function latestOf(history){
+    return history.length ? history.reduce((a,b) => a > b ? a : b) : null;
+  }
+
+  // 履歴の最新日が変わったら、前回実施日・次回予定日も合わせて更新する
+  function syncLastNext(t, prevLatest){
+    const latest = latestOf(t.history);
+    if(latest && latest !== prevLatest){
+      t.last = latest;
+      t.next = addDays(latest, t.freq);
+    }
+  }
+
+  function commitHistoryChange(){
+    saveTasks();
+    renderHistoryList();
+    render();
+  }
+
+  function updateHistoryEntry(oldDate, newDate){
+    const t = tasks.find(x => x.id === historyTaskId);
+    if(!t || !Array.isArray(t.history)) return;
+    if(!isValidDateStr(newDate)){
+      alert('日付を入力してください。');
+      return;
+    }
+    if(newDate !== oldDate && t.history.includes(newDate)){
+      alert('その日付はすでに履歴にあります。');
+      return;
+    }
+    const prevLatest = latestOf(t.history);
+    const idx = t.history.indexOf(oldDate);
+    if(idx === -1) return;
+    t.history[idx] = newDate;
+    syncLastNext(t, prevLatest);
+    editingHistoryDate = null;
+    commitHistoryChange();
+  }
+
+  function addHistoryEntry(dateStr){
+    const t = tasks.find(x => x.id === historyTaskId);
+    if(!t) return;
+    if(!isValidDateStr(dateStr)){
+      alert('追加する日付を入力してください。');
+      return;
+    }
+    if(!Array.isArray(t.history)) t.history = [];
+    if(t.history.includes(dateStr)){
+      alert('その日付はすでに履歴にあります。');
+      return;
+    }
+    const prevLatest = latestOf(t.history);
+    t.history.push(dateStr);
+    syncLastNext(t, prevLatest);
+    $('#historyAddDate').value = '';
+    commitHistoryChange();
+  }
+
+  function deleteHistoryEntry(dateStr){
+    if(!confirm(`${fmtDate(dateStr)} の実施記録を削除しますか？`)) return;
+    const t = tasks.find(x => x.id === historyTaskId);
+    if(!t || !Array.isArray(t.history)) return;
+    const prevLatest = latestOf(t.history);
+    const idx = t.history.indexOf(dateStr);
+    if(idx !== -1) t.history.splice(idx, 1);
+    syncLastNext(t, prevLatest);
+    commitHistoryChange();
+  }
+
+  // ---------- Events ----------
+  $('#openAdd').addEventListener('click', openAdd);
+  $('#autosaveBtn').addEventListener('click', chooseAutosaveFile);
+  $('#mcPrev').addEventListener('click', () => {
+    calMonth--;
+    if(calMonth < 0){ calMonth = 11; calYear--; }
+    selectedCalDate = null;
+    renderCalendar();
+  });
+  $('#mcNext').addEventListener('click', () => {
+    calMonth++;
+    if(calMonth > 11){ calMonth = 0; calYear++; }
+    selectedCalDate = null;
+    renderCalendar();
+  });
+  $('#sortToggle').addEventListener('click', () => {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    $('#sortToggle').textContent = sortDir === 'asc' ? '予定日が近い順 ↑' : '予定日が遠い順 ↓';
+    render();
+  });
+  $('#cancelBtn').addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
+  historyOverlay.addEventListener('click', (e) => { if(e.target === historyOverlay) closeHistoryModal(); });
+  $('#historyCloseBtn').addEventListener('click', closeHistoryModal);
+  $('#historyAddBtn').addEventListener('click', () => addHistoryEntry($('#historyAddDate').value));
+
+  $('#f-last').addEventListener('change', syncNext);
+  $('#f-freq').addEventListener('input', syncNext);
+  function syncNext(){
+    const last = $('#f-last').value;
+    const freq = $('#f-freq').value;
+    if(last && freq) $('#f-next').value = addDays(last, freq);
+    updateFreqPresetHighlight();
+  }
+
+  function updateFreqPresetHighlight(){
+    const val = $('#f-freq').value;
+    document.querySelectorAll('.freq-chip').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.days === val);
+    });
+  }
+
+  document.querySelectorAll('.freq-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      $('#f-freq').value = chip.dataset.days;
+      syncNext();
+    });
+  });
+
+  $('#f-member').addEventListener('input', (e) => {
+    const existingColor = colorForMember(e.target.value.trim());
+    if(existingColor){
+      selectedColor = existingColor;
+      renderColorPicker();
+    }
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {
+      id: editingId || genId(),
+      member: $('#f-member').value.trim(),
+      color: selectedColor,
+      title: $('#f-title').value.trim(),
+      last: $('#f-last').value,
+      freq: $('#f-freq').value,
+      next: $('#f-next').value,
+      duration: Number($('#f-duration').value)
+    };
+    if(editingId){
+      const existing = tasks.find(t => t.id === editingId);
+      data.history = existing && Array.isArray(existing.history) ? [...existing.history] : [];
+      if(existing && existing.last !== data.last){
+        // 前回実施日の修正を履歴にも反映する
+        data.history = data.history.filter(d => d !== existing.last);
+        if(!data.history.includes(data.last)) data.history.push(data.last);
+      }
+      tasks = tasks.map(t => t.id === editingId ? data : t);
+    }else{
+      data.history = data.last ? [data.last] : [];
+      tasks.push(data);
+    }
+    // 同じ担当者のタスクは色をそろえる
+    tasks.forEach(t => { if(t.member === data.member) t.color = data.color; });
+    saveTasks();
+    closeModal();
+    render();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && overlay.classList.contains('show')) closeModal();
+    if(e.key === 'Escape' && historyOverlay.classList.contains('show')) closeHistoryModal();
+  });
+
+  // ---------- Export / Import ----------
+  function pad2(n){ return String(n).padStart(2,'0'); }
+
+  $('#exportBtn').addEventListener('click', async () => {
+    const now = new Date();
+    const fname = `soji-export-${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}.json`;
+    const jsonStr = JSON.stringify(tasks, null, 2);
+
+    // 1) 対応ブラウザ（主にPCのChrome/Edge）：保存先フォルダを選べるダイアログ（前回の場所を記憶）
+    if('showSaveFilePicker' in window){
+      try{
+        let startIn;
+        try{ startIn = await idbGet(LAST_IO_KEY); }catch(e){}
+        const opts = {
+          suggestedName: fname,
+          types: [{ description: 'JSON ファイル', accept: { 'application/json': ['.json'] } }]
+        };
+        if(startIn) opts.startIn = startIn;
+        const handle = await window.showSaveFilePicker(opts);
+        const writable = await handle.createWritable();
+        await writable.write(jsonStr);
+        await writable.close();
+        try{ await idbSet(LAST_IO_KEY, handle); }catch(e){}
+        return;
+      }catch(e){
+        if(e.name === 'AbortError') return; // ユーザーがキャンセル
+        console.error(e);
+        // 失敗した場合は他の方法にフォールバック
+      }
+    }
+
+    // 2) Android Chromeなど：共有シートから「ファイル」アプリ等を選んで好きなフォルダに保存
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    let file = null;
+    try{ file = new File([blob], fname, { type: 'application/json' }); }catch(e){ /* File未対応 */ }
+    if(file && navigator.canShare && navigator.canShare({ files: [file] })){
+      try{
+        await navigator.share({ files: [file], title: fname });
+        return;
+      }catch(e){
+        if(e.name === 'AbortError') return; // ユーザーがキャンセル
+        console.error(e);
+        // 失敗した場合は他の方法にフォールバック
+      }
+    }
+
+    // 3) それ以外：従来通りダウンロードフォルダへ保存
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  function handleImportedText(text){
+    let incoming;
+    try{
+      incoming = JSON.parse(text);
+      if(!Array.isArray(incoming)) throw new Error('形式が正しくありません');
+    }catch(err){
+      alert('このファイルは読み込めませんでした。掃除タスクマネージャーからエクスポートしたJSONファイルを選択してください。');
+      return;
+    }
+
+    const valid = incoming.map(sanitizeTask).filter(Boolean);
+    if(valid.length === 0){
+      alert('有効なタスクデータが見つかりませんでした。');
+      return;
+    }
+
+    if(tasks.length === 0){
+      applyImport(valid, 'replace');
+      return;
+    }
+    pendingImport = valid;
+    $('#importInfo').textContent = `${valid.length}件のデータが見つかりました（現在は${tasks.length}件登録中）。`;
+    importOverlay.classList.add('show');
+  }
+
+  const BACKUP_KEY = 'soji-manager:import-backup';
+
+  function applyImport(valid, mode){
+    // 取り消せるよう、インポート前のデータを退避する
+    if(tasks.length){
+      try{ localStorage.setItem(BACKUP_KEY, JSON.stringify(tasks)); }catch(e){ console.error(e); }
+    }
+    if(mode === 'merge'){
+      // 同じIDがあれば上書き、なければ追加
+      const map = new Map(tasks.map(t => [t.id, t]));
+      valid.forEach(t => map.set(t.id, t));
+      tasks = [...map.values()];
+    }else{
+      tasks = valid;
+    }
+    saveTasks();
+    render();
+    updateImportUndoBtn();
+    alert('インポートが完了しました。');
+  }
+
+  function closeImportModal(){
+    importOverlay.classList.remove('show');
+    pendingImport = null;
+  }
+
+  function updateImportUndoBtn(){
+    let has = false;
+    try{ has = !!localStorage.getItem(BACKUP_KEY); }catch(e){}
+    $('#importUndoBtn').style.display = has ? '' : 'none';
+  }
+
+  function undoImport(){
+    let raw = null;
+    try{ raw = localStorage.getItem(BACKUP_KEY); }catch(e){}
+    if(!raw) return;
+    if(!confirm('直前のインポートを取り消し、インポート前のデータに戻します。よろしいですか？')) return;
+    try{
+      const parsed = JSON.parse(raw);
+      tasks = Array.isArray(parsed) ? parsed.map(sanitizeTask).filter(Boolean) : [];
+    }catch(e){
+      alert('バックアップを読み込めませんでした。');
+      return;
+    }
+    try{ localStorage.removeItem(BACKUP_KEY); }catch(e){}
+    saveTasks();
+    render();
+    updateImportUndoBtn();
+  }
+
+  $('#importMergeBtn').addEventListener('click', () => {
+    const data = pendingImport; closeImportModal();
+    if(data) applyImport(data, 'merge');
+  });
+  $('#importReplaceBtn').addEventListener('click', () => {
+    const data = pendingImport; closeImportModal();
+    if(data) applyImport(data, 'replace');
+  });
+  $('#importCancelBtn').addEventListener('click', closeImportModal);
+  $('#importUndoBtn').addEventListener('click', undoImport);
+  importOverlay.addEventListener('click', (e) => { if(e.target === importOverlay) closeImportModal(); });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && importOverlay.classList.contains('show')) closeImportModal();
+  });
+
+  $('#importBtn').addEventListener('click', async () => {
+    // 1) 対応ブラウザ（主にPCのChrome/Edge）：前回の場所を記憶したファイル選択ダイアログ
+    if('showOpenFilePicker' in window){
+      try{
+        let startIn;
+        try{ startIn = await idbGet(LAST_IO_KEY); }catch(e){}
+        const opts = {
+          types: [{ description: 'JSON ファイル', accept: { 'application/json': ['.json'] } }],
+          multiple: false
+        };
+        if(startIn) opts.startIn = startIn;
+        const [handle] = await window.showOpenFilePicker(opts);
+        try{ await idbSet(LAST_IO_KEY, handle); }catch(e){}
+        const file = await handle.getFile();
+        const text = await file.text();
+        handleImportedText(text);
+        return;
+      }catch(e){
+        if(e.name === 'AbortError') return; // ユーザーがキャンセル
+        console.error(e);
+        // 失敗した場合は従来のファイル選択にフォールバック
+      }
+    }
+    // 2) 非対応環境（Androidなど）：従来通りのファイル選択（ブラウザ側が前回のフォルダを記憶）
+    $('#importInput').click();
+  });
+
+  $('#importInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      handleImportedText(reader.result);
+      e.target.value = '';
+    };
+    reader.onerror = () => {
+      alert('ファイルの読み込みに失敗しました。');
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  // ---------- 日付またぎの再描画 ----------
+  let lastRenderDay = todayISO();
+  function refreshIfDayChanged(){
+    const d = todayISO();
+    if(d === lastRenderDay) return;
+    lastRenderDay = d;
+    render();
+  }
+  setInterval(refreshIfDayChanged, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if(!document.hidden) refreshIfDayChanged();
+  });
+
+  // ---------- 別タブでの変更を反映 ----------
+  window.addEventListener('storage', (e) => {
+    if(e.key !== STORAGE_KEY) return;
+    try{
+      const parsed = e.newValue ? JSON.parse(e.newValue) : [];
+      tasks = Array.isArray(parsed) ? parsed.map(sanitizeTask).filter(Boolean) : [];
+    }catch(err){
+      return;
+    }
+    render();
+    if(historyOverlay.classList.contains('show')) renderHistoryList();
+  });
+
+  updateImportUndoBtn();
+  loadTasks();
+})();
+</script>
+</body>
+</html>
