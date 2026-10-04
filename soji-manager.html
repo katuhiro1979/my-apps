@@ -837,6 +837,8 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="cloud-sync.js"></script>
 <script>
 (function(){
   const COLORS = ['#2B6CB8','#2E9E5B','#C97A1A','#C0392B','#7A5CC9','#1B8A8A'];
@@ -924,6 +926,7 @@
 
   // ---------- Persistence ----------
   const STORAGE_KEY = 'soji-manager:tasks';
+  let cloud = null; // クラウド同期（右下の☁ボタン）。読み込めない環境では null のまま
 
   function loadTasks(){
     try{
@@ -941,6 +944,7 @@
   function saveLocalOnly(){
     try{
       localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      if(cloud) cloud.notifyChanged();
     }catch(e){
       console.error('保存に失敗しました', e);
       alert('データの保存に失敗しました。ブラウザの設定をご確認ください。');
@@ -2004,6 +2008,24 @@
 
   updateImportUndoBtn();
   loadTasks();
+
+  // クラウド同期: タスク一覧を同期する（cloud-sync.js）
+  if(window.CloudSync){
+    cloud = CloudSync.init({
+      appName: '掃除タスクマネージャー',
+      key: 'data-v1',
+      getData: function(){ return { tasks: tasks }; },
+      hasData: function(){ return tasks.length > 0; },
+      applyData: function(d){
+        if(!d || !Array.isArray(d.tasks)) throw new Error('掃除タスクのデータ形式が違います');
+        tasks = d.tasks.map(sanitizeTask).filter(Boolean);
+        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
+        catch(e){ alert('クラウドのデータを端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
+        render();
+        if(historyOverlay.classList.contains('show')) renderHistoryList();
+      }
+    });
+  }
 })();
 </script>
 </body>
