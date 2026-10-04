@@ -140,7 +140,7 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
   details.panel[open] > summary::before{content:"▾ ";}
   details.panel[open] > summary{border-bottom:1px solid var(--rule);}
   .edit-item-form{display:grid;grid-template-columns:1.6fr 1fr 1.2fr auto auto;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--rule);align-items:center;}
-  @media (max-width:640px){ .edit-item-form{grid-template-columns:1fr 1fr;} }
+  @media (max-width:640px){ .edit-item-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr);} }
 
   .soon-setting{font-size:12.5px;color:var(--ink-soft);}
   .scan-box{padding:0 18px 14px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
@@ -153,9 +153,14 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     /* 画像・番号を左、バッジと品目名を右に並べ、操作ボタンは下の段いっぱいに置く */
     li.item{grid-template-columns:auto minmax(0,1fr);}
     li.item{gap:6px 12px;padding:16px 14px;}
-    li.item > .actions{grid-column:1 / -1;}
+    li.item > .actions, li.item > .item-panels, li.item > .item-loan{grid-column:1 / -1;}
+    /* 借用者・貸出・期限は、見出しと値を左右に並べた縦のリストにする */
+    .item-loan .loan-info{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:0;font-size:14px;}
+    .item-loan .loan-info span{display:contents;}
+    .item-loan .loan-info em{font-size:12px;margin-right:0;align-self:center;}
     .code{padding-top:0;}
-    .loan-form{grid-template-columns:1fr 1fr;}
+    .loan-form{grid-template-columns:minmax(0,1fr);} /* 借用者・貸出日・期限・ボタンを縦1列に並べる */
+    .loan-form input, .loan-form button, .edit-item-form input, .edit-item-form button{min-width:0;width:100%;box-sizing:border-box;}
     .stats{grid-template-columns:1fr 1fr;}
     .wrap{padding:24px 14px;}
     /* 操作ボタンは3列の格子に並べ、押しやすくする */
@@ -171,6 +176,8 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
   .loan-info{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:4px;color:var(--ink);}
   .loan-info em{font-style:normal;font-size:11px;color:var(--ink-soft);margin-right:5px;}
   .code{font-weight:600;}
+  .item-panels, .item-loan{grid-column:2 / -1;min-width:0;}
+  ul.item-list.grid .item-panels, ul.item-list.grid .item-loan{grid-column:1 / -1;}
   .item-tags{margin-top:8px;}
   .filters{padding-top:6px;}
   .filters > input[type=text]{flex:1 1 100%;}
@@ -689,25 +696,30 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
       else if(isDueSoon(it)) badgeHtml='<span class="badge soon">まもなく期限</span>';
       else badgeHtml='<span class="badge loaned">貸出中</span>';
 
-      let metaHtml = escapeHtml(it.category || '分類未設定');
-      if(it.status==='loaned'){
-        metaHtml += '<div class="loan-info"><span><em>借用者</em>'+escapeHtml(it.borrower||'—')+'</span><span><em>貸出</em>'+fmtDate(it.loanDate)+'</span><span><em>期限</em>'+fmtDate(it.dueDate)+'</span></div>';
-      }
+      const metaHtml = escapeHtml(it.category || '分類未設定');
+      // 借用者・貸出日・期限と期間バーは、品目名の列とは別の段(画像の下)に出す
+      const loanHtml = it.status==='loaned'
+        ? '<div class="loan-info"><span><em>借用者</em>'+escapeHtml(it.borrower||'—')+'</span><span><em>貸出</em>'+fmtDate(it.loanDate)+'</span><span><em>期限</em>'+fmtDate(it.dueDate)+'</span></div>' + loanBarHtml(it)
+        : '';
       const tagsHtml = (it.tags||[]).map(t=>'<span class="pill">#'+escapeHtml(t)+'</span>').join('');
+
+      // 貸出・編集・QR・履歴のパネルは、品目名の列とは別の段(全幅)に出す
+      const panelsHtml =
+        (isPanel('loan',it) ? loanFormHtml(it) : '') +
+        (isPanel('editLoan',it) ? editLoanFormHtml(it) : '') +
+        (isPanel('editItem',it) ? editItemFormHtml(it) : '') +
+        (isPanel('qr',it) ? qrBoxHtml(it) : '') +
+        (isPanel('history',it) ? historyBoxHtml(it) : '');
 
       li.innerHTML = `
         <div class="code sans">${thumbHtml(it)}<span>${escapeHtml(it.code)}</span></div>
         <div>
           <div class="item-name">${badgeHtml}${escapeHtml(it.name)}</div>
           <div class="item-meta sans">${metaHtml}</div>
-          ${it.status==='loaned' ? loanBarHtml(it) : ''}
           ${tagsHtml ? '<div class="item-tags">'+tagsHtml+'</div>' : ''}
-          ${isPanel('loan',it) ? loanFormHtml(it) : ''}
-          ${isPanel('editLoan',it) ? editLoanFormHtml(it) : ''}
-          ${isPanel('editItem',it) ? editItemFormHtml(it) : ''}
-          ${isPanel('qr',it) ? qrBoxHtml(it) : ''}
-          ${isPanel('history',it) ? historyBoxHtml(it) : ''}
         </div>
+        ${loanHtml ? '<div class="item-loan">'+loanHtml+'</div>' : ''}
+        ${panelsHtml ? '<div class="item-panels">'+panelsHtml+'</div>' : ''}
         <div class="actions sans">${actionsHtml(it)}</div>
       `;
 
