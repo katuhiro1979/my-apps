@@ -150,9 +150,11 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
 
   @media (max-width:640px){
     form.add-form{grid-template-columns:1fr;}
-    li.item{grid-template-columns:1fr;}
-    li.item{gap:6px;padding:16px 14px;}
-    .code{order:-1;padding-top:0;}
+    /* 画像・番号を左、バッジと品目名を右に並べ、操作ボタンは下の段いっぱいに置く */
+    li.item{grid-template-columns:auto minmax(0,1fr);}
+    li.item{gap:6px 12px;padding:16px 14px;}
+    li.item > .actions{grid-column:1 / -1;}
+    .code{padding-top:0;}
     .loan-form{grid-template-columns:1fr 1fr;}
     .stats{grid-template-columns:1fr 1fr;}
     .wrap{padding:24px 14px;}
@@ -251,24 +253,6 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
   </div>
 
   <div class="panel">
-    <div class="panel-head"><h2>品目を登録する</h2></div>
-    <div class="panel-body">
-      <div class="option-row sans" id="optionRow" style="display:none;">
-        <select id="nameOptions"><option value="">品目名を選択…</option></select>
-        <select id="categoryOptions"><option value="">分類を選択…</option></select>
-        <select id="tagOptions"><option value="">タグを追加…</option></select>
-      </div>
-      <form class="add-form" id="addForm">
-        <input type="text" id="newName" placeholder="品目名（例：三脚カメラA）" required>
-        <input type="text" id="newCategory" placeholder="分類（例：機材）">
-        <input type="text" id="newTags" placeholder="タグ（カンマ区切り）">
-        <button type="submit">登録する</button>
-        <label class="img-field">画像（任意・自動で縮小されます）: <input type="file" id="newImage" accept="image/*"></label>
-      </form>
-    </div>
-  </div>
-
-  <div class="panel">
     <div class="panel-head">
       <div class="tabs sans" id="tabs">
         <button data-tab="all" class="active">すべて</button>
@@ -299,6 +283,25 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     <ul class="item-list" id="itemList"></ul>
     <div class="empty sans" id="emptyState" style="display:none;"></div>
   </div>
+
+  <!-- 品目の登録フォーム（折りたたみ式。品目データのバックアップの上に置く） -->
+  <details class="panel" id="addPanel">
+    <summary class="sans">品目を登録する</summary>
+    <div class="panel-body">
+      <div class="option-row sans" id="optionRow" style="display:none;">
+        <select id="nameOptions"><option value="">品目名を選択…</option></select>
+        <select id="categoryOptions"><option value="">分類を選択…</option></select>
+        <select id="tagOptions"><option value="">タグを追加…</option></select>
+      </div>
+      <form class="add-form" id="addForm">
+        <input type="text" id="newName" placeholder="品目名（例：三脚カメラA）" required>
+        <input type="text" id="newCategory" placeholder="分類（例：機材）">
+        <input type="text" id="newTags" placeholder="タグ（カンマ区切り）">
+        <button type="submit">登録する</button>
+        <label class="img-field">画像（任意・自動で縮小されます）: <input type="file" id="newImage" accept="image/*"></label>
+      </form>
+    </div>
+  </details>
 
   <details class="panel">
     <summary class="sans">品目データのバックアップ</summary>
