@@ -334,6 +334,8 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
   <footer class="sans"><div id="backupInfo"></div>データはこのブラウザ（Chromeなど）に保存されます。別のブラウザや端末では表示されません。</footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="cloud-sync.js"></script>
 <script>
 (function(){
   const todayLabel = document.getElementById('todayLabel');
@@ -357,6 +359,8 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
   const STORE_KEY = 'lending-ledger-items';
   const OPTIONS_KEY = 'lending-ledger-import-options';
   const BACKUP_KEY = 'lending-ledger-last-backup';
+  let cloud = null; // クラウド同期（右下の☁ボタン）。読み込めない環境では null のまま
+  function cloudNotify(){ if(cloud) cloud.notifyChanged(); }
   let items = [];
   let currentTab = 'all';
   // 開いているパネル（type: loan / editLoan / editItem / qr / history）は常に1つだけ
@@ -487,7 +491,7 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     remindBackup();
   }
   async function save(){
-    try{ localStorage.setItem(STORE_KEY, JSON.stringify(items)); }
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(items)); cloudNotify(); }
     catch(e){
       console.error('保存に失敗しました', e);
       showNotice('保存に失敗しました。ブラウザの容量不足の可能性があります。「データをエクスポート（JSON）」で今すぐバックアップしてください。', true, true);
@@ -505,7 +509,7 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     renderOptionSelects();
   }
   async function saveOptions(){
-    try{ localStorage.setItem(OPTIONS_KEY, JSON.stringify(importedOptions)); }
+    try{ localStorage.setItem(OPTIONS_KEY, JSON.stringify(importedOptions)); cloudNotify(); }
     catch(e){ console.error('選択肢の保存に失敗しました', e); }
   }
 
@@ -1404,6 +1408,33 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
   });
 
   load();
+
+  // クラウド同期: 品目・選択肢・コード採番をまとめて同期する（cloud-sync.js）
+  if(window.CloudSync){
+    cloud = CloudSync.init({
+      appName: '貸出台帳',
+      key: 'data-v1',
+      getData: function(){ return { items: items, options: importedOptions, codeCounter: Math.max(readCounter(), maxCodeNumber(items)) }; },
+      hasData: function(){ return items.length > 0; },
+      applyData: function(d){
+        if(!d || !Array.isArray(d.items)) throw new Error('貸出台帳のデータ形式が違います');
+        items = d.items;
+        items.forEach(it=>{ if(!it.tags) it.tags=[]; if(!it.history) it.history=[]; });
+        if(d.options && typeof d.options==='object'){
+          importedOptions = d.options;
+          if(!('raw' in importedOptions)) importedOptions.raw = null;
+        }
+        try{
+          localStorage.setItem(STORE_KEY, JSON.stringify(items));
+          localStorage.setItem(OPTIONS_KEY, JSON.stringify(importedOptions));
+          localStorage.setItem(COUNTER_KEY, String(Math.max(readCounter(), maxCodeNumber(items), parseInt(d.codeCounter,10) || 0)));
+        }catch(e){ showNotice('クラウドのデータを端末に保存できませんでした（容量不足の可能性があります）。', true, true); }
+        renderOptionSelects();
+        render();
+        showNotice('クラウドの最新データに更新しました。');
+      }
+    });
+  }
 })();
 </script>
 </body>
