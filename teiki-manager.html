@@ -650,6 +650,8 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="cloud-sync.js"></script>
 <script>
 (function(){
   const COLORS = ['#2B6CB8','#2E9E5B','#C97A1A','#C0392B','#7A5CC9','#1B8A8A'];
@@ -734,6 +736,7 @@
 
   // ---------- Persistence (localStorage + auto-save file) ----------
   const STORAGE_KEY = 'teiki-manager:passes';
+  let cloud = null; // クラウド同期（右下の☁ボタン）。読み込めない環境では null のまま
   const fsSupported = 'showSaveFilePicker' in window;
   let fileHandle = null;
 
@@ -785,6 +788,7 @@
   function savePasses(){
     try{
       localStorage.setItem(STORAGE_KEY, JSON.stringify(passes));
+      if(cloud) cloud.notifyChanged();
       saveErrorShown = false;
     }catch(e){
       console.error('保存に失敗しました', e);
@@ -1538,6 +1542,23 @@
   loadPasses();
   initAutosave();
   initIOFolder();
+
+  // クラウド同期: 定期券の一覧を同期する（cloud-sync.js）
+  if(window.CloudSync){
+    cloud = CloudSync.init({
+      appName: '定期券マネージャー',
+      key: 'data-v1',
+      getData: function(){ return { passes: passes }; },
+      hasData: function(){ return passes.length > 0; },
+      applyData: function(d){
+        if(!d || !Array.isArray(d.passes)) throw new Error('定期券のデータ形式が違います');
+        passes = d.passes.map(sanitizePass).filter(Boolean);
+        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(passes)); }
+        catch(e){ alert('クラウドのデータを端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
+        render();
+      }
+    });
+  }
 })();
 </script>
 </body>
