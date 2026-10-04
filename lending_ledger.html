@@ -177,6 +177,14 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
   .code{font-weight:600;}
   .item-panels, .item-loan{grid-column:2 / -1;min-width:0;}
   ul.item-list.grid .item-panels, ul.item-list.grid .item-loan{grid-column:1 / -1;}
+  /* PC（リスト表示）: 画像・番号は左、品目名と操作ボタンは1段目、貸出情報とパネルはその下に置く */
+  @media (min-width:641px){
+    ul.item-list:not(.grid) li.item > .code{grid-column:1;grid-row:1 / span 4;}
+    ul.item-list:not(.grid) li.item > .item-loan{grid-column:2 / -1;grid-row:2;}
+    ul.item-list:not(.grid) li.item > .actions{grid-column:2 / -1;grid-row:3;justify-content:flex-start;}
+    ul.item-list:not(.grid) li.item > .item-panels{grid-column:2 / -1;grid-row:4;}
+    ul.item-list:not(.grid) .item-loan .loan-info{margin-top:0;font-size:15px;}
+  }
   .item-tags{margin-top:8px;}
   .filters{padding-top:6px;}
   .filters > input[type=text]{flex:1 1 100%;}
