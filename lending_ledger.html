@@ -154,10 +154,9 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     li.item{grid-template-columns:auto minmax(0,1fr);}
     li.item{gap:6px 12px;padding:16px 14px;}
     li.item > .actions, li.item > .item-panels, li.item > .item-loan{grid-column:1 / -1;}
-    /* 借用者・貸出・期限は、見出しと値を左右に並べた縦のリストにする */
-    .item-loan .loan-info{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:0;font-size:14px;}
-    .item-loan .loan-info span{display:contents;}
-    .item-loan .loan-info em{font-size:12px;margin-right:0;align-self:center;}
+    /* 借用者・貸出・期限は横に並べ、入りきらないときだけ折り返す */
+    .item-loan .loan-info{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:0;font-size:14px;}
+    .item-loan .loan-info em{font-size:12px;margin-right:5px;}
     .code{padding-top:0;}
     .loan-form{grid-template-columns:minmax(0,1fr);} /* 借用者・貸出日・期限・ボタンを縦1列に並べる */
     .loan-form input, .loan-form button, .edit-item-form input, .edit-item-form button{min-width:0;width:100%;box-sizing:border-box;}
