@@ -158,6 +158,7 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     .item-loan .loan-info{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:0;font-size:14px;}
     .item-loan .loan-info em{font-size:12px;margin-right:5px;}
     .code{padding-top:0;}
+    li.item .thumb{width:112px;height:112px;} /* スマホでは画像を大きめに */
     .loan-form{grid-template-columns:minmax(0,1fr);} /* 借用者・貸出日・期限・ボタンを縦1列に並べる */
     .loan-form input, .loan-form button, .edit-item-form input, .edit-item-form button{min-width:0;width:100%;box-sizing:border-box;}
     .stats{grid-template-columns:1fr 1fr;}
@@ -183,6 +184,8 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     ul.item-list:not(.grid) li.item > .item-loan{grid-column:2 / -1;grid-row:2;}
     ul.item-list:not(.grid) li.item > .actions{grid-column:2 / -1;grid-row:3;justify-content:flex-start;}
     ul.item-list:not(.grid) li.item > .item-panels{grid-column:2 / -1;grid-row:4;}
+    ul.item-list:not(.grid) li.item{grid-template-columns:130px 1fr auto;}
+    ul.item-list:not(.grid) li.item .thumb{width:120px;height:120px;}
     ul.item-list:not(.grid) .item-loan .loan-info{margin-top:0;font-size:15px;}
   }
   .item-tags{margin-top:8px;}
