@@ -75,15 +75,22 @@
   .dl .sp{flex:1;}
   .dl-hist{font-size:11.5px;color:var(--ink-soft);padding:0 0 6px 6.5em;font-family:-apple-system,sans-serif;}
   .dl-form{display:grid;grid-template-columns:1fr 1fr 1.4fr auto auto;gap:8px;margin-top:10px;align-items:end;}
-  .m-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px;font-size:14px;font-weight:600;}
-  .m-list{list-style:none;margin:6px 0 0;padding:0;}
-  .m-item{padding:8px 0;border-bottom:1px dashed var(--rule);font-size:14px;}
-  .m-row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;}
+  .m-box{margin-top:18px;border:1px solid var(--rule);background:#fff;padding:12px 14px;}
+  .m-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:16px;font-weight:600;}
+  .m-sum{display:flex;gap:6px 22px;flex-wrap:wrap;margin-top:10px;padding:8px 10px;background:var(--paper);font-size:13px;font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
+  .m-sum b{display:block;font-size:11px;font-weight:400;color:var(--ink-soft);}
+  .m-next{margin-top:10px;padding:8px 10px;background:var(--amber-bg);font-size:13px;font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
+  .m-next b{display:block;font-size:11px;font-weight:600;color:var(--amber);}
+  .m-list{list-style:none;margin:10px 0 0;padding:0;}
+  .m-year{display:flex;justify-content:space-between;padding:6px 0 4px;margin-top:6px;border-bottom:2px solid var(--ink);font-size:13px;font-weight:600;}
+  .m-year:first-child{margin-top:0;}
+  .m-item{display:grid;grid-template-columns:3.2em 1fr auto;gap:8px;align-items:start;padding:9px 0;border-bottom:1px dashed var(--rule);font-size:15px;}
+  .m-date{font-size:14px;color:var(--ink-soft);font-family:-apple-system,sans-serif;padding-top:2px;}
+  .m-row{display:flex;gap:10px;align-items:baseline;justify-content:space-between;}
   .m-row .t{font-weight:600;}
-  .m-row .d{color:var(--ink-soft);font-size:13px;}
-  .m-row .c{margin-left:auto;font-family:-apple-system,sans-serif;font-size:13px;}
-  .m-sub{font-size:12px;color:var(--ink-soft);font-family:-apple-system,sans-serif;margin-top:2px;}
-  .m-btns{display:flex;gap:6px;margin-top:4px;}
+  .m-row .c{font-family:-apple-system,sans-serif;font-size:14px;white-space:nowrap;}
+  .m-sub{font-size:12.5px;color:var(--ink-soft);font-family:-apple-system,sans-serif;margin-top:2px;}
+  .m-btns{display:flex;gap:6px;}
   .m-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px;align-items:end;}
   .m-form .w2{grid-column:span 2;}
   .m-form .w4{grid-column:1 / -1;}
@@ -97,6 +104,8 @@
     .form-grid{grid-template-columns:1fr;}
     .v-top{grid-template-columns:96px 1fr;gap:12px;}
     .thumb{width:96px;height:96px;}
+    .m-box{padding:10px;}
+    .m-btns{flex-direction:column;}
     .m-form{grid-template-columns:1fr 1fr;}
     .m-form .w2,.m-form .w4{grid-column:1 / -1;}
     .dl-form{grid-template-columns:1fr 1fr;}
@@ -179,7 +188,7 @@
   var openForm={};   // 期限追加フォームを開いている車両ID
   var openM={};      // 整備フォーム（true=追加 / 記録ID=編集）
   var showAllM={};   // 整備記録を全件表示している車両ID
-  var M_SHOW=3;      // 通常表示する整備記録の件数
+  var M_SHOW=6;     // 通常表示する整備記録の件数
 
   function load(){
     try{
@@ -358,22 +367,43 @@
     var all=(v.maintenance||[]).slice().sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:0);});
     var total=all.reduce(function(s,m){return s+(Number(m.cost)||0);},0);
     var rows=showAllM[v.id]?all:all.slice(0,M_SHOW);
-    var h='<div class="m-head"><span>整備記録'+(all.length?'（'+all.length+'件・計'+total.toLocaleString()+'円）':'')+'</span>'
-      +'<button class="small" data-act="madd" data-v="'+v.id+'">整備を記録</button></div>';
-    if(!all.length&&!openM[v.id])h+='<div class="m-sub" style="margin-top:6px">まだ整備の記録がありません。</div>';
+    // 年ごとの費用合計
+    var yearCost={};
+    all.forEach(function(m){var y=m.date.slice(0,4);yearCost[y]=(yearCost[y]||0)+(Number(m.cost)||0);});
+    // 同じ内容の整備が後で行われていれば、その「次回の目安」は実施済みとみなす
+    var done=function(m){return all.some(function(o){return o.title===m.title&&o.date>m.date;});};
+    var upcoming=all.filter(function(m){return m.nextDate&&!done(m);}).sort(function(a,b){return a.nextDate<b.nextDate?-1:1;});
+    var h='<div class="m-box"><div class="m-head"><span>🔧 整備記録</span>'
+      +'<button class="small" data-act="madd" data-v="'+v.id+'">＋ 整備を記録</button></div>';
+    if(all.length){
+      h+='<div class="m-sum"><div><b>記録</b>'+all.length+'件</div><div><b>費用の合計</b>'+total.toLocaleString()+'円</div>'
+        +'<div><b>最後の整備</b>'+esc(all[0].date)+'（'+esc(all[0].title)+'）</div></div>';
+    }
+    if(upcoming.length){
+      h+='<div class="m-next"><b>次の整備予定</b>'+upcoming.slice(0,3).map(function(m){
+        var n=daysLeft(m.nextDate);
+        return '<div>'+esc(m.title)+'　'+esc(m.nextDate)+' <span class="badge '+level(n)+'">'+leftText(n)+'</span>'
+          +(m.nextOdometer?'　'+Number(m.nextOdometer).toLocaleString()+' km ごろ':'')+'</div>';
+      }).join('')+'</div>';
+    }
+    if(!all.length&&!openM[v.id])h+='<div class="m-sub" style="margin-top:8px">まだ整備の記録がありません。「整備を記録」から追加してください。</div>';
+    var lastY='';
     h+='<ul class="m-list">'+rows.map(function(m){
+      var y=m.date.slice(0,4),yh='';
+      if(y!==lastY){lastY=y;yh='<li class="m-year"><span>'+esc(y)+'年</span><span>'+yearCost[y].toLocaleString()+'円</span></li>';}
       var nx=[];
-      if(m.nextDate){var n=daysLeft(m.nextDate);nx.push('次回 '+esc(m.nextDate)+' <span class="badge '+level(n)+'">'+leftText(n)+'</span>');}
-      if(m.nextOdometer)nx.push('次回 '+Number(m.nextOdometer).toLocaleString()+' km');
+      if(m.nextDate&&!done(m)){var n=daysLeft(m.nextDate);nx.push('次回 '+esc(m.nextDate)+' <span class="badge '+level(n)+'">'+leftText(n)+'</span>');}
+      if(m.nextOdometer&&!done(m))nx.push('次回 '+Number(m.nextOdometer).toLocaleString()+' km');
       var sub=[m.odometer?Number(m.odometer).toLocaleString()+' km':'',m.shop,m.note].filter(Boolean).map(esc).join(' ・ ');
-      return '<li class="m-item"><div class="m-row"><span class="t">'+esc(m.title)+'</span><span class="d">'+esc(m.date)+'</span>'
+      return yh+'<li class="m-item"><div class="m-date">'+Number(m.date.slice(5,7))+'/'+Number(m.date.slice(8,10))+'</div>'
+        +'<div class="m-main"><div class="m-row"><span class="t">'+esc(m.title)+'</span>'
         +(m.cost?'<span class="c">'+Number(m.cost).toLocaleString()+'円</span>':'')+'</div>'
         +(sub?'<div class="m-sub">'+sub+'</div>':'')
         +(nx.length?'<div class="m-sub">'+nx.join('　')+'</div>':'')
-        +'<div class="m-btns"><button class="ghost small" data-act="medit" data-v="'+v.id+'" data-m="'+m.id+'">編集</button>'
+        +'</div><div class="m-btns"><button class="ghost small" data-act="medit" data-v="'+v.id+'" data-m="'+m.id+'">編集</button>'
         +'<button class="ghost small danger" data-act="mdel" data-v="'+v.id+'" data-m="'+m.id+'">削除</button></div></li>';
     }).join('')+'</ul>';
-    if(all.length>M_SHOW)h+='<button class="ghost small" style="margin-top:8px" data-act="mmore" data-v="'+v.id+'">'+(showAllM[v.id]?'新しい3件だけ表示':'すべて表示（'+all.length+'件）')+'</button>';
+    if(all.length>M_SHOW)h+='<button class="ghost small" style="margin-top:8px" data-act="mmore" data-v="'+v.id+'">'+(showAllM[v.id]?'新しい'+M_SHOW+'件だけ表示':'すべて表示（'+all.length+'件）')+'</button>';
     if(openM[v.id]){
       var om=openM[v.id]===true?null:findM(v,openM[v.id]);
       var g=function(k){return om&&om[k]!=null?esc(om[k]):'';};
@@ -390,7 +420,7 @@
         +'<button class="ghost small" data-act="mcancel" data-v="'+v.id+'">やめる</button></div>'
         +'<datalist id="mTitles"><option>オイル交換</option><option>オイルエレメント交換</option><option>タイヤ交換</option><option>バッテリー交換</option><option>ブレーキパッド交換</option><option>ワイパー交換</option><option>エアコンフィルター交換</option><option>12ヶ月点検</option><option>車検整備</option></datalist>';
     }
-    return h;
+    return h+'</div>';
   }
   function findM(v,id){
     var a=v.maintenance||[];
