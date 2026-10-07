@@ -4,8 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>車両管理</title>
+<meta name="theme-color" content="#526b4e">
+<link rel="manifest" href="vehicle-manifest.json">
+<link rel="icon" href="vehicle-icon-192.png">
+<link rel="apple-touch-icon" href="vehicle-icon-192.png">
 <style>
   :root{
+    --field:#fff;
     --paper:#f6f4ec;
     --ink:#23261f;
     --ink-soft:#5a5c50;
@@ -19,6 +24,21 @@
     --card:#fffdf7;
     --shadow:0 1px 0 rgba(35,38,31,0.06);
   }
+  /* ダークモード（端末の設定に合わせる。右上のボタンで固定も可） */
+  @media screen and (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --field:#2d3027;--paper:#1c1e1a;--ink:#e8e6dc;--ink-soft:#a9aa9c;--rule:#4a4c42;
+      --stamp-red:#e0796b;--stamp-red-bg:#3d2623;--sage:#8fb08a;--sage-bg:#26301f;
+      --amber:#d9a94a;--amber-bg:#3a2f17;--card:#25271f;--shadow:none;color-scheme:dark;
+    }
+    :root:not([data-theme="light"]) .stats{background:var(--rule);border-color:var(--rule);}
+  }
+  :root[data-theme="dark"]{
+    --field:#2d3027;--paper:#1c1e1a;--ink:#e8e6dc;--ink-soft:#a9aa9c;--rule:#4a4c42;
+    --stamp-red:#e0796b;--stamp-red-bg:#3d2623;--sage:#8fb08a;--sage-bg:#26301f;
+    --amber:#d9a94a;--amber-bg:#3a2f17;--card:#25271f;--shadow:none;color-scheme:dark;
+  }
+  :root[data-theme="dark"] .stats{background:var(--rule);border-color:var(--rule);}
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:"Iowan Old Style","Noto Serif JP",Georgia,serif;line-height:1.6;min-height:100vh;padding:0 0 60px 0;}
   .wrap{max-width:960px;margin:0 auto;padding:36px 24px;}
@@ -48,7 +68,7 @@
   button.small{padding:5px 11px;font-size:12px;}
   button.danger{color:var(--stamp-red);border-color:var(--stamp-red);}
   button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--stamp-red);outline-offset:1px;}
-  input,select,textarea{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;padding:9px 10px;border:1px solid var(--rule);background:#fff;color:var(--ink);border-radius:2px;width:100%;}
+  input,select,textarea{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;padding:9px 10px;border:1px solid var(--rule);background:var(--field);color:var(--ink);border-radius:2px;width:100%;}
   label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink-soft);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
   .form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px;}
   .form-actions{display:flex;gap:8px;flex-wrap:wrap;}
@@ -75,7 +95,7 @@
   .dl .sp{flex:1;}
   .dl-hist{font-size:11.5px;color:var(--ink-soft);padding:0 0 6px 6.5em;font-family:-apple-system,sans-serif;}
   .dl-form{display:grid;grid-template-columns:1fr 1fr 1.4fr auto auto;gap:8px;margin-top:10px;align-items:end;}
-  .m-box{margin-top:18px;border:1px solid var(--rule);background:#fff;padding:12px 14px;}
+  .m-box{margin-top:18px;border:1px solid var(--rule);background:var(--field);padding:12px 14px;}
   .m-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:16px;font-weight:600;}
   .m-sum{display:flex;gap:6px 22px;flex-wrap:wrap;margin-top:10px;padding:8px 10px;background:var(--paper);font-size:13px;font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
   .m-sum b{display:block;font-size:11px;font-weight:400;color:var(--ink-soft);}
@@ -99,6 +119,20 @@
   .io-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px;}
   .io-row input[type=file]{width:auto;}
 
+  .v-vin{display:none;}
+  /* 印刷（車ごとの「整備履歴を印刷」ボタンで、その車だけを白黒向けに出力） */
+  @media print{
+    :root,:root[data-theme]{--field:#fff;--paper:#fff;--ink:#000;--ink-soft:#444;--rule:#999;--card:#fff;--sage:#222;--sage-bg:#fff;--amber:#222;--amber-bg:#fff;--stamp-red:#222;--stamp-red-bg:#fff;--shadow:none;color-scheme:light;}
+    .no-print,.stats,details.add,.v-actions,.dl-form,.m-btns,.m-head button,.m-form,.m-box > button,#cs-btn,#cs-panel{display:none !important;}
+    body{background:#fff;}
+    .wrap{padding:0;max-width:none;}
+    .panel{border:none;margin:0;}
+    .v-vin{display:block;}
+    body.printing .vehicle:not(.print-target),body.printing .dl-list,body.printing .panel-head{display:none;}
+    .vehicle{padding:0;}
+    .m-item,.m-year{break-inside:avoid;}
+    .m-next{border:1px solid #999;}
+  }
   @media (max-width:640px){
     .wrap{padding:20px 14px;}
     header h1{font-size:23px;}
@@ -124,7 +158,10 @@
       <h1>車両管理</h1>
       <div class="sub">車検・保険・税の期限をまとめて確認</div>
     </div>
-    <div class="date-today" id="today"></div>
+    <div style="text-align:right">
+      <div class="date-today" id="today"></div>
+      <button type="button" class="ghost small no-print" id="btnTheme" style="margin-top:6px"></button>
+    </div>
   </header>
 
   <div class="stats">
@@ -168,7 +205,7 @@
     <div id="list"></div>
   </div>
 
-  <div class="panel">
+  <div class="panel no-print">
     <div class="panel-head"><h2>バックアップ</h2></div>
     <div class="panel-body">
       <div class="io-row">
@@ -179,11 +216,14 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="cloud-sync.js"></script>
 <script>
 (function(){
   var KEY='vehicle-manager-data';
   var TYPES=['車検','自賠責保険','任意保険','自動車税','免許更新','その他'];
   var data=load();
+  var cloud=null;    // 同期モジュール（cloud-sync.js）
   var editId=null;   // 編集中の車両ID
   var imgData='';    // フォーム上の写真
   var openForm={};   // 期限追加フォームを開いている車両ID
@@ -199,7 +239,7 @@
     return {vehicles:[]};
   }
   function save(){
-    try{localStorage.setItem(KEY,JSON.stringify(data));}
+    try{localStorage.setItem(KEY,JSON.stringify(data));if(cloud)cloud.notifyChanged();}
     catch(e){alert('保存できませんでした（容量が足りない可能性があります）');}
   }
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
@@ -350,13 +390,15 @@
         +'<button class="ghost small" data-act="dcancel" data-v="'+v.id+'">やめる</button></div>';
     }
     var mhtml=maintHtml(v);
-    return '<div class="vehicle"><div class="v-top">'+thumb+'<div>'
+    return '<div class="vehicle" data-vid="'+v.id+'"><div class="v-top">'+thumb+'<div>'
       +'<div class="v-name">'+esc(v.name)+'</div>'
       +(meta?'<div class="v-meta">'+esc(meta)+'</div>':'')
       +(meta2?'<div class="v-meta">'+esc(meta2)+'</div>':'')
+      +(v.vin?'<div class="v-meta v-vin">車台番号：'+esc(v.vin)+'</div>':'')
       +'<div style="margin-top:6px">'+badge+'</div>'
       +'<div class="v-actions"><button class="small" data-act="dadd" data-v="'+v.id+'">期限を追加</button>'
       +'<button class="ghost small" data-act="vedit" data-v="'+v.id+'">編集</button>'
+      +'<button class="ghost small" data-act="vprint" data-v="'+v.id+'">整備履歴を印刷</button>'
       +'<button class="ghost small danger" data-act="vdel" data-v="'+v.id+'">削除</button></div>'
       +'</div></div>'
       +(dlHtml?'<ul class="dl-list">'+dlHtml+'</ul>':'')
@@ -442,6 +484,14 @@
     var act=b.dataset.act,v=find(b.dataset.v);if(!v)return;
     var d=b.dataset.d?findDl(v,b.dataset.d):null;
     if(act==='vedit'){startEdit(v.id);return;}
+    if(act==='vprint'){
+      // 整備記録を全件表示にして、この車だけを印刷する
+      showAllM[v.id]=true;render();
+      document.body.classList.add('printing');
+      document.querySelector('[data-vid="'+v.id+'"]').classList.add('print-target');
+      window.print();
+      return;
+    }
     if(act==='vdel'){
       if(confirm('「'+v.name+'」を削除しますか？期限の記録も消えます。')){
         data.vehicles=data.vehicles.filter(function(x){return x.id!==v.id;});
@@ -534,7 +584,51 @@
     r.readAsText(f);
   };
 
+  // 印刷が終わったら通常表示に戻す
+  window.addEventListener('afterprint',function(){
+    document.body.classList.remove('printing');
+    var t=document.querySelector('.print-target');if(t)t.classList.remove('print-target');
+  });
+
+  // ダークモード切り替え（自動 → ダーク → ライト）
+  var THEME_KEY='vehicle-manager-theme';
+  var THEME_LABEL={auto:'表示：自動',dark:'表示：ダーク',light:'表示：ライト'};
+  function getTheme(){try{return localStorage.getItem(THEME_KEY)||'auto';}catch(e){return 'auto';}}
+  function applyTheme(t){
+    if(t==='auto')document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',t);
+    $('btnTheme').textContent=THEME_LABEL[t];
+  }
+  $('btnTheme').onclick=function(){
+    var n={auto:'dark',dark:'light',light:'auto'}[getTheme()];
+    try{localStorage.setItem(THEME_KEY,n);}catch(e){}
+    applyTheme(n);
+  };
+  applyTheme(getTheme());
+
   render();
+
+  // クラウド同期（cloud-sync.js）。端末内が主で、ログイン中のみクラウドと合わせる
+  if(window.CloudSync){
+    cloud=CloudSync.init({
+      appName:'車両管理',
+      key:'data-v1',
+      getData:function(){return {vehicles:data.vehicles};},
+      hasData:function(){return data.vehicles.length>0;},
+      applyData:function(d){
+        if(!d||!Array.isArray(d.vehicles))throw new Error('車両管理のデータ形式が違います');
+        data={vehicles:d.vehicles};
+        try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}
+        editId=null;openForm={};openM={};
+        render();
+      }
+    });
+  }
+
+  // PWA：ホーム画面に追加・オフライン表示
+  if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){
+    navigator.serviceWorker.register('vehicle-sw.js').catch(function(){});
+  }
 })();
 </script>
 </body>
