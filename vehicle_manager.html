@@ -90,6 +90,7 @@
   .m-row .t{font-weight:600;}
   .m-row .c{font-family:-apple-system,sans-serif;font-size:14px;white-space:nowrap;}
   .m-sub{font-size:12.5px;color:var(--ink-soft);font-family:-apple-system,sans-serif;margin-top:2px;}
+  .m-note{white-space:pre-wrap;word-break:break-word;}
   .m-btns{display:flex;gap:6px;}
   .m-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px;align-items:end;}
   .m-form .w2{grid-column:span 2;}
@@ -394,11 +395,13 @@
       var nx=[];
       if(m.nextDate&&!done(m)){var n=daysLeft(m.nextDate);nx.push('次回 '+esc(m.nextDate)+' <span class="badge '+level(n)+'">'+leftText(n)+'</span>');}
       if(m.nextOdometer&&!done(m))nx.push('次回 '+Number(m.nextOdometer).toLocaleString()+' km');
-      var sub=[m.odometer?Number(m.odometer).toLocaleString()+' km':'',m.shop,m.note].filter(Boolean).map(esc).join(' ・ ');
+      var sub=(m.odometer?'<div class="m-sub">'+Number(m.odometer).toLocaleString()+' km</div>':'')
+        +(m.shop?'<div class="m-sub">'+esc(m.shop)+'</div>':'')
+        +(m.note?'<div class="m-sub m-note">'+esc(m.note)+'</div>':'');
       return yh+'<li class="m-item"><div class="m-date">'+Number(m.date.slice(5,7))+'/'+Number(m.date.slice(8,10))+'</div>'
         +'<div class="m-main"><div class="m-row"><span class="t">'+esc(m.title)+'</span>'
         +(m.cost?'<span class="c">'+Number(m.cost).toLocaleString()+'円</span>':'')+'</div>'
-        +(sub?'<div class="m-sub">'+sub+'</div>':'')
+        +sub
         +(nx.length?'<div class="m-sub">'+nx.join('　')+'</div>':'')
         +'</div><div class="m-btns"><button class="ghost small" data-act="medit" data-v="'+v.id+'" data-m="'+m.id+'">編集</button>'
         +'<button class="ghost small danger" data-act="mdel" data-v="'+v.id+'" data-m="'+m.id+'">削除</button></div></li>';
@@ -415,7 +418,7 @@
         +'<label class="f w2">店名<input class="mShop" maxlength="40" value="'+g('shop')+'"></label>'
         +'<label class="f">次回の目安（日付）<input type="date" class="mNextD" value="'+g('nextDate')+'"></label>'
         +'<label class="f">次回の目安（km）<input type="number" min="0" inputmode="numeric" class="mNextO" value="'+g('nextOdometer')+'"></label>'
-        +'<label class="f w4">メモ<input class="mNote" maxlength="80" value="'+g('note')+'"></label>'
+        +'<label class="f w4">メモ（改行できます）<textarea class="mNote" rows="3" maxlength="500">'+g('note')+'</textarea></label>'
         +'<button class="small" data-act="msave" data-v="'+v.id+'">'+(om?'保存':'記録する')+'</button>'
         +'<button class="ghost small" data-act="mcancel" data-v="'+v.id+'">やめる</button></div>'
         +'<datalist id="mTitles"><option>オイル交換</option><option>オイルエレメント交換</option><option>タイヤ交換</option><option>バッテリー交換</option><option>ブレーキパッド交換</option><option>ワイパー交換</option><option>エアコンフィルター交換</option><option>12ヶ月点検</option><option>車検整備</option></datalist>';
