@@ -97,6 +97,9 @@
   .dl-form{display:grid;grid-template-columns:1fr 1fr 1.4fr auto auto;gap:8px;margin-top:10px;align-items:end;}
   .m-box{margin-top:18px;border:1px solid var(--rule);background:var(--field);padding:12px 14px;}
   .m-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:16px;font-weight:600;}
+  .m-toggle{background:transparent;color:var(--ink);border:none;padding:4px 2px;font-size:16px;font-weight:600;font-family:inherit;text-align:left;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;}
+  .m-toggle .arrow{font-size:11px;color:var(--ink-soft);}
+  .m-brief{font-size:12.5px;font-weight:400;color:var(--ink-soft);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;margin-left:6px;}
   .m-sum{display:flex;gap:6px 22px;flex-wrap:wrap;margin-top:10px;padding:8px 10px;background:var(--paper);font-size:13px;font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
   .m-sum b{display:block;font-size:11px;font-weight:400;color:var(--ink-soft);}
   .m-next{margin-top:10px;padding:8px 10px;background:var(--amber-bg);font-size:13px;font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
@@ -123,7 +126,7 @@
   /* 印刷（車ごとの「整備履歴を印刷」ボタンで、その車だけを白黒向けに出力） */
   @media print{
     :root,:root[data-theme]{--field:#fff;--paper:#fff;--ink:#000;--ink-soft:#444;--rule:#999;--card:#fff;--sage:#222;--sage-bg:#fff;--amber:#222;--amber-bg:#fff;--stamp-red:#222;--stamp-red-bg:#fff;--shadow:none;color-scheme:light;}
-    .no-print,.stats,details.add,.v-actions,.dl-form,.m-btns,.m-head button,.m-form,.m-box > button,#cs-btn,#cs-panel{display:none !important;}
+    .no-print,.stats,details.add,.v-actions,.dl-form,.m-btns,.m-head [data-act="madd"],.m-toggle .arrow,.m-form,.m-box > button,#cs-btn,#cs-panel{display:none !important;}
     body{background:#fff;}
     .wrap{padding:0;max-width:none;}
     .panel{border:none;margin:0;}
@@ -229,7 +232,11 @@
   var openForm={};   // 期限追加フォームを開いている車両ID
   var openM={};      // 整備フォーム（true=追加 / 記録ID=編集）
   var showAllM={};   // 整備記録を全件表示している車両ID
-  var M_SHOW=6;     // 通常表示する整備記録の件数
+  // 整備記録の折りたたみ状態（この端末の表示設定のみ。同期しない）
+  var COLL_KEY='vehicle-manager-collapsed';
+  var collM=(function(){try{return JSON.parse(localStorage.getItem(COLL_KEY))||{};}catch(e){return {};}})();
+  function saveColl(){try{localStorage.setItem(COLL_KEY,JSON.stringify(collM));}catch(e){}}
+  var M_SHOW=6;    // 通常表示する整備記録の件数
 
   function load(){
     try{
@@ -416,8 +423,12 @@
     // 同じ内容の整備が後で行われていれば、その「次回の目安」は実施済みとみなす
     var done=function(m){return all.some(function(o){return o.title===m.title&&o.date>m.date;});};
     var upcoming=all.filter(function(m){return m.nextDate&&!done(m);}).sort(function(a,b){return a.nextDate<b.nextDate?-1:1;});
-    var h='<div class="m-box"><div class="m-head"><span>🔧 整備記録</span>'
+    var folded=!!collM[v.id];
+    var head='<div class="m-head"><button type="button" class="m-toggle" data-act="mtoggle" data-v="'+v.id+'" aria-expanded="'+(!folded)+'">'
+      +'<span class="arrow">'+(folded?'▶':'▼')+'</span> 🔧 整備記録'
+      +(all.length?'<span class="m-brief">'+all.length+'件・'+total.toLocaleString()+'円</span>':'')+'</button>'
       +'<button class="small" data-act="madd" data-v="'+v.id+'">＋ 整備を記録</button></div>';
+    var h='';
     if(all.length){
       h+='<div class="m-sum"><div><b>記録</b>'+all.length+'件</div><div><b>費用の合計</b>'+total.toLocaleString()+'円</div>'
         +'<div><b>最後の整備</b>'+esc(all[0].date)+'（'+esc(all[0].title)+'）</div></div>';
@@ -465,7 +476,7 @@
         +'<button class="ghost small" data-act="mcancel" data-v="'+v.id+'">やめる</button></div>'
         +'<datalist id="mTitles"><option>オイル交換</option><option>オイルエレメント交換</option><option>タイヤ交換</option><option>バッテリー交換</option><option>ブレーキパッド交換</option><option>ワイパー交換</option><option>エアコンフィルター交換</option><option>12ヶ月点検</option><option>車検整備</option></datalist>';
     }
-    return h+'</div>';
+    return '<div class="m-box">'+head+(folded?'':h)+'</div>';
   }
   function findM(v,id){
     var a=v.maintenance||[];
@@ -486,7 +497,7 @@
     if(act==='vedit'){startEdit(v.id);return;}
     if(act==='vprint'){
       // 整備記録を全件表示にして、この車だけを印刷する
-      showAllM[v.id]=true;render();
+      showAllM[v.id]=true;collM[v.id]=false;render();
       document.body.classList.add('printing');
       document.querySelector('[data-vid="'+v.id+'"]').classList.add('print-target');
       window.print();
@@ -499,7 +510,8 @@
       }
       return;
     }
-    if(act==='madd'){openM[v.id]=true;render();return;}
+    if(act==='mtoggle'){collM[v.id]=!collM[v.id];saveColl();render();return;}
+    if(act==='madd'){openM[v.id]=true;if(collM[v.id]){collM[v.id]=false;saveColl();}render();return;}
     if(act==='medit'){openM[v.id]=b.dataset.m;render();return;}
     if(act==='mcancel'){delete openM[v.id];render();return;}
     if(act==='mmore'){showAllM[v.id]=!showAllM[v.id];render();return;}
