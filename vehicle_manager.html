@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>車両管理</title>
+<style>
+  :root{
+    --paper:#f6f4ec;
+    --ink:#23261f;
+    --ink-soft:#5a5c50;
+    --rule:#cfc9b4;
+    --stamp-red:#a8382b;
+    --stamp-red-bg:#f4e3df;
+    --sage:#526b4e;
+    --sage-bg:#e6ebe0;
+    --amber:#a1731f;
+    --amber-bg:#f2e6cf;
+    --card:#fffdf7;
+    --shadow:0 1px 0 rgba(35,38,31,0.06);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Iowan Old Style","Noto Serif JP",Georgia,serif;line-height:1.6;min-height:100vh;padding:0 0 60px 0;}
+  .wrap{max-width:960px;margin:0 auto;padding:36px 24px;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:28px;gap:16px;flex-wrap:wrap;}
+  header h1{font-size:28px;letter-spacing:0.04em;margin:0;font-weight:600;}
+  header .sub{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+  .date-today{font-size:13px;color:var(--ink-soft);}
+
+  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--ink);border:1px solid var(--ink);margin-bottom:24px;}
+  .stat{background:var(--card);padding:8px 14px;text-align:left;}
+  .stat .num{font-size:20px;font-weight:600;line-height:1.3;}
+  .stat .label{font-size:11px;color:var(--ink-soft);}
+  .stat.overdue .num{color:var(--stamp-red);}
+  .stat.soon .num{color:var(--amber);}
+
+  .panel{background:var(--card);border:1px solid var(--rule);box-shadow:var(--shadow);margin-bottom:24px;}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--rule);gap:10px;flex-wrap:wrap;}
+  .panel-head h2{font-size:16px;margin:0;}
+  .panel-body{padding:18px;}
+  details.add > summary{cursor:pointer;padding:14px 18px;font-size:16px;font-weight:600;list-style:none;}
+  details.add > summary::-webkit-details-marker{display:none;}
+  details.add > summary::before{content:"＋ ";}
+  details.add[open] > summary{border-bottom:1px solid var(--rule);}
+
+  button{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:8px 16px;font-size:13px;border-radius:2px;}
+  button.ghost{background:transparent;color:var(--ink);}
+  button.small{padding:5px 11px;font-size:12px;}
+  button.danger{color:var(--stamp-red);border-color:var(--stamp-red);}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--stamp-red);outline-offset:1px;}
+  input,select,textarea{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;padding:9px 10px;border:1px solid var(--rule);background:#fff;color:var(--ink);border-radius:2px;width:100%;}
+  label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink-soft);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
+  .form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+  .form-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .img-pick{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:12px;color:var(--ink-soft);font-family:-apple-system,sans-serif;}
+  .img-pick img{width:64px;height:64px;object-fit:cover;border:1px solid var(--rule);}
+
+  .vehicle{padding:16px 18px;border-top:1px solid var(--rule);}
+  .vehicle:first-child{border-top:none;}
+  .v-top{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:start;}
+  .thumb{width:120px;height:120px;object-fit:cover;border:1px solid var(--rule);background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--rule);}
+  .v-name{font-size:18px;font-weight:600;}
+  .v-meta{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  .badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:20px;margin-right:6px;font-family:-apple-system,sans-serif;}
+  .badge.ok{background:var(--sage-bg);color:var(--sage);}
+  .badge.soon{background:var(--amber-bg);color:var(--amber);}
+  .badge.overdue{background:var(--stamp-red-bg);color:var(--stamp-red);}
+  .badge.none{background:var(--paper);color:var(--ink-soft);border:1px solid var(--rule);}
+  .v-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+
+  .dl-list{list-style:none;margin:14px 0 0;padding:0;border-top:1px dashed var(--rule);}
+  .dl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px dashed var(--rule);font-size:14px;}
+  .dl .t{font-weight:600;min-width:6.5em;}
+  .dl .d{color:var(--ink-soft);font-size:13px;}
+  .dl .sp{flex:1;}
+  .dl-hist{font-size:11.5px;color:var(--ink-soft);padding:0 0 6px 6.5em;font-family:-apple-system,sans-serif;}
+  .dl-form{display:grid;grid-template-columns:1fr 1fr 1.4fr auto auto;gap:8px;margin-top:10px;align-items:end;}
+  .empty{padding:28px 18px;text-align:center;color:var(--ink-soft);font-size:14px;}
+  .io-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px;}
+  .io-row input[type=file]{width:auto;}
+
+  @media (max-width:640px){
+    .wrap{padding:20px 14px;}
+    header h1{font-size:23px;}
+    .form-grid{grid-template-columns:1fr;}
+    .v-top{grid-template-columns:96px 1fr;gap:12px;}
+    .thumb{width:96px;height:96px;}
+    .dl-form{grid-template-columns:1fr 1fr;}
+    .dl-form .wide{grid-column:1 / -1;}
+    .dl-hist{padding-left:0;}
+    .stat{padding:6px 8px;}
+    .stat .label{font-size:10px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>車両管理</h1>
+      <div class="sub">車検・保険・税の期限をまとめて確認</div>
+    </div>
+    <div class="date-today" id="today"></div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="num" id="stCount">0</div><div class="label">登録台数</div></div>
+    <div class="stat soon"><div class="num" id="stSoon">0</div><div class="label">まもなく期限（30日以内）</div></div>
+    <div class="stat overdue"><div class="num" id="stOver">0</div><div class="label">期限切れ</div></div>
+  </div>
+
+  <div class="panel">
+    <details class="add" id="addPanel">
+      <summary id="formTitle">車を登録する</summary>
+      <div class="panel-body">
+        <div class="img-pick">
+          <img id="imgPrev" alt="" style="display:none">
+          <input type="file" id="fImage" accept="image/*" style="width:auto">
+          <button type="button" class="ghost small" id="btnImgClear" style="display:none">写真を外す</button>
+        </div>
+        <div class="form-grid">
+          <label class="f">愛称（必須）<input id="fName" maxlength="30" placeholder="例：家族のミニバン"></label>
+          <label class="f">メーカー<input id="fMaker" maxlength="30" placeholder="例：トヨタ"></label>
+          <label class="f">車種<input id="fModel" maxlength="30" placeholder="例：シエンタ"></label>
+          <label class="f">年式<input id="fYear" maxlength="10" placeholder="例：2020"></label>
+          <label class="f">ナンバー<input id="fPlate" maxlength="30" placeholder="例：品川 300 あ 12-34"></label>
+          <label class="f">状態
+            <select id="fStatus"><option>使用中</option><option>保管中</option><option>売却済み</option></select>
+          </label>
+          <label class="f">現在の走行距離（km）<input id="fOdo" type="number" min="0" inputmode="numeric"></label>
+          <label class="f">色<input id="fColor" maxlength="20"></label>
+          <label class="f">車台番号<input id="fVin" maxlength="40"></label>
+        </div>
+        <div class="form-actions">
+          <button type="button" id="btnSave">登録する</button>
+          <button type="button" class="ghost" id="btnCancel" style="display:none">編集をやめる</button>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>車両一覧</h2></div>
+    <div id="list"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>バックアップ</h2></div>
+    <div class="panel-body">
+      <div class="io-row">
+        <button type="button" class="ghost small" id="btnExport">書き出す（JSON）</button>
+        <label>読み込む：<input type="file" id="fImport" accept="application/json"></label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY='vehicle-manager-data';
+  var TYPES=['車検','自賠責保険','任意保険','自動車税','免許更新','その他'];
+  var data=load();
+  var editId=null;   // 編集中の車両ID
+  var imgData='';    // フォーム上の写真
+  var openForm={};   // 期限追加フォームを開いている車両ID
+
+  function load(){
+    try{
+      var d=JSON.parse(localStorage.getItem(KEY));
+      if(d&&Array.isArray(d.vehicles))return d;
+    }catch(e){}
+    return {vehicles:[]};
+  }
+  function save(){
+    try{localStorage.setItem(KEY,JSON.stringify(data));}
+    catch(e){alert('保存できませんでした（容量が足りない可能性があります）');}
+  }
+  function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function $(id){return document.getElementById(id);}
+
+  // 日付（時刻を除いた日数差）
+  function ymd(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+  function daysLeft(due){
+    var a=new Date(due+'T00:00:00'),b=new Date(ymd(new Date())+'T00:00:00');
+    return Math.round((a-b)/86400000);
+  }
+  function level(n){return n<0?'overdue':(n<=30?'soon':'ok');}
+  function leftText(n){
+    if(n<0)return Math.abs(n)+'日超過';
+    if(n===0)return '今日まで';
+    return 'あと'+n+'日';
+  }
+
+  // 写真を縮小してJPEGにする
+  function shrink(file,cb){
+    var r=new FileReader();
+    r.onload=function(){
+      var im=new Image();
+      im.onload=function(){
+        var max=600,s=Math.min(1,max/Math.max(im.width,im.height));
+        var c=document.createElement('canvas');
+        c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);
+        c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+        cb(c.toDataURL('image/jpeg',0.8));
+      };
+      im.src=r.result;
+    };
+    r.readAsDataURL(file);
+  }
+
+  function showImg(){
+    $('imgPrev').style.display=imgData?'block':'none';
+    $('imgPrev').src=imgData||'';
+    $('btnImgClear').style.display=imgData?'inline-block':'none';
+  }
+  $('fImage').onchange=function(){
+    var f=this.files[0];if(!f)return;
+    shrink(f,function(u){imgData=u;showImg();});
+  };
+  $('btnImgClear').onclick=function(){imgData='';$('fImage').value='';showImg();};
+
+  var FIELDS=[['fName','name'],['fMaker','maker'],['fModel','model'],['fYear','year'],['fPlate','plate'],['fStatus','status'],['fOdo','odometer'],['fColor','color'],['fVin','vin']];
+
+  function resetForm(){
+    editId=null;imgData='';
+    FIELDS.forEach(function(p){$(p[0]).value=(p[0]==='fStatus')?'使用中':'';});
+    $('fImage').value='';showImg();
+    $('formTitle').textContent='車を登録する';
+    $('btnSave').textContent='登録する';
+    $('btnCancel').style.display='none';
+  }
+  $('btnCancel').onclick=function(){resetForm();$('addPanel').open=false;};
+
+  $('btnSave').onclick=function(){
+    var name=$('fName').value.trim();
+    if(!name){alert('愛称を入力してください');$('fName').focus();return;}
+    var v=editId?find(editId):null;
+    if(!v){
+      if(data.vehicles.length>=20&&!confirm('20台を超えます。登録しますか？'))return;
+      v={id:uid(),deadlines:[]};data.vehicles.push(v);
+    }
+    FIELDS.forEach(function(p){v[p[1]]=$(p[0]).value.trim();});
+    v.image=imgData;
+    save();resetForm();$('addPanel').open=false;render();
+  };
+
+  function find(id){
+    for(var i=0;i<data.vehicles.length;i++)if(data.vehicles[i].id===id)return data.vehicles[i];
+    return null;
+  }
+
+  function startEdit(id){
+    var v=find(id);if(!v)return;
+    editId=id;imgData=v.image||'';
+    FIELDS.forEach(function(p){$(p[0]).value=v[p[1]]||'';});
+    showImg();
+    $('formTitle').textContent='車を編集する';
+    $('btnSave').textContent='保存する';
+    $('btnCancel').style.display='inline-block';
+    $('addPanel').open=true;
+    $('addPanel').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  function nearest(v){
+    var best=null;
+    (v.deadlines||[]).forEach(function(d){
+      var n=daysLeft(d.dueDate);
+      if(best===null||n<best.n)best={n:n,d:d};
+    });
+    return best;
+  }
+
+  function render(){
+    $('today').textContent=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+    var soon=0,over=0;
+    data.vehicles.forEach(function(v){
+      (v.deadlines||[]).forEach(function(d){
+        var l=level(daysLeft(d.dueDate));
+        if(l==='soon')soon++;else if(l==='overdue')over++;
+      });
+    });
+    $('stCount').textContent=data.vehicles.length;
+    $('stSoon').textContent=soon;
+    $('stOver').textContent=over;
+
+    if(!data.vehicles.length){
+      $('list').innerHTML='<div class="empty">まだ車が登録されていません。上の「車を登録する」から追加してください。</div>';
+      return;
+    }
+    $('list').innerHTML=data.vehicles.map(vehicleHtml).join('');
+  }
+
+  function vehicleHtml(v){
+    var nr=nearest(v),badge;
+    if(nr){
+      var l=level(nr.n);
+      badge='<span class="badge '+l+'">'+esc(nr.d.type==='その他'&&nr.d.note?nr.d.note:nr.d.type)+'：'+leftText(nr.n)+'</span>';
+    }else badge='<span class="badge none">期限の登録なし</span>';
+    var meta=[v.maker,v.model,v.year?v.year+'年式':'',v.color].filter(Boolean).join(' / ');
+    var meta2=[v.plate,v.odometer?Number(v.odometer).toLocaleString()+' km':'',v.status].filter(Boolean).join(' ・ ');
+    var thumb=v.image?'<img class="thumb" src="'+v.image+'" alt="">':'<div class="thumb">🚗</div>';
+    var dls=(v.deadlines||[]).slice().sort(function(a,b){return a.dueDate<b.dueDate?-1:1;});
+    var dlHtml=dls.map(function(d){
+      var n=daysLeft(d.dueDate),l=level(n);
+      var label=esc(d.type)+(d.type==='その他'?'':(d.note?'':''));
+      var hist=(d.history&&d.history.length)?'<div class="dl-hist">更新履歴：'+d.history.slice(-3).reverse().map(function(h){return esc(h.due)+'分（'+esc(h.doneAt)+'に更新）';}).join('、')+'</div>':'';
+      return '<li><div class="dl"><span class="t">'+label+'</span><span class="d">'+esc(d.dueDate)+(d.type!=='その他'&&d.note?'　'+esc(d.note):'')+(d.type==='その他'&&d.note?'　'+esc(d.note):'')+'</span>'
+        +'<span class="badge '+l+'">'+leftText(n)+'</span><span class="sp"></span>'
+        +'<button class="small" data-act="renew" data-v="'+v.id+'" data-d="'+d.id+'">更新する</button>'
+        +'<button class="ghost small" data-act="dedit" data-v="'+v.id+'" data-d="'+d.id+'">編集</button>'
+        +'<button class="ghost small danger" data-act="ddel" data-v="'+v.id+'" data-d="'+d.id+'">削除</button></div>'+hist+'</li>';
+    }).join('');
+    var form='';
+    if(openForm[v.id]){
+      var od=openForm[v.id]===true?null:findDl(v,openForm[v.id]);
+      var opts=TYPES.map(function(t){return '<option'+(od&&od.type===t?' selected':'')+'>'+t+'</option>';}).join('');
+      form='<div class="dl-form" data-form="'+v.id+'">'
+        +'<label class="f">種類<select class="dType">'+opts+'</select></label>'
+        +'<label class="f">期限日<input type="date" class="dDue" value="'+(od?esc(od.dueDate):'')+'"></label>'
+        +'<label class="f wide">メモ（保険会社・補足など）<input class="dNote" maxlength="40" value="'+(od?esc(od.note||''):'')+'"></label>'
+        +'<button class="small" data-act="dsave" data-v="'+v.id+'">'+(od?'保存':'追加')+'</button>'
+        +'<button class="ghost small" data-act="dcancel" data-v="'+v.id+'">やめる</button></div>';
+    }
+    return '<div class="vehicle"><div class="v-top">'+thumb+'<div>'
+      +'<div class="v-name">'+esc(v.name)+'</div>'
+      +(meta?'<div class="v-meta">'+esc(meta)+'</div>':'')
+      +(meta2?'<div class="v-meta">'+esc(meta2)+'</div>':'')
+      +'<div style="margin-top:6px">'+badge+'</div>'
+      +'<div class="v-actions"><button class="small" data-act="dadd" data-v="'+v.id+'">期限を追加</button>'
+      +'<button class="ghost small" data-act="vedit" data-v="'+v.id+'">編集</button>'
+      +'<button class="ghost small danger" data-act="vdel" data-v="'+v.id+'">削除</button></div>'
+      +'</div></div>'
+      +(dlHtml?'<ul class="dl-list">'+dlHtml+'</ul>':'')
+      +form+'</div>';
+  }
+
+  function findDl(v,id){
+    var a=v.deadlines||[];
+    for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];
+    return null;
+  }
+
+  $('list').onclick=function(e){
+    var b=e.target.closest('button[data-act]');if(!b)return;
+    var act=b.dataset.act,v=find(b.dataset.v);if(!v)return;
+    var d=b.dataset.d?findDl(v,b.dataset.d):null;
+    if(act==='vedit'){startEdit(v.id);return;}
+    if(act==='vdel'){
+      if(confirm('「'+v.name+'」を削除しますか？期限の記録も消えます。')){
+        data.vehicles=data.vehicles.filter(function(x){return x.id!==v.id;});
+        save();render();
+      }
+      return;
+    }
+    if(act==='dadd'){openForm[v.id]=true;render();return;}
+    if(act==='dedit'&&d){openForm[v.id]=d.id;render();return;}
+    if(act==='dcancel'){delete openForm[v.id];render();return;}
+    if(act==='dsave'){
+      var f=document.querySelector('[data-form="'+v.id+'"]');
+      var type=f.querySelector('.dType').value,due=f.querySelector('.dDue').value,note=f.querySelector('.dNote').value.trim();
+      if(!due){alert('期限日を入力してください');return;}
+      var cur=openForm[v.id]===true?null:findDl(v,openForm[v.id]);
+      if(cur){cur.type=type;cur.dueDate=due;cur.note=note;}
+      else{(v.deadlines=v.deadlines||[]).push({id:uid(),type:type,dueDate:due,note:note,history:[]});}
+      delete openForm[v.id];save();render();return;
+    }
+    if(act==='ddel'&&d){
+      if(confirm(d.type+'の期限を削除しますか？')){
+        v.deadlines=v.deadlines.filter(function(x){return x.id!==d.id;});
+        save();render();
+      }
+      return;
+    }
+    if(act==='renew'&&d){
+      var nd=prompt(d.type+'を更新します。次の期限日を入力してください（例：2028-10-31）',d.dueDate);
+      if(nd===null)return;
+      nd=nd.trim();
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(nd)||isNaN(new Date(nd+'T00:00:00'))){alert('「2028-10-31」の形式で入力してください');return;}
+      (d.history=d.history||[]).push({due:d.dueDate,doneAt:ymd(new Date())});
+      d.dueDate=nd;save();render();
+    }
+  };
+
+  // バックアップ
+  $('btnExport').onclick=function(){
+    var blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='vehicle-manager-'+ymd(new Date())+'.json';
+    a.click();URL.revokeObjectURL(a.href);
+  };
+  $('fImport').onchange=function(){
+    var f=this.files[0];if(!f)return;
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var d=JSON.parse(r.result);
+        if(!d||!Array.isArray(d.vehicles))throw new Error();
+        if(!confirm('現在のデータを、読み込んだ内容（'+d.vehicles.length+'台）で置き換えますか？'))return;
+        data=d;save();render();
+      }catch(e){alert('読み込めませんでした。書き出したJSONファイルを選んでください。');}
+      $('fImport').value='';
+    };
+    r.readAsText(f);
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
