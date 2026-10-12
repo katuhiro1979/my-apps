@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>iPad管理</title>
 <meta name="theme-color" content="#3d5a73">
+<link rel="manifest" href="ipad-manifest.json">
+<link rel="icon" href="ipad-icon-192.png">
+<link rel="apple-touch-icon" href="ipad-icon-192.png">
 <style>
   :root{
     --field:#fff;
@@ -21,15 +24,21 @@
     --card:#fffdf7;
     --shadow:0 1px 0 rgba(35,38,31,0.06);
   }
-  /* ダークモード（端末の設定に合わせる） */
+  /* ダークモード（端末の設定に合わせる。右上のボタンで固定も可） */
   @media screen and (prefers-color-scheme:dark){
-    :root{
+    :root:not([data-theme="light"]){
       --field:#2d3027;--paper:#1c1e1a;--ink:#e8e6dc;--ink-soft:#a9aa9c;--rule:#4a4c42;
       --stamp-red:#e0796b;--stamp-red-bg:#3d2623;--sage:#8fb0cc;--sage-bg:#1f2a33;
       --amber:#d9a94a;--amber-bg:#3a2f17;--card:#25271f;--shadow:none;color-scheme:dark;
     }
-    .stats{background:var(--rule);border-color:var(--rule);}
+    :root:not([data-theme="light"]) .stats{background:var(--rule);border-color:var(--rule);}
   }
+  :root[data-theme="dark"]{
+    --field:#2d3027;--paper:#1c1e1a;--ink:#e8e6dc;--ink-soft:#a9aa9c;--rule:#4a4c42;
+    --stamp-red:#e0796b;--stamp-red-bg:#3d2623;--sage:#8fb0cc;--sage-bg:#1f2a33;
+    --amber:#d9a94a;--amber-bg:#3a2f17;--card:#25271f;--shadow:none;color-scheme:dark;
+  }
+  :root[data-theme="dark"] .stats{background:var(--rule);border-color:var(--rule);}
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:"Iowan Old Style","Noto Serif JP",Georgia,serif;line-height:1.6;min-height:100vh;padding:0 0 60px 0;}
   .wrap{max-width:960px;margin:0 auto;padding:36px 24px;}
@@ -102,6 +111,20 @@
   .a-form .w2{grid-column:span 2;}
   .a-form .w4{grid-column:1 / -1;}
 
+  .io-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px;}
+  .io-row input[type=file]{width:auto;}
+
+  /* 印刷（iPadごとの「印刷」ボタンで、その1台だけを白黒向けに出力。売却時の提出用） */
+  @media print{
+    :root,:root[data-theme]{--field:#fff;--paper:#fff;--ink:#000;--ink-soft:#444;--rule:#999;--card:#fff;--sage:#222;--sage-bg:#fff;--amber:#222;--amber-bg:#fff;--stamp-red:#222;--stamp-red-bg:#fff;--shadow:none;color-scheme:light;}
+    .no-print,.stats,details.add,.d-actions,.a-btns,.a-form,.a-box button,.a-toggle .arrow,#cs-btn,#cs-panel{display:none !important;}
+    body{background:#fff;}
+    .wrap{padding:0;max-width:none;}
+    .panel{border:none;margin:0;}
+    body.printing .dev:not(.print-target),body.printing .panel-head{display:none;}
+    .dev{padding:0;}
+    .a-item{break-inside:avoid;}
+  }
   @media (max-width:640px){
     .a-box{padding:10px;}
     .a-btns{flex-direction:column;}
@@ -124,7 +147,10 @@
       <h1>iPad管理</h1>
       <div class="sub">端末情報と保証期限をまとめて確認</div>
     </div>
-    <div class="date-today" id="today"></div>
+    <div style="text-align:right">
+      <div class="date-today" id="today"></div>
+      <button type="button" class="ghost small no-print" id="btnTheme" style="margin-top:6px"></button>
+    </div>
   </header>
 
   <div class="stats">
@@ -203,14 +229,27 @@
     <div class="panel-head"><h2>iPad一覧</h2></div>
     <div id="list"></div>
   </div>
+
+  <div class="panel no-print">
+    <div class="panel-head"><h2>バックアップ</h2></div>
+    <div class="panel-body">
+      <div class="io-row">
+        <button type="button" class="ghost small" id="btnExport">書き出す（JSON）</button>
+        <label>読み込む：<input type="file" id="fImport" accept="application/json"></label>
+      </div>
+    </div>
+  </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="cloud-sync.js"></script>
 <script>
 (function(){
   var KEY='ipad-manager-data';
   var data=load();
   var editId=null;   // 編集中のiPadのID
   var imgData='';    // フォーム上の写真
+  var cloud=null;    // 同期モジュール（cloud-sync.js）
   var openA={};      // アクセサリーのフォーム（true=追加 / 記録ID=編集）
   var ATYPES=['ケース・カバー','保護フィルム','Apple Pencil','キーボード','充電器・ケーブル','スタンド','イヤホン・ヘッドホン','その他'];
   var ASTATUS=['使用中','故障','廃棄'];
@@ -227,7 +266,7 @@
     return {devices:[]};
   }
   function save(){
-    try{localStorage.setItem(KEY,JSON.stringify(data));}
+    try{localStorage.setItem(KEY,JSON.stringify(data));if(cloud)cloud.notifyChanged();}
     catch(e){alert('保存できませんでした（容量が足りない可能性があります）');}
   }
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
@@ -372,6 +411,7 @@
       +'<div style="margin-top:6px">'+badge+'</div>'
       +(v.note?'<div class="d-note">'+esc(v.note)+'</div>':'')
       +'<div class="d-actions"><button class="ghost small" data-act="edit" data-d="'+v.id+'">編集</button>'
+      +'<button class="ghost small" data-act="print" data-d="'+v.id+'">この端末を印刷</button>'
       +'<button class="ghost small danger" data-act="del" data-d="'+v.id+'">削除</button></div>'
       +'</div></div>'+accHtml(v)+'</div>';
   }
@@ -432,6 +472,14 @@
     var v=find(b.dataset.d);if(!v)return;
     var act=b.dataset.act;
     if(act==='edit'){startEdit(v.id);return;}
+    if(act==='print'){
+      // アクセサリーを開いた状態で、この1台だけを印刷する
+      collA[v.id]=false;render();
+      document.body.classList.add('printing');
+      document.querySelector('[data-did="'+v.id+'"]').classList.add('print-target');
+      window.print();
+      return;
+    }
     if(act==='del'){
       if(confirm('「'+v.name+'」を削除しますか？アクセサリーの記録も消えます。')){
         data.devices=data.devices.filter(function(x){return x.id!==v.id;});
@@ -470,7 +518,74 @@
     }
   };
 
+  // バックアップ
+  $('btnExport').onclick=function(){
+    var blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='ipad-manager-'+ymd(new Date())+'.json';
+    a.click();URL.revokeObjectURL(a.href);
+  };
+  $('fImport').onchange=function(){
+    var f=this.files[0];if(!f)return;
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var d=JSON.parse(r.result);
+        if(!d||!Array.isArray(d.devices))throw new Error();
+        if(!confirm('現在のデータを、読み込んだ内容（'+d.devices.length+'台）で置き換えますか？'))return;
+        data=d;save();render();
+      }catch(e){alert('読み込めませんでした。書き出したJSONファイルを選んでください。');}
+      $('fImport').value='';
+    };
+    r.readAsText(f);
+  };
+
+  // 印刷が終わったら通常表示に戻す
+  window.addEventListener('afterprint',function(){
+    document.body.classList.remove('printing');
+    var t=document.querySelector('.print-target');if(t)t.classList.remove('print-target');
+  });
+
+  // ダークモード切り替え（自動 → ダーク → ライト）
+  var THEME_KEY='ipad-manager-theme';
+  var THEME_LABEL={auto:'表示：自動',dark:'表示：ダーク',light:'表示：ライト'};
+  function getTheme(){try{return localStorage.getItem(THEME_KEY)||'auto';}catch(e){return 'auto';}}
+  function applyTheme(t){
+    if(t==='auto')document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',t);
+    $('btnTheme').textContent=THEME_LABEL[t];
+  }
+  $('btnTheme').onclick=function(){
+    var n={auto:'dark',dark:'light',light:'auto'}[getTheme()];
+    try{localStorage.setItem(THEME_KEY,n);}catch(e){}
+    applyTheme(n);
+  };
+  applyTheme(getTheme());
+
   render();
+
+  // クラウド同期（cloud-sync.js）。端末内が主で、ログイン中のみクラウドと合わせる
+  if(window.CloudSync){
+    cloud=CloudSync.init({
+      appName:'iPad管理',
+      key:'data-v1',
+      getData:function(){return {devices:data.devices};},
+      hasData:function(){return data.devices.length>0;},
+      applyData:function(d){
+        if(!d||!Array.isArray(d.devices))throw new Error('iPad管理のデータ形式が違います');
+        data={devices:d.devices};
+        try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}
+        editId=null;openA={};
+        render();
+      }
+    });
+  }
+
+  // PWA：ホーム画面に追加・オフライン表示
+  if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){
+    navigator.serviceWorker.register('ipad-sw.js').catch(function(){});
+  }
 })();
 </script>
 </body>
