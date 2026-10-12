@@ -12,27 +12,35 @@
   /* ===== デザイントークン（ライト／ダークは light-dark() で一括管理） ===== */
   :root{
     color-scheme:light dark;
-    --bg:light-dark(#f2f2f7,#000);
-    --surface:light-dark(#fff,#1c1c1e);
-    --surface-2:light-dark(#f2f2f7,#2c2c2e);
-    --text:light-dark(#1c1c1e,#f2f2f7);
-    --text-2:light-dark(#6c6c70,#98989f);
-    --line:light-dark(#e5e5ea,#38383a);
-    --accent:light-dark(#0a6cff,#4d9bff);
-    --accent-text:#fff;
-    --ok:light-dark(#1f8a3b,#46d36b);
-    --ok-bg:light-dark(#e3f6e8,#12301b);
-    --warn:light-dark(#a85f00,#ffb340);
-    --warn-bg:light-dark(#fff1d9,#3a2a08);
-    --bad:light-dark(#d70015,#ff6b6b);
-    --bad-bg:light-dark(#ffe5e8,#3d1417);
     --r-s:10px;--r-m:16px;--r-l:22px;
     --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.06);
     --font:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI",system-ui,sans-serif;
+    /* ライトの色 */
+    --bg:#f2f2f7;--surface:#fff;--surface-2:#f2f2f7;--text:#1c1c1e;--text-2:#6c6c70;--line:#e5e5ea;
+    --accent:#0a6cff;--accent-text:#fff;
+    --ok:#1f8a3b;--ok-bg:#e3f6e8;--warn:#a85f00;--warn-bg:#fff1d9;--bad:#d70015;--bad-bg:#ffe5e8;
+  }
+  /* ダークの色（端末の設定が自動のとき） */
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#000;--surface:#1c1c1e;--surface-2:#2c2c2e;--text:#f2f2f7;--text-2:#98989f;--line:#38383a;
+      --accent:#4d9bff;--accent-text:#001a3d;
+      --ok:#46d36b;--ok-bg:#12301b;--warn:#ffb340;--warn-bg:#3a2a08;--bad:#ff6b6b;--bad-bg:#3d1417;
+    }
   }
   /* 表示ボタンでの固定（自動のときは端末の設定に従う） */
-  :root[data-theme="dark"]{color-scheme:dark;}
-  :root[data-theme="light"]{color-scheme:light;}
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --bg:#f2f2f7;--surface:#fff;--surface-2:#f2f2f7;--text:#1c1c1e;--text-2:#6c6c70;--line:#e5e5ea;
+    --accent:#0a6cff;--accent-text:#fff;
+    --ok:#1f8a3b;--ok-bg:#e3f6e8;--warn:#a85f00;--warn-bg:#fff1d9;--bad:#d70015;--bad-bg:#ffe5e8;
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#000;--surface:#1c1c1e;--surface-2:#2c2c2e;--text:#f2f2f7;--text-2:#98989f;--line:#38383a;
+    --accent:#4d9bff;--accent-text:#001a3d;
+    --ok:#46d36b;--ok-bg:#12301b;--warn:#ffb340;--warn-bg:#3a2a08;--bad:#ff6b6b;--bad-bg:#3d1417;
+  }
 
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html{-webkit-text-size-adjust:100%;}
@@ -126,13 +134,14 @@
   .d-hero .chips{margin:10px 0;}
 
   /* 右下の登録ボタン（☁ボタンの上に置く） */
-  .fab{position:fixed;right:16px;bottom:72px;width:60px;height:60px;padding:0;border-radius:50%;font-size:32px;line-height:1;z-index:50;box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 45%,transparent);}
+  .fab{position:fixed;right:16px;bottom:calc(72px + env(safe-area-inset-bottom));width:60px;height:60px;padding:0;border-radius:50%;font-size:32px;line-height:1;z-index:50;box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 45%,transparent);}
   .empty .small{margin-top:14px;}
   .empty svg{width:96px;height:96px;margin-bottom:8px;color:var(--text-2);}
   .empty .e-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;}
 
   /* 操作後のお知らせ（画面下に数秒だけ出る。<dialog>の上にも出るようpopoverを使う） */
-  .toast{position:fixed;inset:auto 0 24px 0;margin:0 auto;width:fit-content;max-width:calc(100vw - 32px);border:none;border-radius:99px;padding:11px 20px;background:color-mix(in srgb,var(--text) 88%,transparent);color:var(--bg);font-size:14px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.25);animation:toast-in .2s ease;}
+  .toast{display:none;position:fixed;inset:auto 0 calc(28px + env(safe-area-inset-bottom)) 0;margin:0 auto;width:fit-content;max-width:calc(100vw - 32px);border:none;border-radius:99px;padding:11px 20px;background:var(--text);background:color-mix(in srgb,var(--text) 88%,transparent);color:var(--bg);font-size:14px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.25);animation:toast-in .2s ease;}
+  .toast:popover-open{display:block;}
   @keyframes toast-in{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
   #printArea{display:none;}
   .c-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px;}
@@ -188,6 +197,7 @@
     body.printing .wrap,body.printing dialog{display:none !important;}
     body.printing #printArea{display:block;}
     .toast{display:none !important;}
+    html{overflow:visible !important;}
     #printArea .d-hero{grid-template-columns:200px 1fr;}
     .badge{border:1px solid #999;}
     .a-box{border:1px solid #999;}
@@ -234,7 +244,7 @@
 
   <div class="stats">
     <div class="stat"><div class="num" id="stCount">0</div><div class="label">登録台数</div></div>
-    <div class="stat soon"><div class="num" id="stSoon">0</div><div class="label">保証が間もなく切れる（30日以内）</div></div>
+    <div class="stat soon"><div class="num" id="stSoon">0</div><div class="label">30日以内に保証切れ</div></div>
     <div class="stat overdue"><div class="num" id="stOver">0</div><div class="label">保証切れ</div></div>
   </div>
 
@@ -337,6 +347,42 @@
 <script>
 (function(){
   var KEY='ipad-manager-data';
+  // [フォームのID, データのキー, 初期値]
+  var FIELDS=[
+    ['fName','name',''],['fModel','model',''],['fGen','gen',''],['fModelNo','modelNo',''],
+    ['fCapacity','capacity',''],['fColor','color',''],['fNetwork','network','Wi-Fi'],['fStatus','status','使用中'],
+    ['fPlace','place',''],['fSerial','serial',''],['fOs','os',''],
+    ['fBuyDate','buyDate',''],['fShop','shop',''],['fPrice','price',''],['fWarranty','warranty',''],['fCare','care','未加入'],
+    ['fNote','note','']
+  ];
+
+  // 読み込んだデータの検証（JSON読込・クラウド・端末内の保存値に共通。壊れた値や不正な値を取り除く）
+  var AKEYS=['type','name','status','modelNo','buyDate','price','note'];
+  var DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
+  function safeId(id,seen){
+    id=(typeof id==='string'||typeof id==='number')?String(id):'';
+    if(!/^[A-Za-z0-9_-]{1,40}$/.test(id)||seen[id])id=uid()+Math.random().toString(36).slice(2,5);
+    seen[id]=1;return id;
+  }
+  function str(x){return x==null||typeof x==='object'?'':String(x);}
+  function sanitize(list){
+    var seen={};
+    return (Array.isArray(list)?list:[]).filter(function(v){return v&&typeof v==='object';}).map(function(v){
+      var o={id:safeId(v.id,seen)};
+      FIELDS.forEach(function(p){o[p[1]]=str(v[p[1]]);});
+      if(!DATE_RE.test(o.buyDate))o.buyDate='';
+      if(!DATE_RE.test(o.warranty))o.warranty='';
+      o.image=(typeof v.image==='string'&&/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(v.image))?v.image:'';
+      var aseen={};
+      o.accessories=(Array.isArray(v.accessories)?v.accessories:[]).filter(function(a){return a&&typeof a==='object';}).map(function(a){
+        var r={id:safeId(a.id,aseen)};
+        AKEYS.forEach(function(k){r[k]=str(a[k]);});
+        if(!DATE_RE.test(r.buyDate))r.buyDate='';
+        return r;
+      });
+      return o;
+    });
+  }
   var data=load();
   var editId=null;   // 編集中のiPadのID
   var imgData='';    // フォーム上の写真
@@ -369,9 +415,22 @@
   function load(){
     try{
       var d=JSON.parse(localStorage.getItem(KEY));
-      if(d&&Array.isArray(d.devices))return d;
+      if(d&&Array.isArray(d.devices))return {devices:sanitize(d.devices)};
     }catch(e){}
     return {devices:[]};
+  }
+  // 他の端末からの変更（編集中は保留し、保存したら捨て、やめたら反映する）
+  var pendingRemote=null;
+  function isEditing(){return $('formSheet').open||Object.keys(openA).length>0;}
+  function applyRemote(d){
+    data={devices:sanitize(d.devices)};
+    try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}
+    editId=null;openA={};
+    render();
+  }
+  function flushRemote(){
+    var d=pendingRemote;pendingRemote=null;
+    if(d){applyRemote(d);toast('他の端末の変更を反映しました');}
   }
   // 操作後のお知らせ
   var toastTimer=null;
@@ -380,7 +439,7 @@
     t.textContent=msg;
     try{if(t.hidePopover)t.hidePopover();t.showPopover();}catch(e){return;}
     clearTimeout(toastTimer);
-    toastTimer=setTimeout(function(){try{t.hidePopover();}catch(e){}},2200);
+    toastTimer=setTimeout(function(){try{t.hidePopover();}catch(e){}},3000);
   }
   function save(){
     try{localStorage.setItem(KEY,JSON.stringify(data));if(cloud)cloud.notifyChanged();}
@@ -431,15 +490,6 @@
   };
   $('btnImgClear').onclick=function(){imgData='';$('fImage').value='';showImg();};
 
-  // [フォームのID, データのキー, 初期値]
-  var FIELDS=[
-    ['fName','name',''],['fModel','model',''],['fGen','gen',''],['fModelNo','modelNo',''],
-    ['fCapacity','capacity',''],['fColor','color',''],['fNetwork','network','Wi-Fi'],['fStatus','status','使用中'],
-    ['fPlace','place',''],['fSerial','serial',''],['fOs','os',''],
-    ['fBuyDate','buyDate',''],['fShop','shop',''],['fPrice','price',''],['fWarranty','warranty',''],['fCare','care','未加入'],
-    ['fNote','note','']
-  ];
-
   function resetForm(){
     editId=null;imgData='';
     FIELDS.forEach(function(p){$(p[0]).value=p[2];});
@@ -457,6 +507,7 @@
   $('btnCancel').onclick=function(){$('formSheet').close();};
   $('formSheet').addEventListener('close',function(){
     var b=backTo;backTo=null;resetForm();
+    if(!isEditing())flushRemote();
     if(b&&find(b))openDetail(b);
   });
 
@@ -470,6 +521,7 @@
     }
     FIELDS.forEach(function(p){v[p[1]]=$(p[0]).value.trim();});
     v.image=imgData;
+    pendingRemote=null;   // 手元の保存を優先（保存後に他の端末へ反映される）
     save();render();$('formSheet').close();
     toast(isNew?'登録しました':'保存しました');
   };
@@ -555,13 +607,13 @@
     var c=[v.model,v.gen,v.capacity,v.color,v.network].filter(Boolean).map(function(c){return '<span class="chip">'+esc(c)+'</span>';}).join('');
     return c?'<div class="chips">'+c+'</div>':'';
   }
-  function mediaOf(v){return v.image?'<img src="'+v.image+'" alt="">':'<span aria-hidden="true">📱</span>';}
+  function mediaOf(v){return v.image?'<img src="'+esc(v.image)+'" alt="">':'<span aria-hidden="true">📱</span>';}
 
   // 一覧のカード（押すと詳細シートが開く）
   function deviceHtml(v){
     var using=(v.accessories||[]).filter(function(a){return a.status==='使用中';}).length;
     return '<div class="dev" data-did="'+v.id+'">'
-      +'<div class="card-main" role="button" tabindex="0" data-open="'+v.id+'">'
+      +'<div class="card-main" role="button" tabindex="0" data-open="'+v.id+'" aria-label="'+esc(v.name)+'の詳細を開く">'
       +'<div class="media">'+mediaOf(v)+'<span class="tag">'+esc(v.status||'')+'</span></div>'
       +'<div class="c-body"><div class="d-name">'+esc(v.name)+'</div>'
       +chipsOf(v)
@@ -593,6 +645,7 @@
     if(!curId||!$('detailSheet').open)return;
     var v=find(curId);
     if(!v){$('detailSheet').close();return;}
+    $('detailSheet').setAttribute('aria-label',v.name+'の詳細');
     $('detailBody').innerHTML=detailHtml(v);
   }
   function openDetail(id){
@@ -696,7 +749,7 @@
     if(act==='atoggle'){collA[v.id]=!collA[v.id];saveColl();render();return;}
     if(act==='aadd'){openA[v.id]=true;if(collA[v.id]){collA[v.id]=false;saveColl();}render();return;}
     if(act==='aedit'){openA[v.id]=b.dataset.a;render();return;}
-    if(act==='acancel'){delete openA[v.id];render();return;}
+    if(act==='acancel'){delete openA[v.id];render();if(!isEditing())flushRemote();return;}
     if(act==='adel'){
       var da=findA(v,b.dataset.a);
       if(da&&confirm('「'+da.name+'」を削除しますか？')){
@@ -721,7 +774,7 @@
       if(ca){for(var k in rec)ca[k]=rec[k];}
       else{rec.id=uid();(v.accessories=v.accessories||[]).push(rec);}
       var wasEdit=!!ca;
-      delete openA[v.id];save();render();toast(wasEdit?'アクセサリーを保存しました':'アクセサリーを追加しました');
+      delete openA[v.id];pendingRemote=null;save();render();toast(wasEdit?'アクセサリーを保存しました':'アクセサリーを追加しました');
     }
   }
   $('list').onclick=function(e){
@@ -749,8 +802,9 @@
       try{
         var d=JSON.parse(r.result);
         if(!d||!Array.isArray(d.devices))throw new Error();
-        if(!confirm('現在のデータを、読み込んだ内容（'+d.devices.length+'台）で置き換えますか？'))return;
-        data=d;save();render();toast('読み込みました');
+        var list=sanitize(d.devices);
+        if(!confirm('現在のデータを、読み込んだ内容（'+list.length+'台）で置き換えますか？'))return;
+        data={devices:list};save();render();toast('読み込みました');
       }catch(e){alert('読み込めませんでした。書き出したJSONファイルを選んでください。');}
       $('fImport').value='';
     };
@@ -759,8 +813,11 @@
 
   // 印刷が終わったら通常表示に戻す
   window.addEventListener('afterprint',function(){
-    document.body.classList.remove('printing');
-    $('printArea').innerHTML='';
+    // 端末によっては印刷の準備前に呼ばれるため、少し待ってから戻す
+    setTimeout(function(){
+      document.body.classList.remove('printing');
+      $('printArea').innerHTML='';
+    },800);
   });
 
   // ダークモード切り替え（自動 → ダーク → ライト）
@@ -790,10 +847,9 @@
       hasData:function(){return data.devices.length>0;},
       applyData:function(d){
         if(!d||!Array.isArray(d.devices))throw new Error('iPad管理のデータ形式が違います');
-        data={devices:d.devices};
-        try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}
-        editId=null;openA={};
-        render();
+        // 登録・編集シートやアクセサリーのフォームを開いている間は、入力を消さないよう保留する
+        if(isEditing()){pendingRemote=d;toast('編集を終えると、他の端末の変更を反映します');return;}
+        applyRemote(d);
       }
     });
   }
