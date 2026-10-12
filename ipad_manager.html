@@ -9,136 +9,149 @@
 <link rel="icon" href="ipad-icon-192.png">
 <link rel="apple-touch-icon" href="ipad-icon-192.png">
 <style>
+  /* ===== デザイントークン（ライト／ダークは light-dark() で一括管理） ===== */
   :root{
-    --field:#fff;
-    --paper:#f6f4ec;
-    --ink:#23261f;
-    --ink-soft:#5a5c50;
-    --rule:#cfc9b4;
-    --stamp-red:#a8382b;
-    --stamp-red-bg:#f4e3df;
-    --sage:#3d5a73;
-    --sage-bg:#e1e9f0;
-    --amber:#a1731f;
-    --amber-bg:#f2e6cf;
-    --card:#fffdf7;
-    --shadow:0 1px 0 rgba(35,38,31,0.06);
+    color-scheme:light dark;
+    --bg:light-dark(#f2f2f7,#000);
+    --surface:light-dark(#fff,#1c1c1e);
+    --surface-2:light-dark(#f2f2f7,#2c2c2e);
+    --text:light-dark(#1c1c1e,#f2f2f7);
+    --text-2:light-dark(#6c6c70,#98989f);
+    --line:light-dark(#e5e5ea,#38383a);
+    --accent:light-dark(#0a6cff,#4d9bff);
+    --accent-text:#fff;
+    --ok:light-dark(#1f8a3b,#46d36b);
+    --ok-bg:light-dark(#e3f6e8,#12301b);
+    --warn:light-dark(#a85f00,#ffb340);
+    --warn-bg:light-dark(#fff1d9,#3a2a08);
+    --bad:light-dark(#d70015,#ff6b6b);
+    --bad-bg:light-dark(#ffe5e8,#3d1417);
+    --r-s:10px;--r-m:16px;--r-l:22px;
+    --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.06);
+    --font:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI",system-ui,sans-serif;
   }
-  /* ダークモード（端末の設定に合わせる。右上のボタンで固定も可） */
-  @media screen and (prefers-color-scheme:dark){
-    :root:not([data-theme="light"]){
-      --field:#2d3027;--paper:#1c1e1a;--ink:#e8e6dc;--ink-soft:#a9aa9c;--rule:#4a4c42;
-      --stamp-red:#e0796b;--stamp-red-bg:#3d2623;--sage:#8fb0cc;--sage-bg:#1f2a33;
-      --amber:#d9a94a;--amber-bg:#3a2f17;--card:#25271f;--shadow:none;color-scheme:dark;
-    }
-    :root:not([data-theme="light"]) .stats{background:var(--rule);border-color:var(--rule);}
-  }
-  :root[data-theme="dark"]{
-    --field:#2d3027;--paper:#1c1e1a;--ink:#e8e6dc;--ink-soft:#a9aa9c;--rule:#4a4c42;
-    --stamp-red:#e0796b;--stamp-red-bg:#3d2623;--sage:#8fb0cc;--sage-bg:#1f2a33;
-    --amber:#d9a94a;--amber-bg:#3a2f17;--card:#25271f;--shadow:none;color-scheme:dark;
-  }
-  :root[data-theme="dark"] .stats{background:var(--rule);border-color:var(--rule);}
+  /* 表示ボタンでの固定（自動のときは端末の設定に従う） */
+  :root[data-theme="dark"]{color-scheme:dark;}
+  :root[data-theme="light"]{color-scheme:light;}
+
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Iowan Old Style","Noto Serif JP",Georgia,serif;line-height:1.6;min-height:100vh;padding:0 0 60px 0;}
-  .wrap{max-width:960px;margin:0 auto;padding:36px 24px;}
-  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:28px;gap:16px;flex-wrap:wrap;}
-  header h1{font-size:28px;letter-spacing:0.04em;margin:0;font-weight:600;}
-  header .sub{font-size:12px;color:var(--ink-soft);margin-top:4px;}
-  .date-today{font-size:13px;color:var(--ink-soft);}
+  html{-webkit-text-size-adjust:100%;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.55;min-height:100vh;padding:0 0 60px 0;}
+  .wrap{max-width:1040px;margin:0 auto;padding:28px 20px;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;gap:16px;flex-wrap:wrap;}
+  header h1{font-size:34px;letter-spacing:.01em;line-height:1.2;margin:0;font-weight:700;}
+  header .sub{font-size:14px;color:var(--text-2);margin-top:6px;}
+  .date-today{font-size:13px;color:var(--text-2);}
 
-  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--ink);border:1px solid var(--ink);margin-bottom:24px;}
-  .stat{background:var(--card);padding:8px 14px;text-align:left;}
-  .stat .num{font-size:20px;font-weight:600;line-height:1.3;}
-  .stat .label{font-size:11px;color:var(--ink-soft);}
-  .stat.overdue .num{color:var(--stamp-red);}
-  .stat.soon .num{color:var(--amber);}
+  /* 集計カード */
+  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:24px;}
+  .stat{background:var(--surface);border-radius:var(--r-m);box-shadow:var(--shadow);padding:16px 18px;text-align:left;}
+  .stat .num{font-size:32px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;}
+  .stat .label{font-size:13px;color:var(--text-2);margin-top:4px;}
+  .stat.overdue .num{color:var(--bad);}
+  .stat.soon .num{color:var(--warn);}
 
-  .panel{background:var(--card);border:1px solid var(--rule);box-shadow:var(--shadow);margin-bottom:24px;}
-  .panel-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--rule);gap:10px;flex-wrap:wrap;}
-  .panel-head h2{font-size:16px;margin:0;}
-  .panel-body{padding:18px;}
-  details.add > summary{cursor:pointer;padding:14px 18px;font-size:16px;font-weight:600;list-style:none;}
+  .panel{background:var(--surface);border-radius:var(--r-l);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap;}
+  .panel-head h2{font-size:18px;font-weight:700;margin:0;}
+  .panel-body{padding:20px;}
+  details.add > summary{cursor:pointer;padding:16px 20px;font-size:17px;font-weight:700;list-style:none;color:var(--accent);min-height:52px;}
   details.add > summary::-webkit-details-marker{display:none;}
   details.add > summary::before{content:"＋ ";}
-  details.add[open] > summary{border-bottom:1px solid var(--rule);}
-  .sec{font-size:12px;font-weight:600;color:var(--ink-soft);margin:6px 0 8px;padding-bottom:3px;border-bottom:1px dashed var(--rule);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
+  details.add[open] > summary{border-bottom:1px solid var(--line);}
+  .sec{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--text-2);margin:8px 0 10px;}
 
-  button{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:8px 16px;font-size:13px;border-radius:2px;}
-  button.ghost{background:transparent;color:var(--ink);}
-  button.small{padding:5px 11px;font-size:12px;}
-  button.danger{color:var(--stamp-red);border-color:var(--stamp-red);}
-  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--stamp-red);outline-offset:1px;}
-  input,select,textarea{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;padding:9px 10px;border:1px solid var(--rule);background:var(--field);color:var(--ink);border-radius:2px;width:100%;}
-  label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink-soft);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
-  .form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+  /* ボタン（主＝塗り / 副＝淡い塗り / 削除＝赤文字） */
+  button{font-family:inherit;cursor:pointer;border:none;background:var(--accent);color:var(--accent-text);padding:11px 20px;min-height:44px;font-size:15px;font-weight:600;border-radius:12px;transition:filter .15s ease,transform .1s ease;}
+  button:hover{filter:brightness(1.06);}
+  button:active{transform:scale(.98);}
+  button.ghost{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);}
+  button.small{padding:7px 14px;min-height:36px;font-size:13.5px;border-radius:10px;}
+  button.danger{background:transparent;color:var(--bad);}
+  button.danger:hover{background:var(--bad-bg);filter:none;}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:2px;}
+
+  /* 入力欄 */
+  input,select,textarea{font-family:inherit;font-size:16px;padding:10px 12px;min-height:44px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:var(--r-s);width:100%;}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);background:var(--surface);}
+  label.f{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:500;color:var(--text-2);}
+  .form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px;}
   .form-grid .w3{grid-column:1 / -1;}
-  .form-actions{display:flex;gap:8px;flex-wrap:wrap;}
-  .img-pick{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:12px;color:var(--ink-soft);font-family:-apple-system,sans-serif;}
-  .img-pick img{width:64px;height:64px;object-fit:cover;border:1px solid var(--rule);}
+  .form-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  .img-pick{display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:13px;color:var(--text-2);}
+  .img-pick img{width:72px;height:72px;object-fit:cover;border-radius:var(--r-s);border:1px solid var(--line);}
+  .img-pick input[type=file]{min-height:0;padding:8px;}
 
-  .dev{padding:16px 18px;border-top:1px solid var(--rule);}
+  /* iPadの一覧 */
+  .dev{padding:20px;border-top:1px solid var(--line);}
   .dev:first-child{border-top:none;}
-  .d-top{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start;}
-  .thumb{width:200px;height:200px;object-fit:cover;border:1px solid var(--rule);background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:60px;color:var(--rule);}
-  .d-name{font-size:18px;font-weight:600;}
-  .d-meta{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
-  .d-note{font-size:13px;margin-top:8px;white-space:pre-wrap;word-break:break-word;font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
-  .badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:20px;margin-right:6px;font-family:-apple-system,sans-serif;}
-  .badge.ok{background:var(--sage-bg);color:var(--sage);}
-  .badge.soon{background:var(--amber-bg);color:var(--amber);}
-  .badge.overdue{background:var(--stamp-red-bg);color:var(--stamp-red);}
-  .badge.none{background:var(--paper);color:var(--ink-soft);border:1px solid var(--rule);}
-  .d-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
-  .empty{padding:28px 18px;text-align:center;color:var(--ink-soft);font-size:14px;}
+  .d-top{display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:start;}
+  .thumb{width:200px;height:200px;object-fit:cover;border-radius:var(--r-m);border:1px solid var(--line);background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:60px;color:var(--text-2);}
+  .d-name{font-size:22px;font-weight:700;line-height:1.3;}
+  .d-meta{font-size:14px;color:var(--text-2);margin-top:3px;}
+  .d-note{font-size:14px;margin-top:10px;white-space:pre-wrap;word-break:break-word;}
+  .badge{display:inline-block;font-size:13px;font-weight:600;padding:5px 12px;border-radius:99px;margin-right:6px;}
+  .badge.ok{background:var(--ok-bg);color:var(--ok);}
+  .badge.soon{background:var(--warn-bg);color:var(--warn);}
+  .badge.overdue{background:var(--bad-bg);color:var(--bad);}
+  .badge.none{background:var(--surface-2);color:var(--text-2);}
+  .d-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .empty{padding:36px 20px;text-align:center;color:var(--text-2);font-size:15px;}
 
-  .a-box{margin-top:18px;border:1px solid var(--rule);background:var(--field);padding:12px 14px;}
+  /* アクセサリー */
+  .a-box{margin-top:20px;border-radius:var(--r-m);background:var(--surface-2);padding:14px 16px;}
   .a-head{display:flex;justify-content:space-between;align-items:center;gap:8px;}
   .a-head > button.small{white-space:nowrap;flex-shrink:0;}
-  .a-toggle{background:transparent;color:var(--ink);border:none;padding:4px 2px;font-size:16px;font-weight:600;font-family:inherit;text-align:left;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;}
-  .a-toggle .arrow{font-size:11px;color:var(--ink-soft);}
-  .a-brief{font-size:12.5px;font-weight:400;color:var(--ink-soft);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;margin-left:6px;}
+  .a-toggle{background:transparent;color:var(--text);padding:4px 2px;min-height:36px;font-size:16px;font-weight:700;text-align:left;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;border-radius:8px;}
+  .a-toggle:hover{filter:none;}
+  .a-toggle .arrow{font-size:11px;color:var(--text-2);}
+  .a-brief{font-size:13px;font-weight:400;color:var(--text-2);margin-left:6px;}
   .a-list{list-style:none;margin:10px 0 0;padding:0;}
-  .a-item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;padding:9px 0;border-bottom:1px dashed var(--rule);font-size:15px;}
+  .a-item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line);font-size:15px;}
   .a-item:last-child{border-bottom:none;}
   .a-row{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;}
   .a-row .t{font-weight:600;}
-  .a-row .c{font-family:-apple-system,sans-serif;font-size:14px;margin-left:auto;white-space:nowrap;}
-  .a-type{font-size:11.5px;padding:1px 8px;border-radius:20px;background:var(--paper);border:1px solid var(--rule);color:var(--ink-soft);font-family:-apple-system,sans-serif;}
-  .a-sub{font-size:12.5px;color:var(--ink-soft);font-family:-apple-system,sans-serif;margin-top:2px;}
+  .a-row .c{font-size:14px;margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .a-type{font-size:12px;padding:2px 10px;border-radius:99px;background:var(--surface);color:var(--text-2);}
+  .a-sub{font-size:13px;color:var(--text-2);margin-top:2px;}
   .a-note{white-space:pre-wrap;word-break:break-word;}
   .a-btns{display:flex;gap:6px;}
-  .a-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px;align-items:end;}
+  .a-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px;align-items:end;}
   .a-form .w2{grid-column:span 2;}
   .a-form .w4{grid-column:1 / -1;}
 
-  .io-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px;}
-  .io-row input[type=file]{width:auto;}
+  .io-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:14px;color:var(--text-2);}
+  .io-row input[type=file]{width:auto;min-height:0;}
 
   /* 印刷（iPadごとの「印刷」ボタンで、その1台だけを白黒向けに出力。売却時の提出用） */
   @media print{
-    :root,:root[data-theme]{--field:#fff;--paper:#fff;--ink:#000;--ink-soft:#444;--rule:#999;--card:#fff;--sage:#222;--sage-bg:#fff;--amber:#222;--amber-bg:#fff;--stamp-red:#222;--stamp-red-bg:#fff;--shadow:none;color-scheme:light;}
+    :root,:root[data-theme]{color-scheme:light;--bg:#fff;--surface:#fff;--surface-2:#fff;--text:#000;--text-2:#444;--line:#999;--ok:#222;--ok-bg:#fff;--warn:#222;--warn-bg:#fff;--bad:#222;--bad-bg:#fff;--shadow:none;}
     .no-print,.stats,details.add,.d-actions,.a-btns,.a-form,.a-box button,.a-toggle .arrow,#cs-btn,#cs-panel{display:none !important;}
     body{background:#fff;}
     .wrap{padding:0;max-width:none;}
-    .panel{border:none;margin:0;}
+    .panel{border-radius:0;margin:0;box-shadow:none;}
     body.printing .dev:not(.print-target),body.printing .panel-head{display:none;}
     .dev{padding:0;}
+    .badge{border:1px solid #999;}
+    .a-box{border:1px solid #999;}
     .a-item{break-inside:avoid;}
   }
   @media (max-width:640px){
-    .a-box{padding:10px;}
+    .wrap{padding:20px 16px;}
+    header h1{font-size:28px;}
+    .form-grid{grid-template-columns:1fr;}
+    .d-top{grid-template-columns:128px 1fr;gap:14px;}
+    .thumb{width:128px;height:128px;font-size:44px;}
+    .d-name{font-size:19px;}
+    .stat{padding:12px 12px;}
+    .stat .num{font-size:26px;}
+    .stat .label{font-size:11.5px;}
+    .a-box{padding:12px;}
     .a-btns{flex-direction:column;}
     .a-form{grid-template-columns:1fr 1fr;}
     .a-form .w2,.a-form .w4{grid-column:1 / -1;}
-    .wrap{padding:20px 14px;}
-    header h1{font-size:23px;}
-    .form-grid{grid-template-columns:1fr;}
-    .d-top{grid-template-columns:128px 1fr;gap:12px;}
-    .thumb{width:128px;height:128px;font-size:44px;}
-    .stat{padding:6px 8px;}
-    .stat .label{font-size:10px;}
   }
+  @media (prefers-reduced-motion:reduce){*{transition:none !important;}}
 </style>
 </head>
 <body>

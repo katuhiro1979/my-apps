@@ -1,11 +1,11 @@
-{
+﻿{
   "name": "iPad管理",
   "short_name": "iPad管理",
   "description": "iPadの端末情報・保証期限・アクセサリーの管理",
   "start_url": "ipad_manager.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f6f4ec",
+  "background_color": "#f2f2f7",
   "theme_color": "#3d5a73",
   "icons": [
     {"src": "ipad-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
