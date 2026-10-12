@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iPad管理</title>
+<meta name="theme-color" content="#3d5a73">
+<style>
+  :root{
+    --field:#fff;
+    --paper:#f6f4ec;
+    --ink:#23261f;
+    --ink-soft:#5a5c50;
+    --rule:#cfc9b4;
+    --stamp-red:#a8382b;
+    --stamp-red-bg:#f4e3df;
+    --sage:#3d5a73;
+    --sage-bg:#e1e9f0;
+    --amber:#a1731f;
+    --amber-bg:#f2e6cf;
+    --card:#fffdf7;
+    --shadow:0 1px 0 rgba(35,38,31,0.06);
+  }
+  /* ダークモード（端末の設定に合わせる） */
+  @media screen and (prefers-color-scheme:dark){
+    :root{
+      --field:#2d3027;--paper:#1c1e1a;--ink:#e8e6dc;--ink-soft:#a9aa9c;--rule:#4a4c42;
+      --stamp-red:#e0796b;--stamp-red-bg:#3d2623;--sage:#8fb0cc;--sage-bg:#1f2a33;
+      --amber:#d9a94a;--amber-bg:#3a2f17;--card:#25271f;--shadow:none;color-scheme:dark;
+    }
+    .stats{background:var(--rule);border-color:var(--rule);}
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Iowan Old Style","Noto Serif JP",Georgia,serif;line-height:1.6;min-height:100vh;padding:0 0 60px 0;}
+  .wrap{max-width:960px;margin:0 auto;padding:36px 24px;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:28px;gap:16px;flex-wrap:wrap;}
+  header h1{font-size:28px;letter-spacing:0.04em;margin:0;font-weight:600;}
+  header .sub{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+  .date-today{font-size:13px;color:var(--ink-soft);}
+
+  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--ink);border:1px solid var(--ink);margin-bottom:24px;}
+  .stat{background:var(--card);padding:8px 14px;text-align:left;}
+  .stat .num{font-size:20px;font-weight:600;line-height:1.3;}
+  .stat .label{font-size:11px;color:var(--ink-soft);}
+  .stat.overdue .num{color:var(--stamp-red);}
+  .stat.soon .num{color:var(--amber);}
+
+  .panel{background:var(--card);border:1px solid var(--rule);box-shadow:var(--shadow);margin-bottom:24px;}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--rule);gap:10px;flex-wrap:wrap;}
+  .panel-head h2{font-size:16px;margin:0;}
+  .panel-body{padding:18px;}
+  details.add > summary{cursor:pointer;padding:14px 18px;font-size:16px;font-weight:600;list-style:none;}
+  details.add > summary::-webkit-details-marker{display:none;}
+  details.add > summary::before{content:"＋ ";}
+  details.add[open] > summary{border-bottom:1px solid var(--rule);}
+  .sec{font-size:12px;font-weight:600;color:var(--ink-soft);margin:6px 0 8px;padding-bottom:3px;border-bottom:1px dashed var(--rule);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
+
+  button{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:8px 16px;font-size:13px;border-radius:2px;}
+  button.ghost{background:transparent;color:var(--ink);}
+  button.small{padding:5px 11px;font-size:12px;}
+  button.danger{color:var(--stamp-red);border-color:var(--stamp-red);}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--stamp-red);outline-offset:1px;}
+  input,select,textarea{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;padding:9px 10px;border:1px solid var(--rule);background:var(--field);color:var(--ink);border-radius:2px;width:100%;}
+  label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink-soft);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
+  .form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+  .form-grid .w3{grid-column:1 / -1;}
+  .form-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .img-pick{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:12px;color:var(--ink-soft);font-family:-apple-system,sans-serif;}
+  .img-pick img{width:64px;height:64px;object-fit:cover;border:1px solid var(--rule);}
+
+  .dev{padding:16px 18px;border-top:1px solid var(--rule);}
+  .dev:first-child{border-top:none;}
+  .d-top{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:start;}
+  .thumb{width:120px;height:120px;object-fit:cover;border:1px solid var(--rule);background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--rule);}
+  .d-name{font-size:18px;font-weight:600;}
+  .d-meta{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  .d-note{font-size:13px;margin-top:8px;white-space:pre-wrap;word-break:break-word;font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
+  .badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:20px;margin-right:6px;font-family:-apple-system,sans-serif;}
+  .badge.ok{background:var(--sage-bg);color:var(--sage);}
+  .badge.soon{background:var(--amber-bg);color:var(--amber);}
+  .badge.overdue{background:var(--stamp-red-bg);color:var(--stamp-red);}
+  .badge.none{background:var(--paper);color:var(--ink-soft);border:1px solid var(--rule);}
+  .d-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .empty{padding:28px 18px;text-align:center;color:var(--ink-soft);font-size:14px;}
+
+  @media (max-width:640px){
+    .wrap{padding:20px 14px;}
+    header h1{font-size:23px;}
+    .form-grid{grid-template-columns:1fr;}
+    .d-top{grid-template-columns:96px 1fr;gap:12px;}
+    .thumb{width:96px;height:96px;}
+    .stat{padding:6px 8px;}
+    .stat .label{font-size:10px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>iPad管理</h1>
+      <div class="sub">端末情報と保証期限をまとめて確認</div>
+    </div>
+    <div class="date-today" id="today"></div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="num" id="stCount">0</div><div class="label">登録台数</div></div>
+    <div class="stat soon"><div class="num" id="stSoon">0</div><div class="label">保証が間もなく切れる（30日以内）</div></div>
+    <div class="stat overdue"><div class="num" id="stOver">0</div><div class="label">保証切れ</div></div>
+  </div>
+
+  <div class="panel">
+    <details class="add" id="addPanel">
+      <summary id="formTitle">iPadを登録する</summary>
+      <div class="panel-body">
+        <div class="img-pick">
+          <img id="imgPrev" alt="" style="display:none">
+          <input type="file" id="fImage" accept="image/*" style="width:auto">
+          <button type="button" class="ghost small" id="btnImgClear" style="display:none">写真を外す</button>
+        </div>
+
+        <div class="sec">基本</div>
+        <div class="form-grid">
+          <label class="f">呼び名（必須）<input id="fName" maxlength="30" placeholder="例：リビング用"></label>
+          <label class="f">機種
+            <select id="fModel">
+              <option value="">選んでください</option>
+              <option>iPad</option><option>iPad Air</option><option>iPad mini</option><option>iPad Pro</option><option>その他</option>
+            </select>
+          </label>
+          <label class="f">世代・サイズ<input id="fGen" maxlength="30" placeholder="例：第10世代 / 11インチ"></label>
+          <label class="f">型番<input id="fModelNo" maxlength="30" placeholder="例：MPQ03J/A"></label>
+          <label class="f">容量
+            <select id="fCapacity">
+              <option value="">選んでください</option>
+              <option>32GB</option><option>64GB</option><option>128GB</option><option>256GB</option><option>512GB</option><option>1TB</option><option>2TB</option>
+            </select>
+          </label>
+          <label class="f">色<input id="fColor" maxlength="20" placeholder="例：シルバー"></label>
+          <label class="f">回線
+            <select id="fNetwork"><option>Wi-Fi</option><option>Wi-Fi + Cellular</option></select>
+          </label>
+          <label class="f">状態
+            <select id="fStatus"><option>使用中</option><option>予備</option><option>修理中</option><option>売却済み</option></select>
+          </label>
+          <label class="f">置き場所・用途<input id="fPlace" maxlength="30" placeholder="例：リビング・動画用"></label>
+        </div>
+
+        <div class="sec">識別情報</div>
+        <div class="form-grid">
+          <label class="f">シリアル番号<input id="fSerial" maxlength="30"></label>
+          <label class="f">iPadOSのバージョン<input id="fOs" maxlength="20" placeholder="例：18.1"></label>
+        </div>
+
+        <div class="sec">購入・保証</div>
+        <div class="form-grid">
+          <label class="f">購入日<input type="date" id="fBuyDate"></label>
+          <label class="f">購入店<input id="fShop" maxlength="30" placeholder="例：Apple Store"></label>
+          <label class="f">購入金額（円）<input type="number" min="0" inputmode="numeric" id="fPrice"></label>
+          <label class="f">保証期限<input type="date" id="fWarranty"></label>
+          <label class="f">AppleCare+
+            <select id="fCare"><option>未加入</option><option>加入</option></select>
+          </label>
+        </div>
+
+        <div class="form-grid">
+          <label class="f w3">メモ（改行できます）<textarea id="fNote" rows="3" maxlength="500"></textarea></label>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" id="btnSave">登録する</button>
+          <button type="button" class="ghost" id="btnCancel" style="display:none">編集をやめる</button>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>iPad一覧</h2></div>
+    <div id="list"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY='ipad-manager-data';
+  var data=load();
+  var editId=null;   // 編集中のiPadのID
+  var imgData='';    // フォーム上の写真
+
+  function load(){
+    try{
+      var d=JSON.parse(localStorage.getItem(KEY));
+      if(d&&Array.isArray(d.devices))return d;
+    }catch(e){}
+    return {devices:[]};
+  }
+  function save(){
+    try{localStorage.setItem(KEY,JSON.stringify(data));}
+    catch(e){alert('保存できませんでした（容量が足りない可能性があります）');}
+  }
+  function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function $(id){return document.getElementById(id);}
+
+  // 日付（時刻を除いた日数差）
+  function ymd(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+  function daysLeft(due){
+    var a=new Date(due+'T00:00:00'),b=new Date(ymd(new Date())+'T00:00:00');
+    return Math.round((a-b)/86400000);
+  }
+  function level(n){return n<0?'overdue':(n<=30?'soon':'ok');}
+  function leftText(n){
+    if(n<0)return Math.abs(n)+'日超過';
+    if(n===0)return '今日まで';
+    return 'あと'+n+'日';
+  }
+
+  // 写真を縮小してJPEGにする
+  function shrink(file,cb){
+    var r=new FileReader();
+    r.onload=function(){
+      var im=new Image();
+      im.onload=function(){
+        var max=600,s=Math.min(1,max/Math.max(im.width,im.height));
+        var c=document.createElement('canvas');
+        c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);
+        c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+        cb(c.toDataURL('image/jpeg',0.8));
+      };
+      im.src=r.result;
+    };
+    r.readAsDataURL(file);
+  }
+
+  function showImg(){
+    $('imgPrev').style.display=imgData?'block':'none';
+    $('imgPrev').src=imgData||'';
+    $('btnImgClear').style.display=imgData?'inline-block':'none';
+  }
+  $('fImage').onchange=function(){
+    var f=this.files[0];if(!f)return;
+    shrink(f,function(u){imgData=u;showImg();});
+  };
+  $('btnImgClear').onclick=function(){imgData='';$('fImage').value='';showImg();};
+
+  // [フォームのID, データのキー, 初期値]
+  var FIELDS=[
+    ['fName','name',''],['fModel','model',''],['fGen','gen',''],['fModelNo','modelNo',''],
+    ['fCapacity','capacity',''],['fColor','color',''],['fNetwork','network','Wi-Fi'],['fStatus','status','使用中'],
+    ['fPlace','place',''],['fSerial','serial',''],['fOs','os',''],
+    ['fBuyDate','buyDate',''],['fShop','shop',''],['fPrice','price',''],['fWarranty','warranty',''],['fCare','care','未加入'],
+    ['fNote','note','']
+  ];
+
+  function resetForm(){
+    editId=null;imgData='';
+    FIELDS.forEach(function(p){$(p[0]).value=p[2];});
+    $('fImage').value='';showImg();
+    $('formTitle').textContent='iPadを登録する';
+    $('btnSave').textContent='登録する';
+    $('btnCancel').style.display='none';
+  }
+  $('btnCancel').onclick=function(){resetForm();$('addPanel').open=false;};
+
+  $('btnSave').onclick=function(){
+    var name=$('fName').value.trim();
+    if(!name){alert('呼び名を入力してください');$('fName').focus();return;}
+    var v=editId?find(editId):null;
+    if(!v){
+      v={id:uid()};data.devices.push(v);
+    }
+    FIELDS.forEach(function(p){v[p[1]]=$(p[0]).value.trim();});
+    v.image=imgData;
+    save();resetForm();$('addPanel').open=false;render();
+  };
+
+  function find(id){
+    for(var i=0;i<data.devices.length;i++)if(data.devices[i].id===id)return data.devices[i];
+    return null;
+  }
+
+  function startEdit(id){
+    var v=find(id);if(!v)return;
+    editId=id;imgData=v.image||'';
+    FIELDS.forEach(function(p){$(p[0]).value=v[p[1]]!=null&&v[p[1]]!==''?v[p[1]]:p[2];});
+    showImg();
+    $('formTitle').textContent='iPadを編集する';
+    $('btnSave').textContent='保存する';
+    $('btnCancel').style.display='inline-block';
+    $('addPanel').open=true;
+    $('addPanel').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  // 保証の状態（売却済みは対象外）
+  function warrantyOf(v){
+    if(v.status==='売却済み'||!v.warranty)return null;
+    return daysLeft(v.warranty);
+  }
+
+  function render(){
+    $('today').textContent=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+    var soon=0,over=0;
+    data.devices.forEach(function(v){
+      var n=warrantyOf(v);
+      if(n===null)return;
+      var l=level(n);
+      if(l==='soon')soon++;else if(l==='overdue')over++;
+    });
+    $('stCount').textContent=data.devices.length;
+    $('stSoon').textContent=soon;
+    $('stOver').textContent=over;
+
+    if(!data.devices.length){
+      $('list').innerHTML='<div class="empty">まだiPadが登録されていません。上の「iPadを登録する」から追加してください。</div>';
+      return;
+    }
+    $('list').innerHTML=data.devices.map(deviceHtml).join('');
+  }
+
+  function deviceHtml(v){
+    var n=warrantyOf(v),badge;
+    if(n!==null){
+      badge='<span class="badge '+level(n)+'">'+(v.care==='加入'?'AppleCare+ ':'保証 ')+'：'+leftText(n)+'</span>';
+    }else if(v.status==='売却済み'){
+      badge='<span class="badge none">売却済み</span>';
+    }else{
+      badge='<span class="badge none">保証期限の登録なし</span>';
+    }
+    var meta=[v.model,v.gen,v.capacity,v.color,v.network].filter(Boolean).join(' / ');
+    var meta2=[v.status,v.place].filter(Boolean).join(' ・ ');
+    var meta3=[v.modelNo?'型番 '+v.modelNo:'',v.serial?'シリアル '+v.serial:'',v.os?'iPadOS '+v.os:''].filter(Boolean).join(' ・ ');
+    var meta4=[v.buyDate?'購入 '+v.buyDate:'',v.shop,v.price?Number(v.price).toLocaleString()+'円':'',v.warranty?'保証期限 '+v.warranty:''].filter(Boolean).join(' ・ ');
+    var thumb=v.image?'<img class="thumb" src="'+v.image+'" alt="">':'<div class="thumb">📱</div>';
+    return '<div class="dev" data-did="'+v.id+'"><div class="d-top">'+thumb+'<div>'
+      +'<div class="d-name">'+esc(v.name)+'</div>'
+      +(meta?'<div class="d-meta">'+esc(meta)+'</div>':'')
+      +(meta2?'<div class="d-meta">'+esc(meta2)+'</div>':'')
+      +(meta3?'<div class="d-meta">'+esc(meta3)+'</div>':'')
+      +(meta4?'<div class="d-meta">'+esc(meta4)+'</div>':'')
+      +'<div style="margin-top:6px">'+badge+'</div>'
+      +(v.note?'<div class="d-note">'+esc(v.note)+'</div>':'')
+      +'<div class="d-actions"><button class="ghost small" data-act="edit" data-d="'+v.id+'">編集</button>'
+      +'<button class="ghost small danger" data-act="del" data-d="'+v.id+'">削除</button></div>'
+      +'</div></div></div>';
+  }
+
+  $('list').onclick=function(e){
+    var b=e.target.closest('button[data-act]');if(!b)return;
+    var v=find(b.dataset.d);if(!v)return;
+    if(b.dataset.act==='edit'){startEdit(v.id);return;}
+    if(b.dataset.act==='del'){
+      if(confirm('「'+v.name+'」を削除しますか？')){
+        data.devices=data.devices.filter(function(x){return x.id!==v.id;});
+        save();render();
+      }
+    }
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
