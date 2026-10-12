@@ -83,7 +83,30 @@
   .d-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
   .empty{padding:28px 18px;text-align:center;color:var(--ink-soft);font-size:14px;}
 
+  .a-box{margin-top:18px;border:1px solid var(--rule);background:var(--field);padding:12px 14px;}
+  .a-head{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .a-toggle{background:transparent;color:var(--ink);border:none;padding:4px 2px;font-size:16px;font-weight:600;font-family:inherit;text-align:left;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;}
+  .a-toggle .arrow{font-size:11px;color:var(--ink-soft);}
+  .a-brief{font-size:12.5px;font-weight:400;color:var(--ink-soft);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;margin-left:6px;}
+  .a-list{list-style:none;margin:10px 0 0;padding:0;}
+  .a-item{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start;padding:9px 0;border-bottom:1px dashed var(--rule);font-size:15px;}
+  .a-item:last-child{border-bottom:none;}
+  .a-row{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;}
+  .a-row .t{font-weight:600;}
+  .a-row .c{font-family:-apple-system,sans-serif;font-size:14px;margin-left:auto;white-space:nowrap;}
+  .a-type{font-size:11.5px;padding:1px 8px;border-radius:20px;background:var(--paper);border:1px solid var(--rule);color:var(--ink-soft);font-family:-apple-system,sans-serif;}
+  .a-sub{font-size:12.5px;color:var(--ink-soft);font-family:-apple-system,sans-serif;margin-top:2px;}
+  .a-note{white-space:pre-wrap;word-break:break-word;}
+  .a-btns{display:flex;gap:6px;}
+  .a-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px;align-items:end;}
+  .a-form .w2{grid-column:span 2;}
+  .a-form .w4{grid-column:1 / -1;}
+
   @media (max-width:640px){
+    .a-box{padding:10px;}
+    .a-btns{flex-direction:column;}
+    .a-form{grid-template-columns:1fr 1fr;}
+    .a-form .w2,.a-form .w4{grid-column:1 / -1;}
     .wrap{padding:20px 14px;}
     header h1{font-size:23px;}
     .form-grid{grid-template-columns:1fr;}
@@ -188,6 +211,13 @@
   var data=load();
   var editId=null;   // 編集中のiPadのID
   var imgData='';    // フォーム上の写真
+  var openA={};      // アクセサリーのフォーム（true=追加 / 記録ID=編集）
+  var ATYPES=['ケース・カバー','保護フィルム','Apple Pencil','キーボード','充電器・ケーブル','スタンド','イヤホン・ヘッドホン','その他'];
+  var ASTATUS=['使用中','故障','廃棄'];
+  // アクセサリーの折りたたみ状態（この端末の表示設定のみ）
+  var COLL_KEY='ipad-manager-collapsed';
+  var collA=(function(){try{return JSON.parse(localStorage.getItem(COLL_KEY))||{};}catch(e){return {};}})();
+  function saveColl(){try{localStorage.setItem(COLL_KEY,JSON.stringify(collA));}catch(e){}}
 
   function load(){
     try{
@@ -343,18 +373,100 @@
       +(v.note?'<div class="d-note">'+esc(v.note)+'</div>':'')
       +'<div class="d-actions"><button class="ghost small" data-act="edit" data-d="'+v.id+'">編集</button>'
       +'<button class="ghost small danger" data-act="del" data-d="'+v.id+'">削除</button></div>'
-      +'</div></div></div>';
+      +'</div></div>'+accHtml(v)+'</div>';
+  }
+
+  function findA(v,id){
+    var a=v.accessories||[];
+    for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];
+    return null;
+  }
+
+  // アクセサリー（使用中のものを先に、あとは購入日の新しい順）
+  function accHtml(v){
+    var all=(v.accessories||[]).slice().sort(function(a,b){
+      var ra=a.status==='使用中'?0:1,rb=b.status==='使用中'?0:1;
+      if(ra!==rb)return ra-rb;
+      return (a.buyDate||'')<(b.buyDate||'')?1:((a.buyDate||'')>(b.buyDate||'')?-1:0);
+    });
+    var using=all.filter(function(a){return a.status==='使用中';});
+    var total=using.reduce(function(s,a){return s+(Number(a.price)||0);},0);
+    var folded=!!collA[v.id];
+    var h='<div class="a-box"><div class="a-head"><button type="button" class="a-toggle" data-act="atoggle" data-d="'+v.id+'" aria-expanded="'+(!folded)+'">'
+      +'<span class="arrow">'+(folded?'▶':'▼')+'</span> 🎒 アクセサリー'
+      +(all.length?'<span class="a-brief">使用中 '+using.length+'点・'+total.toLocaleString()+'円</span>':'')+'</button>'
+      +'<button class="small" data-act="aadd" data-d="'+v.id+'">＋ 追加</button></div>';
+    if(folded)return h+'</div>';
+    if(!all.length&&!openA[v.id])h+='<div class="a-sub" style="margin-top:8px">まだアクセサリーがありません。「追加」から登録してください。</div>';
+    h+='<ul class="a-list">'+all.map(function(a){
+      var sub=[a.modelNo?'型番 '+a.modelNo:'',a.buyDate?'購入 '+a.buyDate:''].filter(Boolean).join(' ・ ');
+      return '<li class="a-item"><div><div class="a-row"><span class="a-type">'+esc(a.type||'その他')+'</span><span class="t">'+esc(a.name)+'</span>'
+        +(a.status&&a.status!=='使用中'?'<span class="badge '+(a.status==='故障'?'overdue':'none')+'">'+esc(a.status)+'</span>':'')
+        +(a.price?'<span class="c">'+Number(a.price).toLocaleString()+'円</span>':'')+'</div>'
+        +(sub?'<div class="a-sub">'+esc(sub)+'</div>':'')
+        +(a.note?'<div class="a-sub a-note">'+esc(a.note)+'</div>':'')
+        +'</div><div class="a-btns"><button class="ghost small" data-act="aedit" data-d="'+v.id+'" data-a="'+a.id+'">編集</button>'
+        +'<button class="ghost small danger" data-act="adel" data-d="'+v.id+'" data-a="'+a.id+'">削除</button></div></li>';
+    }).join('')+'</ul>';
+    if(openA[v.id]){
+      var oa=openA[v.id]===true?null:findA(v,openA[v.id]);
+      var g=function(k){return oa&&oa[k]!=null?esc(oa[k]):'';};
+      var tOpts=ATYPES.map(function(t){return '<option'+(oa&&oa.type===t?' selected':'')+'>'+t+'</option>';}).join('');
+      var sOpts=ASTATUS.map(function(s){return '<option'+(oa&&oa.status===s?' selected':'')+'>'+s+'</option>';}).join('');
+      h+='<div class="a-form" data-aform="'+v.id+'">'
+        +'<label class="f">種類<select class="aType">'+tOpts+'</select></label>'
+        +'<label class="f w2">名称（必須）<input class="aName" maxlength="40" placeholder="例：Apple Pencil 第2世代" value="'+g('name')+'"></label>'
+        +'<label class="f">状態<select class="aStatus">'+sOpts+'</select></label>'
+        +'<label class="f w2">型番<input class="aModel" maxlength="30" value="'+g('modelNo')+'"></label>'
+        +'<label class="f">購入日<input type="date" class="aDate" value="'+g('buyDate')+'"></label>'
+        +'<label class="f">金額（円）<input type="number" min="0" inputmode="numeric" class="aPrice" value="'+g('price')+'"></label>'
+        +'<label class="f w4">メモ（互換性・購入先など。改行できます）<textarea class="aNote" rows="2" maxlength="300">'+g('note')+'</textarea></label>'
+        +'<button class="small" data-act="asave" data-d="'+v.id+'">'+(oa?'保存':'登録する')+'</button>'
+        +'<button class="ghost small" data-act="acancel" data-d="'+v.id+'">やめる</button></div>';
+    }
+    return h+'</div>';
   }
 
   $('list').onclick=function(e){
     var b=e.target.closest('button[data-act]');if(!b)return;
     var v=find(b.dataset.d);if(!v)return;
-    if(b.dataset.act==='edit'){startEdit(v.id);return;}
-    if(b.dataset.act==='del'){
-      if(confirm('「'+v.name+'」を削除しますか？')){
+    var act=b.dataset.act;
+    if(act==='edit'){startEdit(v.id);return;}
+    if(act==='del'){
+      if(confirm('「'+v.name+'」を削除しますか？アクセサリーの記録も消えます。')){
         data.devices=data.devices.filter(function(x){return x.id!==v.id;});
         save();render();
       }
+      return;
+    }
+    if(act==='atoggle'){collA[v.id]=!collA[v.id];saveColl();render();return;}
+    if(act==='aadd'){openA[v.id]=true;if(collA[v.id]){collA[v.id]=false;saveColl();}render();return;}
+    if(act==='aedit'){openA[v.id]=b.dataset.a;render();return;}
+    if(act==='acancel'){delete openA[v.id];render();return;}
+    if(act==='adel'){
+      var da=findA(v,b.dataset.a);
+      if(da&&confirm('「'+da.name+'」を削除しますか？')){
+        v.accessories=v.accessories.filter(function(x){return x.id!==da.id;});
+        save();render();
+      }
+      return;
+    }
+    if(act==='asave'){
+      var f=document.querySelector('[data-aform="'+v.id+'"]');
+      var rec={
+        type:f.querySelector('.aType').value,
+        name:f.querySelector('.aName').value.trim(),
+        status:f.querySelector('.aStatus').value,
+        modelNo:f.querySelector('.aModel').value.trim(),
+        buyDate:f.querySelector('.aDate').value,
+        price:f.querySelector('.aPrice').value,
+        note:f.querySelector('.aNote').value.trim()
+      };
+      if(!rec.name){alert('名称を入力してください');f.querySelector('.aName').focus();return;}
+      var ca=openA[v.id]===true?null:findA(v,openA[v.id]);
+      if(ca){for(var k in rec)ca[k]=rec[k];}
+      else{rec.id=uid();(v.accessories=v.accessories||[]).push(rec);}
+      delete openA[v.id];save();render();
     }
   };
 
