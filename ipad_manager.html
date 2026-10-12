@@ -34,9 +34,9 @@
   :root[data-theme="dark"]{color-scheme:dark;}
   :root[data-theme="light"]{color-scheme:light;}
 
-  *{box-sizing:border-box;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html{-webkit-text-size-adjust:100%;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.55;min-height:100vh;padding:0 0 60px 0;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.55;min-height:100vh;padding:0 0 140px 0;}
   .wrap{max-width:1040px;margin:0 auto;padding:28px 20px;}
   header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px;gap:16px;flex-wrap:wrap;}
   header h1{font-size:34px;letter-spacing:.01em;line-height:1.2;margin:0;font-weight:700;}
@@ -128,6 +128,12 @@
   /* 右下の登録ボタン（☁ボタンの上に置く） */
   .fab{position:fixed;right:16px;bottom:72px;width:60px;height:60px;padding:0;border-radius:50%;font-size:32px;line-height:1;z-index:50;box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 45%,transparent);}
   .empty .small{margin-top:14px;}
+  .empty svg{width:96px;height:96px;margin-bottom:8px;color:var(--text-2);}
+  .empty .e-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;}
+
+  /* 操作後のお知らせ（画面下に数秒だけ出る。<dialog>の上にも出るようpopoverを使う） */
+  .toast{position:fixed;inset:auto 0 24px 0;margin:0 auto;width:fit-content;max-width:calc(100vw - 32px);border:none;border-radius:99px;padding:11px 20px;background:color-mix(in srgb,var(--text) 88%,transparent);color:var(--bg);font-size:14px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.25);animation:toast-in .2s ease;}
+  @keyframes toast-in{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
   #printArea{display:none;}
   .c-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px;}
   .group{background:var(--surface-2);border-radius:var(--r-m);overflow:hidden;align-self:start;}
@@ -181,6 +187,7 @@
     .grid{display:block;}
     body.printing .wrap,body.printing dialog{display:none !important;}
     body.printing #printArea{display:block;}
+    .toast{display:none !important;}
     #printArea .d-hero{grid-template-columns:200px 1fr;}
     .badge{border:1px solid #999;}
     .a-box{border:1px solid #999;}
@@ -323,6 +330,7 @@
 </dialog>
 
 <div id="printArea"></div>
+<div id="toast" class="toast no-print" popover="manual" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="cloud-sync.js"></script>
@@ -364,6 +372,15 @@
       if(d&&Array.isArray(d.devices))return d;
     }catch(e){}
     return {devices:[]};
+  }
+  // 操作後のお知らせ
+  var toastTimer=null;
+  function toast(msg){
+    var t=$('toast');
+    t.textContent=msg;
+    try{if(t.hidePopover)t.hidePopover();t.showPopover();}catch(e){return;}
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){try{t.hidePopover();}catch(e){}},2200);
   }
   function save(){
     try{localStorage.setItem(KEY,JSON.stringify(data));if(cloud)cloud.notifyChanged();}
@@ -445,7 +462,8 @@
 
   $('btnSave').onclick=function(){
     var name=$('fName').value.trim();
-    if(!name){alert('呼び名を入力してください');$('fName').focus();return;}
+    if(!name){toast('呼び名を入力してください');$('fName').focus();return;}
+    var isNew=!editId;
     var v=editId?find(editId):null;
     if(!v){
       v={id:uid()};data.devices.push(v);
@@ -453,6 +471,7 @@
     FIELDS.forEach(function(p){v[p[1]]=$(p[0]).value.trim();});
     v.image=imgData;
     save();render();$('formSheet').close();
+    toast(isNew?'登録しました':'保存しました');
   };
 
   function find(id){
@@ -501,7 +520,7 @@
     $('sortSel').value=view.sort;
 
     if(!data.devices.length){
-      $('list').innerHTML='<div class="empty">まだiPadが登録されていません。<br><button type="button" class="small" data-act="new">iPadを登録する</button></div>';
+      $('list').innerHTML='<div class="empty"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><rect x="22" y="10" width="52" height="76" rx="8"/><circle cx="48" cy="77" r="2.5" fill="currentColor" stroke="none"/><path d="M36 34h24M36 46h24M36 58h14" opacity=".5"/></svg><div class="e-title">まだiPadが登録されていません</div>端末情報と保証期限をここにまとめられます。<br><button type="button" data-act="new">最初のiPadを登録する</button></div>';
       return;
     }
     var list=data.devices.filter(function(v){
@@ -518,7 +537,7 @@
       list.sort(function(a,b){return key(a)-key(b);});
     }
     if(!list.length){
-      $('list').innerHTML='<div class="empty">条件に合うiPadがありません。</div>';
+      $('list').innerHTML='<div class="empty"><div class="e-title">条件に合うiPadがありません</div>絞り込みや検索語を変えてみてください。<br><button type="button" class="ghost small" data-act="reset">絞り込みを解除</button></div>';
       return;
     }
     $('list').innerHTML=list.map(deviceHtml).join('');
@@ -655,6 +674,7 @@
     var b=e.target.closest('button[data-act]');if(!b)return;
     var act=b.dataset.act;
     if(act==='new'){openForm();return;}
+    if(act==='reset'){view.filter='all';saveView();query='';$('q').value='';render();return;}
     if(act==='close'){$('detailSheet').close();return;}
     var v=find(b.dataset.d);if(!v)return;
     if(act==='edit'){startEdit(v.id);return;}
@@ -669,7 +689,7 @@
       if(confirm('「'+v.name+'」を削除しますか？アクセサリーの記録も消えます。')){
         data.devices=data.devices.filter(function(x){return x.id!==v.id;});
         $('detailSheet').close();
-        save();render();
+        save();render();toast('削除しました');
       }
       return;
     }
@@ -681,7 +701,7 @@
       var da=findA(v,b.dataset.a);
       if(da&&confirm('「'+da.name+'」を削除しますか？')){
         v.accessories=v.accessories.filter(function(x){return x.id!==da.id;});
-        save();render();
+        save();render();toast('アクセサリーを削除しました');
       }
       return;
     }
@@ -696,11 +716,12 @@
         price:f.querySelector('.aPrice').value,
         note:f.querySelector('.aNote').value.trim()
       };
-      if(!rec.name){alert('名称を入力してください');f.querySelector('.aName').focus();return;}
+      if(!rec.name){toast('名称を入力してください');f.querySelector('.aName').focus();return;}
       var ca=openA[v.id]===true?null:findA(v,openA[v.id]);
       if(ca){for(var k in rec)ca[k]=rec[k];}
       else{rec.id=uid();(v.accessories=v.accessories||[]).push(rec);}
-      delete openA[v.id];save();render();
+      var wasEdit=!!ca;
+      delete openA[v.id];save();render();toast(wasEdit?'アクセサリーを保存しました':'アクセサリーを追加しました');
     }
   }
   $('list').onclick=function(e){
@@ -729,7 +750,7 @@
         var d=JSON.parse(r.result);
         if(!d||!Array.isArray(d.devices))throw new Error();
         if(!confirm('現在のデータを、読み込んだ内容（'+d.devices.length+'台）で置き換えますか？'))return;
-        data=d;save();render();
+        data=d;save();render();toast('読み込みました');
       }catch(e){alert('読み込めませんでした。書き出したJSONファイルを選んでください。');}
       $('fImport').value='';
     };
