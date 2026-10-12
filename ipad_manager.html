@@ -55,10 +55,6 @@
   .panel-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap;}
   .panel-head h2{font-size:18px;font-weight:700;margin:0;}
   .panel-body{padding:20px;}
-  details.add > summary{cursor:pointer;padding:16px 20px;font-size:17px;font-weight:700;list-style:none;color:var(--accent);min-height:52px;}
-  details.add > summary::-webkit-details-marker{display:none;}
-  details.add > summary::before{content:"＋ ";}
-  details.add[open] > summary{border-bottom:1px solid var(--line);}
   .sec{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--text-2);margin:8px 0 10px;}
 
   /* ボタン（主＝塗り / 副＝淡い塗り / 削除＝赤文字） */
@@ -100,7 +96,6 @@
   .grid > .empty{grid-column:1 / -1;background:var(--surface);border-radius:var(--r-l);box-shadow:var(--shadow);}
   .dev{background:var(--surface);border-radius:var(--r-l);box-shadow:var(--shadow);overflow:hidden;transition:transform .15s ease,box-shadow .15s ease;}
   .dev:not(.open):hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(0,0,0,.05),0 12px 28px rgba(0,0,0,.10);}
-  .dev.open{grid-column:1 / -1;}
   .card-main{display:flex;flex-direction:column;cursor:pointer;text-align:left;}
   .card-main:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:-3px;}
   .media{aspect-ratio:16/10;background:var(--surface-2);display:grid;place-items:center;position:relative;font-size:56px;overflow:hidden;}
@@ -112,9 +107,28 @@
   .chip{font-size:12.5px;padding:3px 10px;border-radius:99px;background:var(--surface-2);color:var(--text-2);}
   .c-foot{display:flex;justify-content:space-between;gap:8px;color:var(--text-2);font-size:13px;margin-top:auto;}
   .c-foot .more{color:var(--accent);font-weight:600;white-space:nowrap;}
-  .dev.open .card-main{display:grid;grid-template-columns:280px 1fr;}
-  .dev.open .media{aspect-ratio:auto;min-height:200px;}
-  .c-detail{padding:4px 18px 20px;}
+
+  /* 詳細・登録のシート（<dialog>。PCは中央、スマホは下から出る） */
+  html:has(dialog[open]){overflow:hidden;}
+  dialog.sheet{width:min(760px,calc(100vw - 32px));max-width:none;max-height:min(88vh,900px);border:none;padding:0;border-radius:var(--r-l);background:var(--surface);color:var(--text);box-shadow:0 24px 70px rgba(0,0,0,.35);overflow:hidden;}
+  dialog.sheet[open]{display:flex;flex-direction:column;animation:sheet-in .22s ease;}
+  dialog.sheet::backdrop{background:rgba(0,0,0,.42);}
+  @keyframes sheet-in{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
+  @keyframes sheet-up{from{transform:translateY(100%);}to{transform:none;}}
+  .sheet-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);flex-shrink:0;background:var(--surface);}
+  .sheet-bar strong{font-size:16px;text-align:center;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sheet-bar button{flex-shrink:0;}
+  .sheet-body{padding:18px 20px 28px;overflow-y:auto;flex:1;overscroll-behavior:contain;}
+  .sheet .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .d-hero{display:grid;grid-template-columns:240px 1fr;gap:18px;align-items:center;margin-bottom:16px;}
+  .d-hero .media{border-radius:var(--r-m);}
+  .d-hero .d-name{font-size:24px;}
+  .d-hero .chips{margin:10px 0;}
+
+  /* 右下の登録ボタン（☁ボタンの上に置く） */
+  .fab{position:fixed;right:16px;bottom:72px;width:60px;height:60px;padding:0;border-radius:50%;font-size:32px;line-height:1;z-index:50;box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 45%,transparent);}
+  .empty .small{margin-top:14px;}
+  #printArea{display:none;}
   .c-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px;}
   .group{background:var(--surface-2);border-radius:var(--r-m);overflow:hidden;align-self:start;}
   .group h3{margin:0;padding:10px 16px 2px;font-size:12px;color:var(--text-2);font-weight:600;letter-spacing:.04em;}
@@ -159,15 +173,15 @@
   /* 印刷（iPadごとの「印刷」ボタンで、その1台だけを白黒向けに出力。売却時の提出用） */
   @media print{
     :root,:root[data-theme]{color-scheme:light;--bg:#fff;--surface:#fff;--surface-2:#fff;--text:#000;--text-2:#444;--line:#999;--ok:#222;--ok-bg:#fff;--warn:#222;--warn-bg:#fff;--bad:#222;--bad-bg:#fff;--shadow:none;}
-    .no-print,.stats,details.add,.d-actions,.a-btns,.a-form,.a-box button,.a-toggle .arrow,#cs-btn,#cs-panel{display:none !important;}
+    .no-print,.stats,.fab,.d-actions,.a-btns,.a-form,.a-box button,.a-toggle .arrow,#cs-btn,#cs-panel{display:none !important;}
     body{background:#fff;}
     .wrap{padding:0;max-width:none;}
     .panel{border-radius:0;margin:0;box-shadow:none;}
     .toolbar,.c-foot .more{display:none !important;}
     .grid{display:block;}
-    body.printing .dev:not(.print-target),body.printing .panel-head{display:none;}
-    .dev{border-radius:0;box-shadow:none;}
-    .dev.open .card-main{grid-template-columns:200px 1fr;}
+    body.printing .wrap,body.printing dialog{display:none !important;}
+    body.printing #printArea{display:block;}
+    #printArea .d-hero{grid-template-columns:200px 1fr;}
     .badge{border:1px solid #999;}
     .a-box{border:1px solid #999;}
     .a-item{break-inside:avoid;}
@@ -177,8 +191,14 @@
     header h1{font-size:28px;}
     .form-grid{grid-template-columns:1fr;}
     .grid{grid-template-columns:1fr;}
-    .dev.open .card-main{grid-template-columns:1fr;}
-    .dev.open .media{aspect-ratio:16/10;min-height:0;}
+    dialog.sheet{width:100%;max-height:92vh;max-height:92dvh;margin:auto 0 0;border-radius:var(--r-l) var(--r-l) 0 0;}
+    dialog.sheet[open]{animation-name:sheet-up;}
+    .sheet-body{padding:16px 16px 28px;}
+    .sheet .form-grid{grid-template-columns:1fr;}
+    .d-hero{grid-template-columns:1fr;gap:12px;}
+    .d-hero .media{aspect-ratio:auto;height:170px;}
+    .d-hero .d-name{font-size:21px;}
+    .fab{right:14px;}
     .c-groups{grid-template-columns:1fr;}
     .d-name{font-size:19px;}
     .stat{padding:12px 12px;}
@@ -211,10 +231,41 @@
     <div class="stat overdue"><div class="num" id="stOver">0</div><div class="label">保証切れ</div></div>
   </div>
 
-  <div class="panel">
-    <details class="add" id="addPanel">
-      <summary id="formTitle">iPadを登録する</summary>
-      <div class="panel-body">
+  <div class="toolbar no-print">
+    <div class="seg" id="fltSeg" role="group" aria-label="状態で絞り込み"></div>
+    <label class="search"><span aria-hidden="true">🔍</span><input id="q" type="search" placeholder="呼び名・型番・場所で検索" aria-label="検索"></label>
+    <label class="sort">並び順
+      <select id="sortSel"><option value="warranty">保証が近い順</option><option value="name">呼び名順</option><option value="added">登録順</option></select>
+    </label>
+  </div>
+  <div id="list" class="grid"></div>
+
+  <div class="panel no-print">
+    <div class="panel-head"><h2>バックアップ</h2></div>
+    <div class="panel-body">
+      <div class="io-row">
+        <button type="button" class="ghost small" id="btnExport">書き出す（JSON）</button>
+        <label>読み込む：<input type="file" id="fImport" accept="application/json"></label>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<button type="button" class="fab no-print" id="btnNew" aria-label="iPadを登録する">＋</button>
+
+<dialog class="sheet" id="detailSheet" aria-label="iPadの詳細">
+  <div class="sheet-bar"><span style="width:64px"></span><strong>iPadの詳細</strong><button type="button" class="ghost small" data-act="close">閉じる</button></div>
+  <div class="sheet-body" id="detailBody"></div>
+</dialog>
+
+<dialog class="sheet" id="formSheet" aria-label="iPadの登録・編集">
+  <div class="sheet-bar">
+    <button type="button" class="ghost small" id="btnCancel">キャンセル</button>
+    <strong id="formTitle">iPadを登録する</strong>
+    <button type="button" class="small" id="btnSave">登録する</button>
+  </div>
+  <div class="sheet-body">
         <div class="img-pick">
           <img id="imgPrev" alt="" style="display:none">
           <input type="file" id="fImage" accept="image/*" style="width:auto">
@@ -268,34 +319,10 @@
         <div class="form-grid">
           <label class="f w3">メモ（改行できます）<textarea id="fNote" rows="3" maxlength="500"></textarea></label>
         </div>
-
-        <div class="form-actions">
-          <button type="button" id="btnSave">登録する</button>
-          <button type="button" class="ghost" id="btnCancel" style="display:none">編集をやめる</button>
-        </div>
-      </div>
-    </details>
   </div>
+</dialog>
 
-  <div class="toolbar no-print">
-    <div class="seg" id="fltSeg" role="group" aria-label="状態で絞り込み"></div>
-    <label class="search"><span aria-hidden="true">🔍</span><input id="q" type="search" placeholder="呼び名・型番・場所で検索" aria-label="検索"></label>
-    <label class="sort">並び順
-      <select id="sortSel"><option value="warranty">保証が近い順</option><option value="name">呼び名順</option><option value="added">登録順</option></select>
-    </label>
-  </div>
-  <div id="list" class="grid"></div>
-
-  <div class="panel no-print">
-    <div class="panel-head"><h2>バックアップ</h2></div>
-    <div class="panel-body">
-      <div class="io-row">
-        <button type="button" class="ghost small" id="btnExport">書き出す（JSON）</button>
-        <label>読み込む：<input type="file" id="fImport" accept="application/json"></label>
-      </div>
-    </div>
-  </div>
-</div>
+<div id="printArea"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="cloud-sync.js"></script>
@@ -322,7 +349,8 @@
   })();
   function saveView(){try{localStorage.setItem(VIEW_KEY,JSON.stringify(view));}catch(e){}}
   var query='';      // 検索語
-  var openD={};      // 詳細を開いているiPadのID
+  var curId=null;    // 詳細シートで開いているiPadのID
+  var backTo=null;   // 編集を終えたあとに詳細へ戻るiPadのID
   var FILTERS=[['all','すべて'],['使用中','使用中'],['予備','予備'],['other','その他']];
   function inFilter(v,f){
     if(f==='all')return true;
@@ -401,9 +429,19 @@
     $('fImage').value='';showImg();
     $('formTitle').textContent='iPadを登録する';
     $('btnSave').textContent='登録する';
-    $('btnCancel').style.display='none';
   }
-  $('btnCancel').onclick=function(){resetForm();$('addPanel').open=false;};
+  // 登録・編集シートの開閉（閉じたら入力を空に戻し、編集だった場合は詳細へ戻る）
+  function openForm(){
+    resetForm();backTo=null;
+    $('formSheet').showModal();
+    $('formSheet').querySelector('.sheet-body').scrollTop=0;
+  }
+  $('btnNew').onclick=openForm;
+  $('btnCancel').onclick=function(){$('formSheet').close();};
+  $('formSheet').addEventListener('close',function(){
+    var b=backTo;backTo=null;resetForm();
+    if(b&&find(b))openDetail(b);
+  });
 
   $('btnSave').onclick=function(){
     var name=$('fName').value.trim();
@@ -414,7 +452,7 @@
     }
     FIELDS.forEach(function(p){v[p[1]]=$(p[0]).value.trim();});
     v.image=imgData;
-    save();resetForm();$('addPanel').open=false;render();
+    save();render();$('formSheet').close();
   };
 
   function find(id){
@@ -429,9 +467,10 @@
     showImg();
     $('formTitle').textContent='iPadを編集する';
     $('btnSave').textContent='保存する';
-    $('btnCancel').style.display='inline-block';
-    $('addPanel').open=true;
-    $('addPanel').scrollIntoView({behavior:'smooth',block:'start'});
+    backTo=id;
+    if($('detailSheet').open)$('detailSheet').close();
+    $('formSheet').showModal();
+    $('formSheet').querySelector('.sheet-body').scrollTop=0;
   }
 
   // 保証の状態（売却済みは対象外）
@@ -441,6 +480,7 @@
   }
 
   function render(){
+    renderDetail();
     $('today').textContent=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
     var soon=0,over=0;
     data.devices.forEach(function(v){
@@ -461,7 +501,7 @@
     $('sortSel').value=view.sort;
 
     if(!data.devices.length){
-      $('list').innerHTML='<div class="empty">まだiPadが登録されていません。上の「iPadを登録する」から追加してください。</div>';
+      $('list').innerHTML='<div class="empty">まだiPadが登録されていません。<br><button type="button" class="small" data-act="new">iPadを登録する</button></div>';
       return;
     }
     var list=data.devices.filter(function(v){
@@ -486,42 +526,64 @@
 
   function row(k,val){return val?'<div class="kv"><span class="k">'+k+'</span><span class="v">'+esc(val)+'</span></div>':'';}
 
-  function deviceHtml(v){
-    var n=warrantyOf(v),badge,open=!!openD[v.id];
-    if(n!==null){
-      badge='<span class="badge '+level(n)+'">'+(v.care==='加入'?'AppleCare+ ':'保証 ')+'：'+leftText(n)+'</span>';
-    }else if(v.status==='売却済み'){
-      badge='<span class="badge none">売却済み</span>';
-    }else{
-      badge='<span class="badge none">保証期限の登録なし</span>';
-    }
-    var chips=[v.model,v.gen,v.capacity,v.color,v.network].filter(Boolean).map(function(c){return '<span class="chip">'+esc(c)+'</span>';}).join('');
-    var using=(v.accessories||[]).filter(function(a){return a.status==='使用中';}).length;
-    var media=v.image?'<img src="'+v.image+'" alt="">':'<span aria-hidden="true">📱</span>';
-    var h='<div class="dev'+(open?' open':'')+'" data-did="'+v.id+'">'
-      +'<div class="card-main" role="button" tabindex="0" data-toggle="'+v.id+'" aria-expanded="'+open+'">'
-      +'<div class="media">'+media+'<span class="tag">'+esc(v.status||'')+'</span></div>'
-      +'<div class="c-body"><div class="d-name">'+esc(v.name)+'</div>'
-      +(chips?'<div class="chips">'+chips+'</div>':'')
-      +'<div>'+badge+'</div>'
-      +'<div class="c-foot"><span>'+esc(v.place||'')+(using?(v.place?'　':'')+'🎒 '+using+'点':'')+'</span><span class="more">'+(open?'閉じる ▴':'詳細 ▾')+'</span></div>'
-      +'</div></div>';
-    if(open){
-      h+='<div class="c-detail"><div class="c-groups">'
-        +'<div class="group"><h3>端末</h3>'
-        +row('状態',v.status)+row('回線',v.network)+row('置き場所・用途',v.place)
-        +row('型番',v.modelNo)+row('シリアル番号',v.serial)+row('iPadOS',v.os)+'</div>'
-        +'<div class="group"><h3>購入・保証</h3>'
-        +row('購入日',v.buyDate)+row('購入店',v.shop)+row('金額',v.price?Number(v.price).toLocaleString()+'円':'')
-        +row('保証期限',v.warranty)+row('AppleCare+',v.care)+'</div></div>'
-        +(v.note?'<div class="d-note">'+esc(v.note)+'</div>':'')
-        +'<div class="d-actions"><button class="small" data-act="edit" data-d="'+v.id+'">編集</button>'
-        +'<button class="ghost small" data-act="print" data-d="'+v.id+'">この端末を印刷</button>'
-        +'<button class="small danger" data-act="del" data-d="'+v.id+'">削除</button></div>'
-        +accHtml(v)+'</div>';
-    }
-    return h+'</div>';
+  function badgeOf(v){
+    var n=warrantyOf(v);
+    if(n!==null)return '<span class="badge '+level(n)+'">'+(v.care==='加入'?'AppleCare+ ':'保証 ')+'：'+leftText(n)+'</span>';
+    if(v.status==='売却済み')return '<span class="badge none">売却済み</span>';
+    return '<span class="badge none">保証期限の登録なし</span>';
   }
+  function chipsOf(v){
+    var c=[v.model,v.gen,v.capacity,v.color,v.network].filter(Boolean).map(function(c){return '<span class="chip">'+esc(c)+'</span>';}).join('');
+    return c?'<div class="chips">'+c+'</div>':'';
+  }
+  function mediaOf(v){return v.image?'<img src="'+v.image+'" alt="">':'<span aria-hidden="true">📱</span>';}
+
+  // 一覧のカード（押すと詳細シートが開く）
+  function deviceHtml(v){
+    var using=(v.accessories||[]).filter(function(a){return a.status==='使用中';}).length;
+    return '<div class="dev" data-did="'+v.id+'">'
+      +'<div class="card-main" role="button" tabindex="0" data-open="'+v.id+'">'
+      +'<div class="media">'+mediaOf(v)+'<span class="tag">'+esc(v.status||'')+'</span></div>'
+      +'<div class="c-body"><div class="d-name">'+esc(v.name)+'</div>'
+      +chipsOf(v)
+      +'<div>'+badgeOf(v)+'</div>'
+      +'<div class="c-foot"><span>'+esc(v.place||'')+(using?(v.place?'　':'')+'🎒 '+using+'点':'')+'</span><span class="more">詳細 ›</span></div>'
+      +'</div></div></div>';
+  }
+
+  // 詳細シートの中身（forPrint=true のときは操作ボタンを出さない）
+  function detailHtml(v,forPrint){
+    return '<div class="d-hero"><div class="media">'+mediaOf(v)+'</div>'
+      +'<div><div class="d-name">'+esc(v.name)+'</div>'+chipsOf(v)+'<div>'+badgeOf(v)+'</div></div></div>'
+      +'<div class="c-groups">'
+      +'<div class="group"><h3>端末</h3>'
+      +row('状態',v.status)+row('回線',v.network)+row('置き場所・用途',v.place)
+      +row('型番',v.modelNo)+row('シリアル番号',v.serial)+row('iPadOS',v.os)+'</div>'
+      +'<div class="group"><h3>購入・保証</h3>'
+      +row('購入日',v.buyDate)+row('購入店',v.shop)+row('金額',v.price?Number(v.price).toLocaleString()+'円':'')
+      +row('保証期限',v.warranty)+row('AppleCare+',v.care)+'</div></div>'
+      +(v.note?'<div class="d-note">'+esc(v.note)+'</div>':'')
+      +(forPrint?'':'<div class="d-actions"><button class="small" data-act="edit" data-d="'+v.id+'">編集</button>'
+        +'<button class="ghost small" data-act="print" data-d="'+v.id+'">この端末を印刷</button>'
+        +'<button class="small danger" data-act="del" data-d="'+v.id+'">削除</button></div>')
+      +accHtml(v,forPrint);
+  }
+
+  // 詳細シートの開閉・更新
+  function renderDetail(){
+    if(!curId||!$('detailSheet').open)return;
+    var v=find(curId);
+    if(!v){$('detailSheet').close();return;}
+    $('detailBody').innerHTML=detailHtml(v);
+  }
+  function openDetail(id){
+    curId=id;
+    var first=!$('detailSheet').open;
+    if(first)$('detailSheet').showModal();
+    renderDetail();
+    if(first)$('detailBody').scrollTop=0;
+  }
+  $('detailSheet').addEventListener('close',function(){curId=null;});
 
   function findA(v,id){
     var a=v.accessories||[];
@@ -530,7 +592,7 @@
   }
 
   // アクセサリー（使用中のものを先に、あとは購入日の新しい順）
-  function accHtml(v){
+  function accHtml(v,forPrint){
     var all=(v.accessories||[]).slice().sort(function(a,b){
       var ra=a.status==='使用中'?0:1,rb=b.status==='使用中'?0:1;
       if(ra!==rb)return ra-rb;
@@ -538,12 +600,13 @@
     });
     var using=all.filter(function(a){return a.status==='使用中';});
     var total=using.reduce(function(s,a){return s+(Number(a.price)||0);},0);
-    var folded=!!collA[v.id];
+    var folded=!forPrint&&!!collA[v.id];
     var h='<div class="a-box"><div class="a-head"><button type="button" class="a-toggle" data-act="atoggle" data-d="'+v.id+'" aria-expanded="'+(!folded)+'">'
       +'<span class="arrow">'+(folded?'▶':'▼')+'</span> 🎒 アクセサリー'
       +(all.length?'<span class="a-brief">使用中 '+using.length+'点・'+total.toLocaleString()+'円</span>':'')+'</button>'
       +'<button class="small" data-act="aadd" data-d="'+v.id+'">＋ 追加</button></div>';
     if(folded)return h+'</div>';
+    if(forPrint&&!all.length)return h+'</div>';
     if(!all.length&&!openA[v.id])h+='<div class="a-sub" style="margin-top:8px">まだアクセサリーがありません。「追加」から登録してください。</div>';
     h+='<ul class="a-list">'+all.map(function(a){
       var sub=[a.modelNo?'型番 '+a.modelNo:'',a.buyDate?'購入 '+a.buyDate:''].filter(Boolean).join(' ・ ');
@@ -555,7 +618,7 @@
         +'</div><div class="a-btns"><button class="ghost small" data-act="aedit" data-d="'+v.id+'" data-a="'+a.id+'">編集</button>'
         +'<button class="ghost small danger" data-act="adel" data-d="'+v.id+'" data-a="'+a.id+'">削除</button></div></li>';
     }).join('')+'</ul>';
-    if(openA[v.id]){
+    if(!forPrint&&openA[v.id]){
       var oa=openA[v.id]===true?null:findA(v,openA[v.id]);
       var g=function(k){return oa&&oa[k]!=null?esc(oa[k]):'';};
       var tOpts=ATYPES.map(function(t){return '<option'+(oa&&oa.type===t?' selected':'')+'>'+t+'</option>';}).join('');
@@ -574,16 +637,10 @@
     return h+'</div>';
   }
 
-  // カードの開閉
-  function toggleCard(id){
-    openD[id]=!openD[id];
-    render();
-    var el=document.querySelector('[data-toggle="'+id+'"]');if(el)el.focus();
-  }
   $('list').onkeydown=function(e){
     if(e.key!=='Enter'&&e.key!==' ')return;
     var c=e.target.closest('.card-main');
-    if(c&&e.target===c){e.preventDefault();toggleCard(c.dataset.toggle);}
+    if(c&&e.target===c){e.preventDefault();openDetail(c.dataset.open);}
   };
   // 絞り込み・検索・並び替え
   $('fltSeg').onclick=function(e){
@@ -593,25 +650,25 @@
   $('q').oninput=function(){query=this.value.trim();render();};
   $('sortSel').onchange=function(){view.sort=this.value;saveView();render();};
 
-  $('list').onclick=function(e){
-    var card=e.target.closest('.card-main');
-    if(card){toggleCard(card.dataset.toggle);return;}
+  // 一覧・詳細シートのボタン操作
+  function onAct(e){
     var b=e.target.closest('button[data-act]');if(!b)return;
-    var v=find(b.dataset.d);if(!v)return;
     var act=b.dataset.act;
+    if(act==='new'){openForm();return;}
+    if(act==='close'){$('detailSheet').close();return;}
+    var v=find(b.dataset.d);if(!v)return;
     if(act==='edit'){startEdit(v.id);return;}
     if(act==='print'){
       // アクセサリーを開いた状態で、この1台だけを印刷する
-      collA[v.id]=false;openD[v.id]=true;render();
+      $('printArea').innerHTML=detailHtml(v,true);
       document.body.classList.add('printing');
-      document.querySelector('[data-did="'+v.id+'"]').classList.add('print-target');
       window.print();
       return;
     }
     if(act==='del'){
       if(confirm('「'+v.name+'」を削除しますか？アクセサリーの記録も消えます。')){
         data.devices=data.devices.filter(function(x){return x.id!==v.id;});
-        delete openD[v.id];
+        $('detailSheet').close();
         save();render();
       }
       return;
@@ -645,6 +702,15 @@
       else{rec.id=uid();(v.accessories=v.accessories||[]).push(rec);}
       delete openA[v.id];save();render();
     }
+  }
+  $('list').onclick=function(e){
+    var card=e.target.closest('.card-main');
+    if(card){openDetail(card.dataset.open);return;}
+    onAct(e);
+  };
+  $('detailSheet').onclick=function(e){
+    if(e.target===this){this.close();return;}   // 外側（背景）を押したら閉じる
+    onAct(e);
   };
 
   // バックアップ
@@ -673,7 +739,7 @@
   // 印刷が終わったら通常表示に戻す
   window.addEventListener('afterprint',function(){
     document.body.classList.remove('printing');
-    var t=document.querySelector('.print-target');if(t)t.classList.remove('print-target');
+    $('printArea').innerHTML='';
   });
 
   // ダークモード切り替え（自動 → ダーク → ライト）
