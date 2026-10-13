@@ -9,359 +9,369 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
 </script>
 <style>
   :root{
-    --paper: #f6f4ec;
-    --ink: #23261f;
-    --ink-soft: #5a5c50;
-    --rule: #cfc9b4;
-    --stamp-red: #a8382b;
-    --stamp-red-bg: #f4e3df;
-    --sage: #526b4e;
-    --sage-bg: #e6ebe0;
-    --amber: #a1731f;
-    --amber-bg: #f2e6cf;
-    --blue: #38587f;
-    --blue-bg: #e2e8ee;
-    --card: #fffdf7;
-    --shadow: 0 1px 0 rgba(35,38,31,0.06);
+    --paper:#f4f5f2;
+    --surface:#ffffff;
+    --surface-2:#eceee9;
+    --ink:#1d2420;
+    --ink-soft:#5b655f;
+    --line:#d9ddd6;
+    --accent:#2f6f5e;
+    --accent-ink:#ffffff;
+    --ok:#226b3f;--ok-bg:#e1f1e7;
+    --info:#2b5f8e;--info-bg:#e1ebf4;
+    --warn:#7a4e00;--warn-bg:#fbebcc;
+    --danger:#b3261e;--danger-bg:#fbe3e0;
+    --shadow:0 1px 2px rgba(20,30,25,.06),0 4px 14px rgba(20,30,25,.06);
+    --shadow-pop:0 10px 30px rgba(20,30,25,.22);
+    --r:14px;
+    --r-sm:10px;
+    --font:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Noto Sans JP",Meiryo,sans-serif;
+    --font-serif:"Iowan Old Style","Noto Serif JP","Hiragino Mincho ProN","Yu Mincho",Georgia,serif;
+  }
+  @media screen and (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#121513;--surface:#1b1f1c;--surface-2:#252a26;--ink:#e7ebe6;--ink-soft:#a3aca5;--line:#343b36;
+      --accent:#7cc4a8;--accent-ink:#0f1a15;
+      --ok:#7fd1a0;--ok-bg:#1d3326;--info:#8fb8e8;--info-bg:#1d2b3a;--warn:#f0b955;--warn-bg:#3a2c0e;--danger:#ff8a80;--danger-bg:#3e1d1a;
+      --shadow:none;--shadow-pop:0 10px 30px rgba(0,0,0,.5);color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#121513;--surface:#1b1f1c;--surface-2:#252a26;--ink:#e7ebe6;--ink-soft:#a3aca5;--line:#343b36;
+    --accent:#7cc4a8;--accent-ink:#0f1a15;
+    --ok:#7fd1a0;--ok-bg:#1d3326;--info:#8fb8e8;--info-bg:#1d2b3a;--warn:#f0b955;--warn-bg:#3a2c0e;--danger:#ff8a80;--danger-bg:#3e1d1a;
+    --shadow:none;--shadow-pop:0 10px 30px rgba(0,0,0,.5);color-scheme:dark;
   }
   *{box-sizing:border-box;}
-  body{
-    margin:0;
-    background:var(--paper);
-    color:var(--ink);
-    font-family: "Iowan Old Style","Noto Serif JP", Georgia, serif;
-    line-height:1.6;
-    min-height:100vh;
-    padding: 0 0 60px 0;
-  }
-  .sans{ font-family: -apple-system, "Hiragino Kaku Gothic ProN", sans-serif; }
-  .wrap{max-width:960px;margin:0 auto;padding:36px 24px;}
+  [hidden]{display:none !important;}
+  html{-webkit-text-size-adjust:100%;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);line-height:1.6;min-height:100vh;
+    padding:0 0 calc(96px + env(safe-area-inset-bottom,0px));font-variant-numeric:tabular-nums;}
+  h1,h2,h3,p{margin:0;}
+  button,input,select{font:inherit;color:inherit;}
+  .wrap{max-width:880px;margin:0 auto;padding:24px 20px;}
 
-  header{
-    display:flex;justify-content:space-between;align-items:flex-end;
-    border-bottom:2px solid var(--ink);
-    padding-bottom:14px;margin-bottom:28px;background:var(--paper);
-    gap:16px;flex-wrap:wrap;
-  }
-  header h1{font-size:28px;letter-spacing:0.04em;margin:0;font-weight:600;}
-  header .sub{font-size:12px;color:var(--ink-soft);margin-top:4px;}
-  .head-right{text-align:right;}
-  .date-today{font-size:13px;color:var(--ink-soft);}
-  .export-btn{margin-top:8px;}
+  /* ===== 共通部品 ===== */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 18px;border-radius:999px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+  .btn.danger{background:var(--danger);border-color:var(--danger);color:#fff;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  @media (hover:hover){ .btn:not(.primary):not(.danger):not(:disabled):hover{background:var(--surface-2);} }
+  .icon-btn{width:44px;height:44px;flex:none;border-radius:50%;border:1px solid var(--line);background:var(--surface);cursor:pointer;display:grid;place-items:center;color:var(--ink-soft);}
+  @media (hover:hover){ .icon-btn:hover{background:var(--surface-2);color:var(--ink);} }
+  .icon-btn[aria-expanded="true"]{background:var(--surface-2);color:var(--ink);}
+  button:focus-visible,input:focus-visible,select:focus-visible,.menu-item:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 60%,transparent);outline-offset:2px;}
+  .field,.fld input:not([type=file]):not([type=checkbox]),.fld select{width:100%;min-height:46px;padding:10px 12px;font-size:16px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);}
+  .fld{display:grid;gap:6px;margin-top:14px;font-size:13px;font-weight:600;color:var(--ink-soft);}
+  .fld input[type=file]{font-size:13px;font-weight:400;}
+  .fld.check{display:flex;align-items:center;gap:8px;font-weight:400;}
+  .row{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .hint{font-size:12.5px;color:var(--ink-soft);margin-top:10px;}
+  .status{font-size:13px;color:var(--ok);margin-top:8px;min-height:1.4em;}
+  .status.error{color:var(--danger);}
 
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--ink);border:1px solid var(--ink);margin-bottom:28px;}
-  .stat{background:var(--card);padding:8px 14px;text-align:left;}
-  .stat .num{font-size:20px;font-weight:600;line-height:1.3;}
-  .stat .label{font-size:11px;color:var(--ink-soft);margin-top:0;}
-  .stat.overdue .num{color:var(--stamp-red);}
-  .stat.soon .num{color:var(--amber);}
+  /* ===== ヘッダー・数字 ===== */
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;}
+  .top h1{font-family:var(--font-serif);font-size:26px;font-weight:600;letter-spacing:.04em;line-height:1.3;}
+  .top .sub{font-size:12.5px;color:var(--ink-soft);}
+  .top-act{display:flex;gap:8px;align-items:center;}
+  .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:18px;}
+  .stat{appearance:none;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:10px 12px;cursor:pointer;min-height:64px;}
+  .stat .num{display:block;font-size:22px;font-weight:700;line-height:1.2;}
+  .stat .label{display:block;font-size:11.5px;color:var(--ink-soft);}
+  .stat.on{outline:2px solid var(--accent);outline-offset:-1px;}
+  .stat.soon.hot{border-color:var(--warn);background:var(--warn-bg);}
+  .stat.soon.hot .num{color:var(--warn);}
+  .stat.overdue.hot{border-color:var(--danger);background:var(--danger-bg);}
+  .stat.overdue.hot .num{color:var(--danger);}
 
-  .panel{background:var(--card);border:1px solid var(--rule);box-shadow:var(--shadow);margin-bottom:24px;}
-  .panel-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--rule);flex-wrap:wrap;gap:10px;}
-  .panel-head h2{font-size:16px;margin:0;letter-spacing:0.02em;}
-  .panel-body{padding:18px;}
+  /* ===== タブ・絞り込み ===== */
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tabs button{flex:none;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;cursor:pointer;white-space:nowrap;}
+  .tabs button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
+  .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+  .filters .field{flex:1 1 220px;min-width:0;}
+  .filters .btn{flex:none;}
+  .scan-box{display:none;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;}
+  .scan-box video{max-width:320px;width:100%;background:#000;border-radius:var(--r-sm);}
 
-  button{font-family: -apple-system, "Hiragino Kaku Gothic ProN", sans-serif;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:8px 16px;font-size:13px;border-radius:2px;transition:transform .08s ease;}
-  button:hover{transform:translateY(-1px);}
-  button:active{transform:translateY(0);}
-  button.ghost{background:transparent;color:var(--ink);}
-  button.small{padding:5px 11px;font-size:12px;}
-  button:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
-  button:focus-visible, input:focus-visible, select:focus-visible{outline:2px solid var(--stamp-red);outline-offset:1px;}
-
-  form.add-form{display:grid;grid-template-columns: 1.6fr 1fr 1.2fr auto;gap:10px;}
-  .option-row{display:grid;grid-template-columns: 1.6fr 1fr 1.2fr;gap:10px;margin-bottom:10px;}
-  .csv-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-  .csv-row input[type=file]{font-size:13px;}
-  .import-label{font-size:13px;color:var(--ink-soft);}
-  .csv-hint{font-size:12px;color:var(--ink-soft);margin-top:8px;}
-  .csv-status{font-size:12.5px;color:var(--sage);margin-top:8px;min-height:1.4em;}
-  .csv-status.error{color:var(--stamp-red);}
-  @media (max-width:640px){ .option-row{grid-template-columns:1fr;} }
-  input, select{font-family: -apple-system, "Hiragino Kaku Gothic ProN", sans-serif;font-size:14px;padding:9px 10px;border:1px solid var(--rule);background:#fff;color:var(--ink);border-radius:2px;}
-
-  .tabs{display:flex;gap:2px;font-size:13px;flex-wrap:wrap;}
-  .tabs button{background:transparent;color:var(--ink-soft);border:1px solid transparent;border-bottom:2px solid transparent;}
-  .tabs button.active{color:var(--ink);border-bottom:2px solid var(--ink);font-weight:600;}
-
-  .filters{padding: 0 18px 14px 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
-  .filters input[type=text]{flex:1;min-width:180px;}
-  .tag-chip{font-family:inherit;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;padding:3px 10px;border-radius:20px;border:1px solid var(--rule);color:var(--ink-soft);background:#fff;cursor:pointer;}
-  .tag-chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
-
-  ul.item-list{list-style:none;margin:0;padding:0;}
-  li.item{display:grid;grid-template-columns: 90px 1fr auto;gap:14px;align-items:start;padding:14px 18px;border-top:1px solid var(--rule);}
-  li.item:first-child{border-top:none;}
-  .code{font-size:12px;color:var(--ink-soft);letter-spacing:0.03em;padding-top:3px;}
-  .item-name{font-size:16px;font-weight:600;}
-  .item-meta{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  /* ===== 一覧 ===== */
+  ul.item-list{list-style:none;margin:0;padding:0;display:grid;gap:10px;}
+  li.item{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:8px 14px;align-items:start;padding:14px;background:var(--surface);
+    border:1px solid var(--line);border-left:4px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);}
+  li.item.st-available{border-left-color:var(--ok);}
+  li.item.st-loaned{border-left-color:var(--info);}
+  li.item.st-soon{border-left-color:var(--warn);}
+  li.item.st-overdue{border-left-color:var(--danger);}
+  li.item.st-repair,li.item.st-trash{border-left-color:var(--ink-soft);}
+  .thumb{display:block;width:64px;height:64px;border-radius:12px;object-fit:cover;background:var(--surface-2);border:1px solid var(--line);}
+  .thumb.ph{display:grid;place-items:center;font-size:22px;font-weight:700;color:var(--ink-soft);}
+  .thumb.dim{opacity:.55;}
+  .item-main{min-width:0;}
+  .item-name{font-size:16px;font-weight:700;line-height:1.4;overflow-wrap:anywhere;}
+  .item-sub{font-size:12.5px;color:var(--ink-soft);}
   .item-tags{margin-top:6px;display:flex;gap:5px;flex-wrap:wrap;}
-  .pill{font-size:11px;padding:1px 8px;border-radius:12px;background:var(--paper);border:1px solid var(--rule);color:var(--ink-soft);}
-
-  .badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:20px;margin-right:6px;}
-  .badge.available{background:var(--sage-bg);color:var(--sage);}
-  .badge.loaned{background:var(--blue-bg);color:var(--blue);}
-  .badge.soon{background:var(--amber-bg);color:var(--amber);}
-  .badge.overdue{background:var(--stamp-red-bg);color:var(--stamp-red);}
-
-  .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
-
-  .loan-form{display:grid;grid-template-columns: 1.1fr 1fr 1fr auto auto;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--rule);align-items:center;}
-  .borrower-cell{display:flex;flex-direction:column;gap:4px;}
-  .borrower-cell select{font-size:12px;padding:5px 8px;}
-  .edit-loan-form{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px dashed var(--rule);}
-  .edit-loan-form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-soft);}
-  .edit-loan-form input{margin-top:2px;}
-
-  .loan-bar{margin-top:8px;max-width:420px;}
-  .loan-bar-track{height:8px;background:var(--paper);border:1px solid var(--rule);border-radius:4px;overflow:hidden;}
-  .loan-bar-fill{height:100%;}
-  .loan-bar-fill.loaned{background:var(--blue);}
-  .loan-bar-fill.soon{background:var(--amber);}
-  .loan-bar-fill.overdue{background:var(--stamp-red);}
+  .pill{font-size:11.5px;padding:1px 9px;border-radius:999px;background:var(--surface-2);color:var(--ink-soft);}
+  .badge{display:inline-block;font-size:12px;font-weight:600;padding:1px 10px;border-radius:999px;margin-bottom:4px;}
+  .badge.available{background:var(--ok-bg);color:var(--ok);}
+  .badge.loaned{background:var(--info-bg);color:var(--info);}
+  .badge.soon{background:var(--warn-bg);color:var(--warn);}
+  .badge.overdue{background:var(--danger-bg);color:var(--danger);}
+  .badge.repair,.badge.trash{background:var(--surface-2);color:var(--ink-soft);}
+  .loan-who{margin-top:8px;font-size:14px;}
+  .loan-who em{font-style:normal;font-size:11.5px;color:var(--ink-soft);margin-right:6px;}
+  .loan-bar{margin-top:6px;max-width:420px;}
+  .loan-bar-track{height:6px;background:var(--surface-2);border-radius:4px;overflow:hidden;}
+  .loan-bar-fill{height:100%;border-radius:4px;}
+  .loan-bar-fill.loaned{background:var(--info);}
+  .loan-bar-fill.soon{background:var(--warn);}
+  .loan-bar-fill.overdue{background:var(--danger);}
   .loan-bar-labels{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-soft);margin-top:3px;}
-  .loan-bar-remain{font-weight:600;}
-  .loan-bar-remain.loaned{color:var(--blue);}
-  .loan-bar-remain.soon{color:var(--amber);}
-  .loan-bar-remain.overdue{color:var(--stamp-red);}
+  .loan-bar-remain{font-weight:700;}
+  .loan-bar-remain.loaned{color:var(--info);}
+  .loan-bar-remain.soon{color:var(--warn);}
+  .loan-bar-remain.overdue{color:var(--danger);}
+  .item-act{display:flex;gap:8px;align-items:center;align-self:center;}
+  .empty{padding:36px 12px;text-align:center;color:var(--ink-soft);font-size:14px;}
+  /* カード表示 */
+  ul.item-list.grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));}
+  ul.item-list.grid li.item{grid-template-columns:minmax(0,1fr);border-left-width:1px;border-top:4px solid var(--line);}
+  ul.item-list.grid li.item.st-available{border-top-color:var(--ok);}
+  ul.item-list.grid li.item.st-loaned{border-top-color:var(--info);}
+  ul.item-list.grid li.item.st-soon{border-top-color:var(--warn);}
+  ul.item-list.grid li.item.st-overdue{border-top-color:var(--danger);}
+  ul.item-list.grid .thumb{width:100%;height:auto;aspect-ratio:4/3;}
+  ul.item-list.grid .item-act{align-self:start;}
+  ul.item-list.grid .item-act .btn.primary{flex:1;}
 
-  .qr-box{margin-top:12px;padding-top:12px;border-top:1px dashed var(--rule);display:flex;gap:16px;align-items:center;flex-wrap:wrap;}
-  .qr-box .qr-canvas-wrap{background:#fff;padding:8px;border:1px solid var(--rule);}
-  .qr-box .qr-label{font-size:12px;color:var(--ink-soft);}
+  /* ===== 通知 ===== */
+  .notice{display:none;align-items:flex-start;gap:10px;padding:10px 14px;margin-bottom:14px;border:1px solid var(--warn);border-radius:var(--r-sm);background:var(--warn-bg);color:var(--ink);font-size:13.5px;}
+  .notice.error{border-color:var(--danger);background:var(--danger-bg);color:var(--ink);}
+  .notice span{flex:1;}
+  .notice button{appearance:none;border:none;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--ink-soft);min-width:32px;min-height:32px;}
+  .toast{position:fixed;inset:auto auto calc(24px + env(safe-area-inset-bottom,0px)) 50%;margin:0;transform:translateX(-50%);z-index:100000;
+    max-width:calc(100vw - 32px);width:max-content;display:flex;align-items:center;gap:14px;padding:10px 14px 10px 18px;border:none;border-radius:14px;
+    background:var(--ink);color:var(--paper);font-size:14px;font-weight:600;box-shadow:var(--shadow-pop);}
+  .toast.off{display:none;}
+  .toast.error{background:var(--danger);color:#fff;}
+  .toast-act{appearance:none;min-height:36px;padding:0 12px;border:1px solid currentColor;border-radius:10px;background:none;color:inherit;font-weight:700;cursor:pointer;flex:none;}
 
-  .history-list{margin:0;padding:0;list-style:none;}
-  .history-list li{padding:8px 0;border-top:1px solid var(--rule);font-size:12.5px;color:var(--ink-soft);}
+  /* ===== メニュー・シート ===== */
+  .menu{position:fixed;z-index:60;min-width:200px;max-width:min(300px,calc(100vw - 16px));padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-pop);}
+  .menu-item{appearance:none;display:block;width:100%;min-height:44px;padding:0 14px;border:none;border-radius:10px;background:none;text-align:left;font-size:15px;cursor:pointer;}
+  .menu-item:hover,.menu-item:focus-visible{background:var(--surface-2);}
+  .menu-item.danger{color:var(--danger);}
+  dialog.sheet{width:min(520px,calc(100vw - 32px));max-height:90dvh;overflow:auto;border:1px solid var(--line);border-radius:22px;padding:22px;background:var(--surface);color:var(--ink);box-shadow:var(--shadow-pop);}
+  dialog.sheet::backdrop{background:rgba(10,14,12,.5);}
+  dialog.sheet h3{font-size:18px;}
+  .sheet-sub{font-size:12.5px;color:var(--ink-soft);margin-top:2px;overflow-wrap:anywhere;}
+  .sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .sec{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);}
+  .sec:first-of-type{border-top:none;padding-top:0;margin-top:10px;}
+  .sec h4{margin:0 0 8px;font-size:14px;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+  #tagChips{display:flex;flex-wrap:wrap;gap:6px;}
+  .fld-tags:has(#tagChips:empty){display:none;}
+  .tag-chip{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;cursor:pointer;}
+  .tag-chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .option-row{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px;}
+  .option-row select{min-height:44px;padding:8px 10px;font-size:15px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);}
+  .qr-box{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:14px;}
+  .qr-box .qr-canvas-wrap{background:#fff;padding:8px;border:1px solid var(--line);border-radius:var(--r-sm);}
+  .qr-label{font-size:13px;color:var(--ink-soft);}
+  .history-list{margin:12px 0 0;padding:0;list-style:none;}
+  .history-list li{padding:10px 0;border-top:1px solid var(--line);font-size:14px;}
   .history-list li:first-child{border-top:none;}
-
-  .notice{display:none;padding:10px 14px;margin-bottom:16px;border:1px solid var(--amber);background:var(--amber-bg);color:var(--ink);font-size:13px;}
-  .notice.error{border-color:var(--stamp-red);background:var(--stamp-red-bg);color:var(--stamp-red);}
-  details.panel > summary{cursor:pointer;padding:14px 18px;font-size:16px;font-weight:600;list-style:none;}
-  details.panel > summary::before{content:"▸ ";}
-  details.panel[open] > summary::before{content:"▾ ";}
-  details.panel[open] > summary{border-bottom:1px solid var(--rule);}
-  .edit-item-form{display:grid;grid-template-columns:1.6fr 1fr 1.2fr auto auto;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--rule);align-items:center;}
-  @media (max-width:640px){ .edit-item-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr);} }
-
-  .soon-setting{font-size:12.5px;color:var(--ink-soft);}
-  .scan-box{padding:0 18px 14px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
-  .empty{padding:36px 18px;text-align:center;color:var(--ink-soft);font-size:14px;}
-
-  footer{text-align:center;font-size:11.5px;color:var(--ink-soft);margin-top:20px;}
+  .history-list .who{font-weight:600;}
+  .history-list .when{display:block;font-size:12.5px;color:var(--ink-soft);}
+  .history-empty{color:var(--ink-soft);font-size:14px;margin-top:14px;}
+  footer{text-align:center;font-size:12px;color:var(--ink-soft);margin-top:24px;}
 
   @media (max-width:640px){
-    form.add-form{grid-template-columns:1fr;}
-    /* 画像・番号を左、バッジと品目名を右に並べ、操作ボタンは下の段いっぱいに置く */
-    li.item{grid-template-columns:auto minmax(0,1fr);}
-    li.item{gap:6px 12px;padding:16px 14px;}
-    li.item > .actions, li.item > .item-panels, li.item > .item-loan{grid-column:1 / -1;}
-    /* 借用者・貸出・期限は横に並べ、入りきらないときだけ折り返す */
-    .item-loan .loan-info{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:0;font-size:14px;}
-    .item-loan .loan-info em{font-size:12px;margin-right:5px;}
-    .code{padding-top:0;}
-    li.item .thumb{width:112px;height:112px;} /* スマホでは画像を大きめに */
-    .loan-form{grid-template-columns:minmax(0,1fr);} /* 借用者・貸出日・期限・ボタンを縦1列に並べる */
-    .loan-form input, .loan-form button, .edit-item-form input, .edit-item-form button{min-width:0;width:100%;box-sizing:border-box;}
-    .stats{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:20px;} /* 4つを1行に並べて小さく */
-    .stat{padding:6px 8px;}
-    .stat .label{font-size:10px;}
-    .wrap{padding:24px 14px;}
-    /* 操作ボタンは3列の格子に並べ、押しやすくする */
-    .actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px;}
-    .actions button{width:100%;padding:8px 4px;}
-    .filters > *{flex:1 1 auto;}
-    .loan-bar{max-width:none;}
+    .wrap{padding:18px 14px;}
+    .top h1{font-size:22px;}
+    li.item{grid-template-columns:56px minmax(0,1fr);}
+    li.item .thumb{width:56px;height:56px;}
+    li.item .item-act{grid-column:1 / -1;align-self:stretch;}
+    li.item .item-act .btn.primary{flex:1;}
+    .stat{padding:8px 10px;min-height:58px;}
+    .stat .num{font-size:19px;}
+    .stat .label{font-size:10.5px;}
+    #addOpenBtn{padding:0 14px;}
+    .filters .field{flex:1 1 100%;}
+    .filters .btn{flex:1;}
+    dialog.sheet{width:100%;max-width:none;margin:auto 0 0;border-radius:22px 22px 0 0;border-bottom:none;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));animation:sheet-in .25s ease both;}
+    dialog.sheet .row .btn{flex:1;}
+    .row2{grid-template-columns:1fr;}
   }
-
-  /* 一覧の見やすさ */
-  .item-name{display:flex;align-items:center;flex-wrap:wrap;gap:6px;line-height:1.4;}
-  .item-name .badge{margin-right:0;}
-  .loan-info{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:4px;color:var(--ink);}
-  .loan-info em{font-style:normal;font-size:11px;color:var(--ink-soft);margin-right:5px;}
-  .code{font-weight:600;}
-  .item-panels, .item-loan{grid-column:2 / -1;min-width:0;}
-  ul.item-list.grid .item-panels, ul.item-list.grid .item-loan{grid-column:1 / -1;}
-  /* PC（リスト表示）: 画像・番号は左、品目名と操作ボタンは1段目、貸出情報とパネルはその下に置く */
-  @media (min-width:641px){
-    ul.item-list:not(.grid) li.item > .code{grid-column:1;grid-row:1 / span 4;}
-    ul.item-list:not(.grid) li.item > .item-loan{grid-column:2 / -1;grid-row:2;}
-    ul.item-list:not(.grid) li.item > .actions{grid-column:2 / -1;grid-row:3;justify-content:flex-start;}
-    ul.item-list:not(.grid) li.item > .item-panels{grid-column:2 / -1;grid-row:4;}
-    ul.item-list:not(.grid) li.item{grid-template-columns:130px 1fr auto;}
-    ul.item-list:not(.grid) li.item .thumb{width:120px;height:120px;}
-    ul.item-list:not(.grid) .item-loan .loan-info{margin-top:0;font-size:15px;}
-  }
-  .item-tags{margin-top:8px;}
-  .filters{padding-top:6px;}
-  .filters > input[type=text]{flex:1 1 100%;}
-  #tagChips{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px;}
-  #tagChips:empty{display:none;}
-  .soon-setting{display:flex;align-items:center;gap:6px;}
-  .scan-box{padding-top:0;}
-
-  /* 画像・表示切替・修理中 */
-  .badge.repair{background:#e7e4da;color:var(--ink-soft);}
-  .thumb{display:block;width:72px;height:72px;object-fit:contain;background:#fff;border:1px solid var(--rule);margin-bottom:6px;}
-  .thumb.dim{opacity:.45;}
-  .thumb-ph{display:none;}
-  .img-field{grid-column:1/-1;font-size:12.5px;color:var(--ink-soft);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
-  ul.item-list.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;padding:14px;}
-  ul.item-list.grid li.item{grid-template-columns:1fr;gap:6px;border:1px solid var(--rule);background:#fff;padding:0 0 12px;align-content:start;}
-  ul.item-list.grid li.item:first-child{border-top:1px solid var(--rule);}
-  ul.item-list.grid li.item > *:not(.code){padding:0 12px;}
-  ul.item-list.grid .code{order:-1;padding:0;}
-  ul.item-list.grid .code span{display:block;padding:6px 12px 0;}
-  ul.item-list.grid .thumb,ul.item-list.grid .thumb-ph{display:block;width:100%;height:auto;aspect-ratio:4/3;margin:0;border:none;border-bottom:1px solid var(--rule);}
-  ul.item-list.grid .thumb-ph{background:var(--paper);}
-  ul.item-list.grid .actions{justify-content:flex-start;}
-  ul.item-list.grid .loan-form,ul.item-list.grid .edit-item-form{grid-template-columns:1fr;}
-
-  .quiet{border-color:var(--rule);color:var(--ink-soft);}
-
-  /* ダークモード */
-  @media (prefers-color-scheme: dark){
-    :root{
-      color-scheme:dark;
-      --paper:#1c1e19; --ink:#e8e6da; --ink-soft:#a5a698; --rule:#3d4036; --card:#24261f;
-      --stamp-red:#e27a6c; --stamp-red-bg:#3a2320; --sage:#98b894; --sage-bg:#26312a;
-      --amber:#e0b35c; --amber-bg:#3a3020; --blue:#8fb0dc; --blue-bg:#232c38;
-    }
-    input,select,.tag-chip,ul.item-list.grid li.item{background:var(--paper);}
-    .tag-chip.active{background:var(--ink);}
-  }
+  @keyframes sheet-in{from{transform:translateY(100%);}to{transform:none;}}
+  @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none !important;transition:none !important;} }
 
   /* 印刷（画面がダークでも紙は明るい配色にする） */
   @media print{
-    :root{
-      color-scheme:light;
-      --paper:#fff; --ink:#000; --ink-soft:#444; --rule:#bbb; --card:#fff;
-      --stamp-red:#a8382b; --stamp-red-bg:#f4e3df; --sage:#526b4e; --sage-bg:#e6ebe0;
-      --amber:#a1731f; --amber-bg:#f2e6cf; --blue:#38587f; --blue-bg:#e2e8ee;
-    }
+    :root{color-scheme:light;--paper:#fff;--surface:#fff;--surface-2:#eee;--ink:#000;--ink-soft:#444;--line:#bbb;
+      --ok:#226b3f;--ok-bg:#e1f1e7;--info:#2b5f8e;--info-bg:#e1ebf4;--warn:#7a4e00;--warn-bg:#fbebcc;--danger:#b3261e;--danger-bg:#fbe3e0;}
     body{padding:0;}
     .wrap{max-width:none;padding:0;}
-    button,.notice,.panel-head,.filters,.scan-box,.actions,details.panel,footer,.panel:has(#addForm),
-    .loan-form,.edit-item-form,.edit-loan-form{display:none !important;}
-    .panel{border:none;box-shadow:none;}
-    li.item{break-inside:avoid;}
+    .top-act,.notice,.filters,.tabs,.scan-box,.item-act,.toast,footer,.stat .label + *{display:none !important;}
+    .stat{cursor:default;}
+    li.item{break-inside:avoid;box-shadow:none;}
     *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   }
 </style>
+<script>
+try{ var t=localStorage.getItem('lending-ledger-theme'); if(t==='light'||t==='dark') document.documentElement.dataset.theme=t; }catch(e){}
+</script>
 </head>
 <body>
 <div class="wrap">
 
-  <header>
+  <header class="top">
     <div>
       <h1>貸出台帳</h1>
-      <div class="sub sans">品目の貸出・返却を記録します</div>
+      <div class="sub">品目の貸出・返却を記録します</div>
     </div>
-    <div class="head-right">
-      <div class="date-today sans" id="todayLabel"></div>
-      <button class="ghost small export-btn sans" id="exportBtn">履歴をCSVで書き出す</button>
+    <div class="top-act">
+      <button type="button" class="btn primary" id="addOpenBtn">＋ 品目を登録</button>
+      <button type="button" class="icon-btn" id="topMenuBtn" aria-label="メニュー" aria-haspopup="menu" aria-expanded="false"></button>
     </div>
   </header>
 
-  <div class="notice sans" id="notice" role="alert"></div>
+  <div class="notice" id="notice" role="alert"><span id="noticeText"></span><button type="button" id="noticeClose" aria-label="閉じる">×</button></div>
   <datalist id="borrowerList"></datalist>
 
-  <div class="stats sans">
-    <div class="stat"><div class="num" id="statTotal">0</div><div class="label">登録品目</div></div>
-    <div class="stat"><div class="num" id="statLoaned">0</div><div class="label">貸出中</div></div>
-    <div class="stat soon"><div class="num" id="statSoon">0</div><div class="label">まもなく期限</div></div>
-    <div class="stat overdue"><div class="num" id="statOverdue">0</div><div class="label">延滞</div></div>
+  <div class="stats">
+    <button type="button" class="stat" data-go="all"><span class="num" id="statTotal">0</span><span class="label">登録品目</span></button>
+    <button type="button" class="stat" data-go="loaned"><span class="num" id="statLoaned">0</span><span class="label">貸出中</span></button>
+    <button type="button" class="stat soon" data-go="soon"><span class="num" id="statSoon">0</span><span class="label">まもなく期限</span></button>
+    <button type="button" class="stat overdue" data-go="overdue"><span class="num" id="statOverdue">0</span><span class="label">延滞</span></button>
   </div>
 
-  <div class="panel">
-    <div class="panel-head">
-      <div class="tabs sans" id="tabs">
-        <button data-tab="all" class="active">すべて</button>
-        <button data-tab="available">貸出可能</button>
-        <button data-tab="loaned">貸出中</button>
-        <button data-tab="soon">まもなく期限</button>
-        <button data-tab="overdue">延滞</button>
-        <button data-tab="repair">修理中</button>
-        <button data-tab="trash">ごみ箱</button>
-      </div>
-    </div>
-    <div class="filters sans">
-      <input type="text" id="searchBox" placeholder="品目名・借用者・タグで検索">
-      <div id="tagChips"></div>
-      <select id="sortSelect" aria-label="並び替え">
-        <option value="created">登録順</option>
-        <option value="due">返却期限が近い順</option>
-        <option value="name">品目名順</option>
-      </select>
-      <label class="soon-setting">まもなく期限: <input type="number" id="soonDaysInput" min="0" max="30" style="width:56px;padding:5px 6px;"> 日前</label>
-      <button type="button" class="ghost small" id="scanBtn">QRを読み取る</button>
-      <button type="button" class="ghost small" id="viewToggleBtn"></button>
-    </div>
-    <div class="scan-box sans" id="scanBox" style="display:none;">
-      <video id="scanVideo" playsinline muted style="max-width:320px;width:100%;background:#000;"></video>
-      <div><button type="button" class="ghost small" id="scanCloseBtn">読み取りを終了</button></div>
-    </div>
-    <ul class="item-list" id="itemList"></ul>
-    <div class="empty sans" id="emptyState" style="display:none;"></div>
+  <div class="tabs" id="tabs">
+    <button type="button" data-tab="all" class="active">すべて</button>
+    <button type="button" data-tab="available">貸出可能</button>
+    <button type="button" data-tab="loaned">貸出中</button>
+    <button type="button" data-tab="soon">まもなく期限</button>
+    <button type="button" data-tab="overdue">延滞</button>
+    <button type="button" data-tab="repair">修理中</button>
+    <button type="button" data-tab="trash">ごみ箱</button>
   </div>
 
-  <!-- 品目の登録フォーム（折りたたみ式。品目データのバックアップの上に置く） -->
-  <details class="panel" id="addPanel">
-    <summary class="sans">品目を登録する</summary>
-    <div class="panel-body">
-      <div class="option-row sans" id="optionRow" style="display:none;">
-        <select id="nameOptions"><option value="">品目名を選択…</option></select>
-        <select id="categoryOptions"><option value="">分類を選択…</option></select>
-        <select id="tagOptions"><option value="">タグを追加…</option></select>
-      </div>
-      <form class="add-form" id="addForm">
-        <input type="text" id="newName" placeholder="品目名（例：三脚カメラA）" required>
-        <input type="text" id="newCategory" placeholder="分類（例：機材）">
-        <input type="text" id="newTags" placeholder="タグ（カンマ区切り）">
-        <button type="submit">登録する</button>
-        <label class="img-field">画像（任意・自動で縮小されます）: <input type="file" id="newImage" accept="image/*"></label>
-      </form>
-    </div>
-  </details>
+  <div class="filters">
+    <input type="search" class="field" id="searchBox" placeholder="品目名・借用者・タグで検索" aria-label="検索" autocomplete="off">
+    <button type="button" class="btn" id="filterBtn">絞り込み</button>
+    <button type="button" class="btn" id="scanBtn">QR読取</button>
+  </div>
+  <div class="scan-box" id="scanBox">
+    <video id="scanVideo" playsinline muted></video>
+    <div><button type="button" class="btn" id="scanCloseBtn">読み取りを終了</button></div>
+  </div>
 
-  <details class="panel">
-    <summary class="sans">品目データのバックアップ</summary>
-    <div class="panel-body">
-      <div class="csv-row sans">
-        <button type="button" class="ghost small" id="dataExportBtn">データをエクスポート（JSON）</button>
-        <button type="button" class="ghost small" id="dataImportBtn">データをインポート（JSON）</button>
-        <input type="file" id="dataImportFileFallback" accept=".json,application/json" style="display:none;">
-      </div>
-      <div class="csv-hint sans" id="dataHint">
-        登録した品目・貸出履歴・タグ・CSVから読み込んだ選択肢（借用者など）をまとめてJSONファイルとして書き出せます。別のブラウザや端末に移す場合や、バックアップとして保存する場合にお使いください。インポートすると、現在この画面に表示されている品目データがすべて置き換わります（ファイルに選択肢が含まれている場合は選択肢も置き換わります）。対応するブラウザでは、保存先・読み込み元のフォルダを選ぶダイアログが表示され、前回選んだフォルダが次回も開きます（対応していない場合は通常のダウンロード・ファイル選択になります）。
-      </div>
-      <div class="csv-status sans" id="dataStatus"></div>
-    </div>
-  </details>
+  <ul class="item-list" id="itemList"></ul>
+  <div class="empty" id="emptyState" style="display:none;"></div>
 
-  <details class="panel">
-    <summary class="sans">選択肢をCSVから読み込む</summary>
-    <div class="panel-body">
-      <div class="csv-row sans">
-        <button type="button" class="ghost small" id="csvImportBtn">CSVから選択肢を読み込む</button>
-        <input type="file" id="csvFileFallback" accept=".csv,text/csv" style="display:none;">
-        <button type="button" class="ghost small" id="csvDownloadBtn" style="display:none;">保存したCSVをダウンロード</button>
-        <button type="button" class="ghost small" id="csvClearBtn">読み込んだ選択肢をクリア</button>
-      </div>
-      <div class="csv-hint sans" id="csvHint">
-        1行目に見出し（品目名 / 分類 / タグ / 借用者）を含むCSVを読み込むと、登録フォームや貸出フォームにプルダウンが表示されます。列は一部だけでも構いません。対応するブラウザでは、前回選んだフォルダが次回も開きます。
-      </div>
-      <div class="csv-status sans" id="csvStatus"></div>
-    </div>
-  </details>
-
-  <footer class="sans"><div id="backupInfo"></div>データはこのブラウザ（Chromeなど）に保存されます。別のブラウザや端末では表示されません。</footer>
+  <footer><div id="backupInfo"></div>データはこのブラウザに保存されます。別のブラウザや端末では表示されません。</footer>
 </div>
+
+<!-- 品目ごとの操作（貸出・期間編集・品目編集・QR・履歴）をまとめたシート -->
+<dialog class="sheet" id="itemSheet" aria-labelledby="itemSheetTitle">
+  <div class="sheet-head">
+    <div>
+      <h3 id="itemSheetTitle"></h3>
+      <div class="sheet-sub" id="itemSheetSub"></div>
+    </div>
+    <button type="button" class="icon-btn" data-cancel aria-label="閉じる">×</button>
+  </div>
+  <div id="itemSheetBody"></div>
+</dialog>
+
+<!-- 品目の登録 -->
+<dialog class="sheet" id="addDlg" aria-labelledby="addTitle">
+  <h3 id="addTitle">品目を登録</h3>
+  <div class="option-row" id="optionRow" style="display:none;">
+    <select id="nameOptions" aria-label="品目名の候補"><option value="">品目名を選択…</option></select>
+    <select id="categoryOptions" aria-label="分類の候補"><option value="">分類を選択…</option></select>
+    <select id="tagOptions" aria-label="タグの候補"><option value="">タグを追加…</option></select>
+  </div>
+  <form id="addForm">
+    <label class="fld">品目名<input type="text" id="newName" placeholder="例：三脚カメラA" required></label>
+    <label class="fld">分類<input type="text" id="newCategory" placeholder="例：機材"></label>
+    <label class="fld">タグ（カンマ区切り）<input type="text" id="newTags" placeholder="例：会議, 持出可"></label>
+    <label class="fld">画像（任意・自動で縮小されます）<input type="file" id="newImage" accept="image/*"></label>
+    <div class="row">
+      <button type="button" class="btn" data-close>キャンセル</button>
+      <button type="submit" class="btn primary">登録する</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 並び替え・タグ・表示 -->
+<dialog class="sheet" id="filterDlg" aria-labelledby="filterTitle">
+  <h3 id="filterTitle">絞り込み・表示</h3>
+  <label class="fld">並び替え
+    <select id="sortSelect">
+      <option value="created">登録順</option>
+      <option value="due">返却期限が近い順</option>
+      <option value="name">品目名順</option>
+    </select>
+  </label>
+  <div class="fld fld-tags">タグ<div id="tagChips"></div></div>
+  <label class="fld">「まもなく期限」にする日数（期限の何日前から）
+    <input type="number" id="soonDaysInput" min="0" max="30">
+  </label>
+  <div class="fld">表示<div><button type="button" class="btn" id="viewToggleBtn"></button></div></div>
+  <div class="row"><button type="button" class="btn primary" data-close>閉じる</button></div>
+</dialog>
+
+<!-- データ（バックアップ・CSV） -->
+<dialog class="sheet" id="dataDlg" aria-labelledby="dataTitle">
+  <h3 id="dataTitle">データ</h3>
+  <div class="sec">
+    <h4>バックアップ（JSON）</h4>
+    <div class="btn-row">
+      <button type="button" class="btn" id="dataExportBtn">エクスポート</button>
+      <button type="button" class="btn" id="dataImportBtn">インポート</button>
+    </div>
+    <input type="file" id="dataImportFileFallback" accept=".json,application/json" style="display:none;">
+    <div class="hint" id="dataHint">品目・貸出履歴・選択肢をまとめて書き出せます。インポートすると、いまのデータはすべて置き換わります。</div>
+    <div class="status" id="dataStatus"></div>
+  </div>
+  <div class="sec">
+    <h4>履歴の書き出し</h4>
+    <div class="btn-row"><button type="button" class="btn" id="exportBtn">履歴をCSVで書き出す</button></div>
+  </div>
+  <div class="sec">
+    <h4>選択肢をCSVから読み込む</h4>
+    <div class="btn-row">
+      <button type="button" class="btn" id="csvImportBtn">CSVを読み込む</button>
+      <button type="button" class="btn" id="csvDownloadBtn" style="display:none;">保存したCSVをダウンロード</button>
+      <button type="button" class="btn" id="csvClearBtn">選択肢をクリア</button>
+    </div>
+    <input type="file" id="csvFileFallback" accept=".csv,text/csv" style="display:none;">
+    <div class="hint" id="csvHint">1行目に見出し（品目名 / 分類 / タグ / 借用者）があるCSVを読み込むと、登録・貸出フォームに候補が出ます。</div>
+    <div class="status" id="csvStatus"></div>
+  </div>
+  <div class="row"><button type="button" class="btn primary" data-close>閉じる</button></div>
+</dialog>
+
+<!-- 確認 -->
+<dialog class="sheet" id="confirmDlg" aria-labelledby="confirmMsg">
+  <p id="confirmMsg" style="font-size:15px;line-height:1.6;"></p>
+  <div class="row">
+    <button type="button" class="btn" id="confirmCancel">キャンセル</button>
+    <button type="button" class="btn danger" id="confirmOk">OK</button>
+  </div>
+</dialog>
+
+<div id="toast" class="toast off" popover="manual" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="cloud-sync.js"></script>
 <script>
 (function(){
-  const todayLabel = document.getElementById('todayLabel');
-  todayLabel.textContent = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
 
   // File System Access API 非対応ブラウザ向けの案内を追記
   if(!(window.showOpenFilePicker && window.showSaveFilePicker)){
@@ -385,16 +395,11 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
   function cloudNotify(){ if(cloud) cloud.notifyChanged(); }
   let items = [];
   let currentTab = 'all';
-  // 開いているパネル（type: loan / editLoan / editItem / qr / history）は常に1つだけ
+  // 開いているシート（type: loan / editLoan / editItem / qr / history）は常に1つだけ
   let panel = { type:null, id:null };
-  function isPanel(type, it){ return !it.deleted && panel.type===type && panel.id===it.id; }
-  function closePanel(){ panel = { type:null, id:null }; }
-  function togglePanel(type, id){
-    panel = (panel.type===type && panel.id===id) ? { type:null, id:null } : { type, id };
-    render();
-    const f = document.querySelector('#itemList form');
-    if(f){ const i = f.querySelector('input:not([type=file]),select'); if(i) i.focus(); }
-  }
+  const $id = id=>document.getElementById(id);
+  function closePanel(){ panel = { type:null, id:null }; closeDlg($id('itemSheet')); }
+  function togglePanel(type, id){ openItemSheet(type, id); }
   let activeTagFilter = null;
   const VIEW_KEY = 'lending-ledger-view';
   let viewMode = 'list';
@@ -406,27 +411,174 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
   function todayISO(){ return localISO(new Date()); }
   function addDaysISO(n){ const d = new Date(); d.setDate(d.getDate()+n); return localISO(d); }
 
-  // 画面上部の通知バー
-  let noticeTimer = null;
+  // 通知: 一時的なものは画面下のトースト（ダイアログの前面に出す）、保存失敗やバックアップ催促は上部のバナー
+  let toastTimer = null;
+  const hasPopover = typeof HTMLElement.prototype.showPopover === 'function';
+  function hideToast(){
+    const t = $id('toast');
+    clearTimeout(toastTimer);
+    t.classList.add('off');
+    if(hasPopover){ try{ t.hidePopover(); }catch(e){} }
+  }
+  function showToast(msg, isError, undoFn){
+    const t = $id('toast');
+    clearTimeout(toastTimer);
+    const span = document.createElement('span');
+    span.textContent = msg;
+    t.replaceChildren(span);
+    if(undoFn){
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'toast-act'; b.textContent = '元に戻す';
+      b.onclick = ()=>{ hideToast(); undoFn(); };
+      t.append(b);
+    }
+    t.className = 'toast' + (isError ? ' error' : '');
+    if(hasPopover){ try{ if(t.matches(':popover-open')) t.hidePopover(); t.showPopover(); }catch(e){} }
+    toastTimer = setTimeout(hideToast, undoFn ? 10000 : (isError ? 7000 : 4500));
+  }
   function showNotice(msg, isError, sticky){
-    const el = document.getElementById('notice');
-    el.textContent = msg;
-    el.className = 'notice sans' + (isError ? ' error' : '');
-    el.style.display = 'block';
-    clearTimeout(noticeTimer);
-    if(!sticky) noticeTimer = setTimeout(()=>{ el.style.display='none'; }, 5000);
+    if(!sticky){ showToast(msg, isError, null); return; }
+    const el = $id('notice');
+    $id('noticeText').textContent = msg;
+    el.className = 'notice' + (isError ? ' error' : '');
+    el.style.display = 'flex';
   }
   // 元に戻すボタン付きの通知（10秒間表示）
-  function showUndoNotice(msg, undoFn){
-    showNotice(msg, false, true);
-    const el = document.getElementById('notice');
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'small ghost'; b.style.marginLeft = '12px'; b.textContent = '元に戻す';
-    b.onclick = ()=>{ undoFn(); el.style.display = 'none'; };
-    el.appendChild(b);
-    clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(()=>{ el.style.display='none'; }, 10000);
+  function showUndoNotice(msg, undoFn){ showToast(msg, false, undoFn); }
+  $id('noticeClose').addEventListener('click', function(){ $id('notice').style.display = 'none'; });
+
+  // 確認ダイアログ（標準のconfirmの代わり）。OKなら true を返す
+  function askConfirm(msg, okLabel){
+    return new Promise(resolve=>{
+      const dlg = $id('confirmDlg'), ok = $id('confirmOk'), cancel = $id('confirmCancel');
+      $id('confirmMsg').textContent = msg;
+      ok.textContent = okLabel || 'OK';
+      let done = false;
+      function finish(v){
+        if(done) return; done = true;
+        ok.onclick = cancel.onclick = null;
+        dlg.removeEventListener('close', onClose);
+        if(dlg.open) dlg.close();
+        resolve(v);
+      }
+      function onClose(){ finish(false); }
+      ok.onclick = ()=>finish(true);
+      cancel.onclick = ()=>finish(false);
+      dlg.addEventListener('close', onClose);
+      dlg.showModal();
+      cancel.focus();
+    });
   }
+
+  // ---- シート（下から出るダイアログ）----
+  let sheetOpener = null;
+  function openDlg(dlg){
+    closeMenu(false);
+    sheetOpener = document.activeElement;
+    if(!dlg.open) dlg.showModal();
+  }
+  function closeDlg(dlg){
+    if(dlg.open) dlg.close();
+    const o = sheetOpener; sheetOpener = null;
+    if(o && document.contains(o) && typeof o.focus === 'function') o.focus();
+  }
+  document.addEventListener('click', function(e){
+    if(e.target.tagName === 'DIALOG' && e.target.classList.contains('sheet') && e.target.id !== 'confirmDlg'){
+      if(e.target.id === 'itemSheet') closePanel(); else closeDlg(e.target);
+      return;
+    }
+    const c = e.target.closest('[data-close]');
+    if(c){ closeDlg(c.closest('dialog')); return; }
+    if(e.target.closest('#itemSheet [data-cancel]')) closePanel();
+  });
+  $id('itemSheet').addEventListener('close', function(){ panel = { type:null, id:null }; });
+
+  // ---- 「⋯」メニュー（画面に1つだけ）----
+  let menuEl = null, menuBtn = null;
+  function closeMenu(returnFocus){
+    if(!menuEl) return;
+    menuEl.remove(); menuEl = null;
+    if(menuBtn){
+      menuBtn.setAttribute('aria-expanded', 'false');
+      if(returnFocus !== false && document.contains(menuBtn)) menuBtn.focus();
+      menuBtn = null;
+    }
+  }
+  // items: [{label, run, danger}]
+  function openMenu(btn, items){
+    if(menuBtn === btn){ closeMenu(); return; }
+    closeMenu(false);
+    const m = document.createElement('div');
+    m.className = 'menu'; m.setAttribute('role', 'menu');
+    items.forEach(it=>{
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'menu-item' + (it.danger ? ' danger' : '');
+      b.setAttribute('role', 'menuitem');
+      b.textContent = it.label;
+      b.onclick = ()=>{ closeMenu(false); it.run(); };
+      m.append(b);
+    });
+    document.body.append(m);
+    const r = btn.getBoundingClientRect();
+    const w = m.offsetWidth, h = m.offsetHeight;
+    m.style.left = Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8) + 'px';
+    let top = r.bottom + 6;
+    if(top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    m.style.top = top + 'px';
+    menuEl = m; menuBtn = btn;
+    btn.setAttribute('aria-expanded', 'true');
+    m.querySelector('.menu-item').focus();
+  }
+  document.addEventListener('pointerdown', function(e){
+    if(menuEl && !menuEl.contains(e.target) && !(menuBtn && menuBtn.contains(e.target))) closeMenu(false);
+  });
+  document.addEventListener('keydown', function(e){
+    if(!menuEl) return;
+    if(e.key === 'Escape'){ e.preventDefault(); closeMenu(); return; }
+    if(e.key === 'Tab'){ closeMenu(false); return; }
+    if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){
+      e.preventDefault();
+      const list = Array.from(menuEl.querySelectorAll('.menu-item'));
+      const i = list.indexOf(document.activeElement);
+      let n;
+      if(e.key === 'Home') n = 0;
+      else if(e.key === 'End') n = list.length - 1;
+      else n = e.key === 'ArrowDown' ? (i + 1) % list.length : (i - 1 + list.length) % list.length;
+      list[n].focus();
+    }
+  });
+  window.addEventListener('resize', ()=>closeMenu(false));
+  window.addEventListener('scroll', e=>{ if(menuEl && !menuEl.contains(e.target)) closeMenu(false); }, true);
+
+  // ---- テーマ（自動 / ライト / ダーク）----
+  const THEME_KEY = 'lending-ledger-theme';
+  const THEMES = ['auto','light','dark'];
+  const THEME_LABEL = { auto:'自動', light:'ライト', dark:'ダーク' };
+  function getTheme(){
+    try{ const t = localStorage.getItem(THEME_KEY); if(THEMES.includes(t)) return t; }catch(e){}
+    return 'auto';
+  }
+  function setTheme(t){
+    if(t === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.dataset.theme = t;
+    try{ localStorage.setItem(THEME_KEY, t); }catch(e){}
+  }
+  $id('topMenuBtn').innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
+  $id('topMenuBtn').addEventListener('click', function(){
+    const cur = getTheme();
+    const next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+    openMenu($id('topMenuBtn'), [
+      { label:'データ（バックアップ・CSV）', run:()=>openDlg($id('dataDlg')) },
+      { label:'履歴をCSVで書き出す', run:()=>$id('exportBtn').click() },
+      { label:'テーマ：'+THEME_LABEL[cur]+'（タップで'+THEME_LABEL[next]+'へ）', run:()=>setTheme(next) }
+    ]);
+  });
+  $id('addOpenBtn').addEventListener('click', function(){
+    openDlg($id('addDlg'));
+    $id('newName').focus();
+  });
+  $id('filterBtn').addEventListener('click', ()=>openDlg($id('filterDlg')));
   function fmtDate(iso){ if(!iso) return ''; const d = new Date(iso+'T00:00:00'); return d.toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}); }
 
   function daysUntil(iso){
@@ -480,11 +632,11 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     const last = updateBackupInfo();
     if(items.length===0) return;
     const notice = document.getElementById('notice');
-    if(notice.style.display==='block') return;
+    if(notice.style.display==='flex') return;
     let days = last ? -daysUntil(last) : null;
     if(days!==null && isNaN(days)) days = null;
     if(days===null || days>=7){
-      showNotice(days===null ? 'まだバックアップを取っていません。「品目データのバックアップ」からJSONを書き出しておくと安心です。' : '最後のバックアップから'+days+'日経過しています。JSONを書き出しておくと安心です。', false, true);
+      showNotice(days===null ? 'まだバックアップを取っていません。「⋯」メニューの「データ」からJSONを書き出しておくと安心です。' : '最後のバックアップから'+days+'日経過しています。JSONを書き出しておくと安心です。', false, true);
     }
   }
 
@@ -630,16 +782,34 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
+  // 品目の表示状態（枠の色・バッジの種類に使う）
+  function itemState(it){
+    if(it.deleted) return 'trash';
+    if(it.status==='repair') return 'repair';
+    if(it.status==='available') return 'available';
+    if(isOverdue(it)) return 'overdue';
+    if(isDueSoon(it)) return 'soon';
+    return 'loaned';
+  }
+  const EMPTY_TEXT = {
+    all:'条件に合う品目がありません。', available:'貸出可能な品目はありません。', loaned:'貸出中の品目はありません。',
+    soon:'まもなく期限の品目はありません。', overdue:'延滞している品目はありません。', repair:'修理中の品目はありません。', trash:'ごみ箱は空です。'
+  };
+
   function render(){
+    closeMenu(false);
     const activeItems = items.filter(i=>!i.deleted);
     const total = activeItems.length;
     const loaned = activeItems.filter(i=>i.status==='loaned').length;
     const soon = activeItems.filter(isDueSoon).length;
     const overdue = activeItems.filter(isOverdue).length;
-    document.getElementById('statTotal').textContent = total;
-    document.getElementById('statLoaned').textContent = loaned;
-    document.getElementById('statSoon').textContent = soon;
-    document.getElementById('statOverdue').textContent = overdue;
+    $id('statTotal').textContent = total;
+    $id('statLoaned').textContent = loaned;
+    $id('statSoon').textContent = soon;
+    $id('statOverdue').textContent = overdue;
+    document.querySelector('.stat.soon').classList.toggle('hot', soon>0);
+    document.querySelector('.stat.overdue').classList.toggle('hot', overdue>0);
+    document.querySelectorAll('.stat[data-go]').forEach(b=>b.classList.toggle('on', b.dataset.go===currentTab));
 
     const tabCounts = { all:total, available:activeItems.filter(i=>i.status==='available').length, loaned, soon, overdue, repair:activeItems.filter(i=>i.status==='repair').length, trash:items.filter(i=>i.deleted).length };
     const tabLabels = { all:'すべて', available:'貸出可能', loaned:'貸出中', soon:'まもなく期限', overdue:'延滞', repair:'修理中', trash:'ごみ箱' };
@@ -650,12 +820,12 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     // 借用者の入力候補（過去の履歴＋CSV読み込み分）
     const borrowerNames = new Set(importedOptions.borrowers);
     items.forEach(it=>(it.history||[]).forEach(h=>{ if(h.borrower) borrowerNames.add(h.borrower); }));
-    document.getElementById('borrowerList').innerHTML =
+    $id('borrowerList').innerHTML =
       Array.from(borrowerNames).sort((a,b)=>a.localeCompare(b,'ja')).map(n=>'<option value="'+escapeHtml(n)+'"></option>').join('');
 
     renderTagChips();
 
-    const query = document.getElementById('searchBox').value.trim().toLowerCase();
+    const query = $id('searchBox').value.trim().toLowerCase();
     let filtered = items.filter(it=>{
       if(currentTab==='trash') return !!it.deleted && (!query || (it.name+' '+it.code).toLowerCase().includes(query));
       if(it.deleted) return false;
@@ -672,167 +842,61 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
       return true;
     });
 
-    const sortMode = document.getElementById('sortSelect').value;
+    const sortMode = $id('sortSelect').value;
     if(sortMode==='due'){
       filtered.sort((a,b)=>(a.dueDate||'9999-99-99').localeCompare(b.dueDate||'9999-99-99'));
     } else if(sortMode==='name'){
       filtered.sort((a,b)=>a.name.localeCompare(b.name,'ja'));
     }
+    // 「絞り込み」ボタンに、有効な条件の数を出す
+    const activeFilters = (sortMode!=='created' ? 1 : 0) + (activeTagFilter ? 1 : 0);
+    $id('filterBtn').textContent = activeFilters ? '絞り込み（'+activeFilters+'）' : '絞り込み';
 
-    const list = document.getElementById('itemList');
+    const list = $id('itemList');
     list.className = 'item-list' + (viewMode==='grid' ? ' grid' : '');
-    document.getElementById('viewToggleBtn').textContent = viewMode==='grid' ? 'リスト表示に切替' : 'カード表示に切替';
-    const empty = document.getElementById('emptyState');
-    // 再描画前に、開いているフォームの入力値を退避する（検索入力などで消えないように）
-    const savedForms = {};
-    list.querySelectorAll('form[id]').forEach(f=>{
-      savedForms[f.id] = Array.from(f.querySelectorAll('input,select')).map(e=>e.type==='file' ? e.files : (e.type==='checkbox' ? e.checked : e.value));
-    });
+    $id('viewToggleBtn').textContent = viewMode==='grid' ? 'リスト表示に切替' : 'カード表示に切替';
+    const empty = $id('emptyState');
     list.innerHTML = '';
 
     if(filtered.length===0){
-      empty.style.display='block';
-      empty.textContent = items.length===0 ? 'まだ品目がありません。上の欄から登録してください。' : '該当する品目がありません。';
+      empty.style.display = 'block';
+      if(items.length===0) empty.textContent = 'まだ品目がありません。「＋ 品目を登録」から追加しましょう。';
+      else if(query || activeTagFilter) empty.textContent = '条件に合う品目がありません。';
+      else empty.textContent = EMPTY_TEXT[currentTab] || '該当する品目がありません。';
       return;
     }
-    empty.style.display='none';
+    empty.style.display = 'none';
 
     filtered.forEach(it=>{
       const li = document.createElement('li');
-      li.className='item';
+      const st = itemState(it);
+      li.className = 'item st-' + st;
 
-      let badgeHtml='';
-      if(it.status==='repair') badgeHtml='<span class="badge repair">修理中'+(it.repairSince?'（'+fmtDate(it.repairSince)+'〜）':'')+'</span>';
-      else if(it.status==='available') badgeHtml='<span class="badge available">貸出可能</span>';
-      else if(isOverdue(it)) badgeHtml='<span class="badge overdue">延滞 '+(-daysUntil(it.dueDate))+'日</span>';
-      else if(isDueSoon(it)) badgeHtml='<span class="badge soon">まもなく期限</span>';
-      else badgeHtml='<span class="badge loaned">貸出中</span>';
+      let badgeHtml = '';
+      if(it.deleted) badgeHtml = '<span class="badge trash">ごみ箱</span>';
+      else if(it.status==='repair') badgeHtml = '<span class="badge repair">修理中'+(it.repairSince?'（'+fmtDate(it.repairSince)+'〜）':'')+'</span>';
+      else if(it.status==='available') badgeHtml = '<span class="badge available">貸出可能</span>';
+      else if(st==='overdue') badgeHtml = '<span class="badge overdue">延滞 '+(-daysUntil(it.dueDate))+'日</span>';
+      else if(st==='soon') badgeHtml = '<span class="badge soon">まもなく期限</span>';
+      else badgeHtml = '<span class="badge loaned">貸出中</span>';
 
-      const metaHtml = escapeHtml(it.category || '分類未設定');
-      // 借用者・貸出日・期限と期間バーは、品目名の列とは別の段(画像の下)に出す
-      const loanHtml = it.status==='loaned'
-        ? '<div class="loan-info"><span><em>借用者</em>'+escapeHtml(it.borrower||'—')+'</span><span><em>貸出</em>'+fmtDate(it.loanDate)+'</span><span><em>期限</em>'+fmtDate(it.dueDate)+'</span></div>' + loanBarHtml(it)
+      const loanHtml = (!it.deleted && it.status==='loaned')
+        ? '<div class="loan-who"><em>借用者</em>'+escapeHtml(it.borrower||'—')+'</div>' + loanBarHtml(it)
         : '';
       const tagsHtml = (it.tags||[]).map(t=>'<span class="pill">#'+escapeHtml(t)+'</span>').join('');
+      const delNote = (it.deleted && it.deletedAt) ? '<div class="item-sub">削除日 '+fmtDate(it.deletedAt)+'</div>' : '';
 
-      // 貸出・編集・QR・履歴のパネルは、品目名の列とは別の段(全幅)に出す
-      const panelsHtml =
-        (isPanel('loan',it) ? loanFormHtml(it) : '') +
-        (isPanel('editLoan',it) ? editLoanFormHtml(it) : '') +
-        (isPanel('editItem',it) ? editItemFormHtml(it) : '') +
-        (isPanel('qr',it) ? qrBoxHtml(it) : '') +
-        (isPanel('history',it) ? historyBoxHtml(it) : '');
-
-      li.innerHTML = `
-        <div class="code sans">${thumbHtml(it)}<span>${escapeHtml(it.code)}</span></div>
-        <div>
-          <div class="item-name">${badgeHtml}${escapeHtml(it.name)}</div>
-          <div class="item-meta sans">${metaHtml}</div>
-          ${tagsHtml ? '<div class="item-tags">'+tagsHtml+'</div>' : ''}
-        </div>
-        ${loanHtml ? '<div class="item-loan">'+loanHtml+'</div>' : ''}
-        ${panelsHtml ? '<div class="item-panels">'+panelsHtml+'</div>' : ''}
-        <div class="actions sans">${actionsHtml(it)}</div>
-      `;
-
+      li.innerHTML =
+        thumbHtml(it) +
+        '<div class="item-main">' +
+          '<div>'+badgeHtml+'</div>' +
+          '<div class="item-name">'+escapeHtml(it.name)+'</div>' +
+          '<div class="item-sub">'+escapeHtml(it.code)+' ・ '+escapeHtml(it.category || '分類未設定')+'</div>' +
+          (tagsHtml ? '<div class="item-tags">'+tagsHtml+'</div>' : '') +
+          delNote + loanHtml +
+        '</div>' +
+        '<div class="item-act">'+actionsHtml(it)+'</div>';
       list.appendChild(li);
-
-      if(isPanel('loan',it)){
-        const form = li.querySelector('#loanForm-'+it.id);
-        if(form){
-          const borrowerSel = form.querySelector('.borrowerOptions');
-          if(borrowerSel){
-            borrowerSel.addEventListener('change', function(e){
-              if(e.target.value) form.querySelector('.borrowerInput').value = e.target.value;
-            });
-          }
-          form.addEventListener('submit',(e)=>{
-            e.preventDefault();
-            const borrower = form.querySelector('.borrowerInput').value.trim();
-            const loanDate = form.querySelector('.loanDateInput').value;
-            const due = form.querySelector('.dueInput').value;
-            if(!borrower||!due||!loanDate) return;
-            if(due < loanDate){ showNotice('返却期限は貸出開始日以降の日付にしてください。', true); return; }
-            checkOut(it.id, borrower, loanDate, due);
-          });
-        }
-      }
-      if(isPanel('editItem',it)){
-        const form = li.querySelector('#editItemForm-'+it.id);
-        if(form){
-          form.addEventListener('submit', async (e)=>{
-            e.preventDefault();
-            const name = form.querySelector('.editNameInput').value.trim();
-            const category = form.querySelector('.editCategoryInput').value.trim();
-            const tags = form.querySelector('.editTagsInput').value.split(',').map(t=>t.trim()).filter(Boolean);
-            if(!name) return;
-            let image;  // undefined=変更なし / ''=削除 / 文字列=差し替え
-            const file = form.querySelector('.editImageInput').files[0];
-            const rm = form.querySelector('.editImageRemove');
-            if(file){
-              try{ image = await resizeImage(file, 320); }
-              catch(err){ showNotice(err.message, true); return; }
-            } else if(rm && rm.checked){ image = ''; }
-            updateItemInfo(it.id, name, category, tags, image);
-          });
-        }
-      }
-      if(isPanel('editLoan',it)){
-        const form = li.querySelector('#editLoanForm-'+it.id);
-        if(form){
-          form.addEventListener('submit',(e)=>{
-            e.preventDefault();
-            const loanDate = form.querySelector('.editLoanDateInput').value;
-            const due = form.querySelector('.editDueInput').value;
-            if(!loanDate||!due) return;
-            if(due < loanDate){ showNotice('返却期限は貸出開始日以降の日付にしてください。', true); return; }
-            updateLoanPeriod(it.id, loanDate, due);
-          });
-        }
-      }
-      if(isPanel('qr',it)){
-        const wrap = li.querySelector('#qrcanvas-'+it.id);
-        let hasImage = false;
-        if(wrap){
-          if(window.QRCode){
-            wrap.innerHTML='';
-            new QRCode(wrap, { text: it.code, width:110, height:110, colorDark:'#23261f', colorLight:'#ffffff' });
-            hasImage = true;
-          } else {
-            wrap.innerHTML = '<div class="sans" style="font-size:11.5px;color:var(--stamp-red);max-width:140px;">QRコードを生成できませんでした。ページを再読み込みしてください。</div>';
-          }
-        }
-        const printBtn = li.querySelector('#printQr-'+it.id);
-        if(printBtn){
-          if(!hasImage){
-            printBtn.disabled = true;
-            printBtn.title = 'QRコードを読み込めていないため印刷できません';
-          } else {
-            printBtn.onclick = ()=>{
-              const imgEl = wrap ? wrap.querySelector('img, canvas') : null;
-              const dataUrl = imgEl ? (imgEl.tagName==='IMG' ? imgEl.src : imgEl.toDataURL()) : '';
-              const win = window.open('', '_blank', 'width=380,height=460');
-              if(!win){ showNotice('ポップアップがブロックされました。ブラウザの設定で許可してください。', true); return; }
-              win.document.write('<html><head><title>'+escapeHtml(it.name)+'</title></head><body style="font-family:sans-serif;text-align:center;padding:24px;">'+
-                (dataUrl ? '<img src="'+dataUrl+'" width="200" height="200">' : '')+
-                '<p style="font-size:14px;margin-top:8px;">'+escapeHtml(it.code)+' '+escapeHtml(it.name)+'</p></body></html>');
-              win.document.close();
-              win.focus();
-              win.print();
-            };
-          }
-        }
-      }
-    });
-
-    list.querySelectorAll('form[id]').forEach(f=>{
-      const vals = savedForms[f.id]; if(!vals) return;
-      f.querySelectorAll('input,select').forEach((e,i)=>{
-        const v = vals[i];
-        if(e.type==='file'){ if(v && v.length) e.files = v; }
-        else if(e.type==='checkbox'){ e.checked = !!v; }
-        else if(v!==undefined){ e.value = v; }
-      });
     });
   }
 
@@ -841,20 +905,36 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     return (typeof it.image==='string' && /^data:image\/(jpeg|png|webp|gif);base64,/.test(it.image.slice(0,40))) ? it.image : '';
   }
   function actionBtn(it, action, label, cls){
-    return '<button type="button" class="small'+(cls?' '+cls:'')+'" data-action="'+action+'" data-id="'+escapeHtml(it.id)+'" aria-label="'+escapeHtml(label+'（'+it.name+'）')+'">'+label+'</button>';
+    return '<button type="button" class="btn'+(cls?' '+cls:'')+'" data-action="'+action+'" data-id="'+escapeHtml(it.id)+'" aria-label="'+escapeHtml(label+'（'+it.name+'）')+'">'+label+'</button>';
   }
+  // 主な操作は1つだけ大きく出し、そのほかは「⋯」にまとめる
   function actionsHtml(it){
-    if(it.deleted) return actionBtn(it,'restore','元に戻す','') + actionBtn(it,'purge','完全に削除','ghost');
-    let h = '';
-    if(it.status==='available') h += actionBtn(it,'loan','貸出する','') + actionBtn(it,'repair-on','修理中にする','ghost');
-    else if(it.status==='repair') h += actionBtn(it,'repair-off','修理完了','');
-    else h += actionBtn(it,'return','返却する','ghost') + actionBtn(it,'editLoan','期間を編集','ghost');
-    return h + actionBtn(it,'qr','QR表示','ghost') + actionBtn(it,'history','履歴','ghost') + actionBtn(it,'editItem','編集','ghost') + actionBtn(it,'delete','削除','ghost quiet');
+    let h;
+    if(it.deleted) h = actionBtn(it,'restore','元に戻す','primary');
+    else if(it.status==='available') h = actionBtn(it,'loan','貸出する','primary');
+    else if(it.status==='repair') h = actionBtn(it,'repair-off','修理完了','primary');
+    else h = actionBtn(it,'return','返却する','primary');
+    return h + '<button type="button" class="icon-btn" data-menu="'+escapeHtml(it.id)+'" aria-haspopup="menu" aria-expanded="false" aria-label="'+escapeHtml(it.name+'のメニュー')+'">'+
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>';
+  }
+  function itemMenuItems(it){
+    if(it.deleted) return [
+      { label:'完全に削除', danger:true, run:()=>ACTIONS.purge(it.id) }
+    ];
+    const m = [];
+    if(it.status==='available') m.push({ label:'修理中にする', run:()=>ACTIONS['repair-on'](it.id) });
+    if(it.status==='loaned') m.push({ label:'貸出期間を編集', run:()=>ACTIONS.editLoan(it.id) });
+    m.push({ label:'貸出履歴', run:()=>ACTIONS.history(it.id) });
+    m.push({ label:'QRコードを表示', run:()=>ACTIONS.qr(it.id) });
+    m.push({ label:'品目を編集', run:()=>ACTIONS.editItem(it.id) });
+    m.push({ label:'ごみ箱へ移動', danger:true, run:()=>ACTIONS['delete'](it.id) });
+    return m;
   }
   function thumbHtml(it){
     const src = safeImg(it);
-    if(!src) return '<div class="thumb-ph"></div>';
-    return '<img class="thumb'+(it.status!=='available'?' dim':'')+'" src="'+escapeHtml(src)+'" alt="'+escapeHtml(it.name)+'">';
+    const dim = (it.deleted || it.status!=='available') ? ' dim' : '';
+    if(!src) return '<div class="thumb ph'+dim+'" aria-hidden="true">'+escapeHtml(Array.from(it.name)[0] || '?')+'</div>';
+    return '<img class="thumb'+dim+'" src="'+escapeHtml(src)+'" alt="'+escapeHtml(it.name)+'">';
   }
   // 画像を長辺maxSide pxのJPEGに縮小してdata URLにする（localStorageの容量節約）
   function resizeImage(file, maxSide){
@@ -899,42 +979,51 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     const defaultStart = todayISO();
     const defaultDue = addDaysISO(7);
     const borrowerSelect = importedOptions.borrowers.length
-      ? `<select class="borrowerOptions"><option value="">借用者を選択…</option>${importedOptions.borrowers.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')}</select>`
+      ? `<select class="borrowerOptions" aria-label="借用者の候補"><option value="">借用者を選択…</option>${importedOptions.borrowers.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')}</select>`
       : '';
     return `
-      <form class="loan-form" id="loanForm-${it.id}">
-        <div class="borrower-cell">
+      <form id="loanForm-${it.id}">
+        <div class="fld">借用者
           ${borrowerSelect}
           <input type="text" class="borrowerInput" list="borrowerList" placeholder="借用者名" required>
         </div>
-        <input type="date" class="loanDateInput" value="${defaultStart}" required>
-        <input type="date" class="dueInput" value="${defaultDue}" required>
-        <button type="submit" class="small">確定</button>
-        <button type="button" class="small ghost" data-cancel="loan">取消</button>
+        <div class="row2">
+          <label class="fld">貸出日<input type="date" class="loanDateInput" value="${defaultStart}" required></label>
+          <label class="fld">返却期限<input type="date" class="dueInput" value="${defaultDue}" required></label>
+        </div>
+        <div class="row">
+          <button type="button" class="btn" data-cancel>キャンセル</button>
+          <button type="submit" class="btn primary">貸出を確定</button>
+        </div>
       </form>`;
   }
 
   function editLoanFormHtml(it){
     return `
-      <form class="edit-loan-form sans" id="editLoanForm-${it.id}">
-        <label>貸出開始<input type="date" class="editLoanDateInput" value="${it.loanDate||todayISO()}" required></label>
-        <label>返却期限<input type="date" class="editDueInput" value="${it.dueDate||todayISO()}" required></label>
-        <button type="submit" class="small">更新する</button>
-        <button type="button" class="small ghost" data-cancel="editLoan">取消</button>
+      <form id="editLoanForm-${it.id}">
+        <div class="hint">借用者: ${escapeHtml(it.borrower||'—')}</div>
+        <div class="row2">
+          <label class="fld">貸出日<input type="date" class="editLoanDateInput" value="${it.loanDate||todayISO()}" required></label>
+          <label class="fld">返却期限<input type="date" class="editDueInput" value="${it.dueDate||todayISO()}" required></label>
+        </div>
+        <div class="row">
+          <button type="button" class="btn" data-cancel>キャンセル</button>
+          <button type="submit" class="btn primary">更新する</button>
+        </div>
       </form>`;
   }
 
   function editItemFormHtml(it){
     return `
-      <form class="edit-item-form sans" id="editItemForm-${it.id}">
-        <input type="text" class="editNameInput" value="${escapeHtml(it.name)}" placeholder="品目名" required>
-        <input type="text" class="editCategoryInput" value="${escapeHtml(it.category||'')}" placeholder="分類">
-        <input type="text" class="editTagsInput" value="${escapeHtml((it.tags||[]).join(', '))}" placeholder="タグ（カンマ区切り）">
-        <button type="submit" class="small">保存</button>
-        <button type="button" class="small ghost" data-cancel="editItem">取消</button>
-        <div class="img-field" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-          <label>画像: <input type="file" class="editImageInput" accept="image/*"></label>
-          ${safeImg(it) ? '<label><input type="checkbox" class="editImageRemove"> 現在の画像を削除</label>' : ''}
+      <form id="editItemForm-${it.id}">
+        <label class="fld">品目名<input type="text" class="editNameInput" value="${escapeHtml(it.name)}" required></label>
+        <label class="fld">分類<input type="text" class="editCategoryInput" value="${escapeHtml(it.category||'')}"></label>
+        <label class="fld">タグ（カンマ区切り）<input type="text" class="editTagsInput" value="${escapeHtml((it.tags||[]).join(', '))}"></label>
+        <label class="fld">画像<input type="file" class="editImageInput" accept="image/*"></label>
+        ${safeImg(it) ? '<label class="fld check"><input type="checkbox" class="editImageRemove"> 現在の画像を削除</label>' : ''}
+        <div class="row">
+          <button type="button" class="btn" data-cancel>キャンセル</button>
+          <button type="submit" class="btn primary">保存する</button>
         </div>
       </form>`;
   }
@@ -944,21 +1033,122 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
       <div class="qr-box">
         <div class="qr-canvas-wrap" id="qrcanvas-${it.id}"></div>
         <div>
-          <div class="qr-label sans">この品目のQRコードです。印刷して品目に貼付できます。</div>
-          <button class="small ghost sans" id="printQr-${it.id}" style="margin-top:8px;">印刷する</button>
+          <div class="qr-label">印刷して品目に貼付できます。</div>
+          <button type="button" class="btn" id="printQr-${it.id}" style="margin-top:10px;">印刷する</button>
         </div>
       </div>`;
   }
 
   function historyBoxHtml(it){
     if(!it.history || it.history.length===0){
-      return '<div class="qr-box sans" style="color:var(--ink-soft);font-size:12.5px;">貸出履歴はまだありません。</div>';
+      return '<div class="history-empty">貸出履歴はまだありません。</div>';
     }
     const rows = it.history.slice().reverse().map(h=>{
       const status = h.returnDate ? ('返却済 ('+fmtDate(h.returnDate)+')') : '貸出中';
-      return '<li>'+escapeHtml(h.borrower)+' ・ '+fmtDate(h.loanDate)+'〜'+fmtDate(h.dueDate)+' ・ '+status+'</li>';
+      return '<li><span class="who">'+escapeHtml(h.borrower)+'</span><span class="when">'+fmtDate(h.loanDate)+'〜'+fmtDate(h.dueDate)+' ・ '+status+'</span></li>';
     }).join('');
-    return '<div class="qr-box" style="display:block;"><ul class="history-list">'+rows+'</ul></div>';
+    return '<ul class="history-list">'+rows+'</ul>';
+  }
+
+  // シートを開き、フォームの動作をつなぐ
+  function openItemSheet(type, id){
+    const it = items.find(i=>i.id===id && !i.deleted); if(!it) return;
+    panel = { type, id };
+    const titles = { loan:'貸出する', editLoan:'貸出期間を編集', editItem:'品目を編集', qr:'QRコード', history:'貸出履歴' };
+    $id('itemSheetTitle').textContent = titles[type] || '';
+    $id('itemSheetSub').textContent = it.code+' ・ '+it.name;
+    const body = $id('itemSheetBody');
+    body.innerHTML = type==='loan' ? loanFormHtml(it)
+      : type==='editLoan' ? editLoanFormHtml(it)
+      : type==='editItem' ? editItemFormHtml(it)
+      : type==='qr' ? qrBoxHtml(it)
+      : historyBoxHtml(it);
+
+    if(type==='loan'){
+      const form = body.querySelector('form');
+      const borrowerSel = form.querySelector('.borrowerOptions');
+      if(borrowerSel){
+        borrowerSel.addEventListener('change', function(e){
+          if(e.target.value) form.querySelector('.borrowerInput').value = e.target.value;
+        });
+      }
+      form.addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const borrower = form.querySelector('.borrowerInput').value.trim();
+        const loanDate = form.querySelector('.loanDateInput').value;
+        const due = form.querySelector('.dueInput').value;
+        if(!borrower||!due||!loanDate) return;
+        if(due < loanDate){ showNotice('返却期限は貸出日以降の日付にしてください。', true); return; }
+        checkOut(it.id, borrower, loanDate, due);
+      });
+    }
+    if(type==='editItem'){
+      const form = body.querySelector('form');
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const name = form.querySelector('.editNameInput').value.trim();
+        const category = form.querySelector('.editCategoryInput').value.trim();
+        const tags = form.querySelector('.editTagsInput').value.split(',').map(t=>t.trim()).filter(Boolean);
+        if(!name) return;
+        let image;  // undefined=変更なし / ''=削除 / 文字列=差し替え
+        const file = form.querySelector('.editImageInput').files[0];
+        const rm = form.querySelector('.editImageRemove');
+        if(file){
+          try{ image = await resizeImage(file, 320); }
+          catch(err){ showNotice(err.message, true); return; }
+        } else if(rm && rm.checked){ image = ''; }
+        updateItemInfo(it.id, name, category, tags, image);
+      });
+    }
+    if(type==='editLoan'){
+      const form = body.querySelector('form');
+      form.addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const loanDate = form.querySelector('.editLoanDateInput').value;
+        const due = form.querySelector('.editDueInput').value;
+        if(!loanDate||!due) return;
+        if(due < loanDate){ showNotice('返却期限は貸出日以降の日付にしてください。', true); return; }
+        updateLoanPeriod(it.id, loanDate, due);
+      });
+    }
+    if(type==='qr'){
+      const wrap = body.querySelector('#qrcanvas-'+it.id);
+      let hasImage = false;
+      if(wrap){
+        if(window.QRCode){
+          wrap.innerHTML = '';
+          new QRCode(wrap, { text: it.code, width:140, height:140, colorDark:'#1d2420', colorLight:'#ffffff' });
+          hasImage = true;
+        } else {
+          wrap.innerHTML = '<div style="font-size:12px;color:var(--danger);max-width:160px;">QRコードを生成できませんでした。ページを再読み込みしてください。</div>';
+        }
+      }
+      const printBtn = body.querySelector('#printQr-'+it.id);
+      if(printBtn){
+        if(!hasImage){
+          printBtn.disabled = true;
+          printBtn.title = 'QRコードを読み込めていないため印刷できません';
+        } else {
+          printBtn.onclick = ()=>{
+            const imgEl = wrap ? wrap.querySelector('img, canvas') : null;
+            const dataUrl = imgEl ? (imgEl.tagName==='IMG' ? imgEl.src : imgEl.toDataURL()) : '';
+            const win = window.open('', '_blank', 'width=380,height=460');
+            if(!win){ showNotice('ポップアップがブロックされました。ブラウザの設定で許可してください。', true); return; }
+            win.document.write('<html><head><title>'+escapeHtml(it.name)+'</title></head><body style="font-family:sans-serif;text-align:center;padding:24px;">'+
+              (dataUrl ? '<img src="'+dataUrl+'" width="200" height="200">' : '')+
+              '<p style="font-size:14px;margin-top:8px;">'+escapeHtml(it.code)+' '+escapeHtml(it.name)+'</p></body></html>');
+            win.document.close();
+            win.focus();
+            win.print();
+          };
+        }
+      }
+    }
+    openDlg($id('itemSheet'));
+    if(type==='loan' || type==='editItem' || type==='editLoan'){
+      const f = body.querySelector('input:not([type=file]):not([type=date]),select');
+      if(f) f.focus();
+    }
   }
 
   const ACTIONS = {
@@ -967,14 +1157,14 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     'repair-on':id=>setRepair(id,true), 'repair-off':id=>setRepair(id,false),
     'return':id=>returnItem(id), 'delete':id=>deleteItem(id), restore:id=>restoreItem(id), purge:id=>purgeItem(id)
   };
-  document.getElementById('itemList').addEventListener('click', function(e){
+  $id('itemList').addEventListener('click', function(e){
     const a = e.target.closest('[data-action]');
     if(a){ const fn = ACTIONS[a.dataset.action]; if(fn) fn(a.dataset.id); return; }
-    if(e.target.closest('[data-cancel]')){ closePanel(); render(); }
-  });
-  // Escキーで開いているパネルを閉じる
-  document.addEventListener('keydown', function(e){
-    if(e.key==='Escape' && panel.type){ closePanel(); render(); }
+    const m = e.target.closest('[data-menu]');
+    if(m){
+      const it = items.find(i=>i.id===m.dataset.menu);
+      if(it) openMenu(m, itemMenuItems(it));
+    }
   });
 
   function updateItemInfo(id, name, category, tags, image){
@@ -1049,13 +1239,15 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     });
   }
 
-  // 削除はごみ箱へ移動（履歴ごと保持。ごみ箱タブから復元できる）
+  // 削除はごみ箱へ移動（履歴ごと保持）。確認はせず、すぐ「元に戻す」で取り消せる
   function deleteItem(id){
     const it = items.find(i=>i.id===id); if(!it) return;
-    if(!window.confirm('「'+it.name+'」をごみ箱へ移動します。貸出履歴は保持され、ごみ箱タブから元に戻せます。よろしいですか？')) return;
     it.deleted = true; it.deletedAt = todayISO();
     save(); render();
-    showNotice('「'+it.name+'」をごみ箱へ移動しました。');
+    showUndoNotice('「'+it.name+'」をごみ箱へ移動しました。', ()=>{
+      delete it.deleted; delete it.deletedAt;
+      save(); render();
+    });
   }
   function restoreItem(id){
     const it = items.find(i=>i.id===id); if(!it) return;
@@ -1063,44 +1255,50 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
     save(); render();
     showNotice('「'+it.name+'」を元に戻しました。');
   }
-  function purgeItem(id){
+  async function purgeItem(id){
     const it = items.find(i=>i.id===id); if(!it) return;
     const n = it.history ? it.history.length : 0;
-    if(!window.confirm('「'+it.name+'」を完全に削除します。貸出履歴（'+n+'件）も失われ、元に戻せません。よろしいですか？')) return;
+    if(!(await askConfirm('「'+it.name+'」を完全に削除します。貸出履歴（'+n+'件）も失われ、元に戻せません。', '完全に削除'))) return;
     items = items.filter(i=>i.id!==id);
     save(); render();
   }
 
-  document.getElementById('addForm').addEventListener('submit', async function(e){
+  $id('addForm').addEventListener('submit', async function(e){
     e.preventDefault();
-    const name = document.getElementById('newName').value.trim();
-    const category = document.getElementById('newCategory').value.trim();
-    const tagsRaw = document.getElementById('newTags').value.trim();
+    const name = $id('newName').value.trim();
+    const category = $id('newCategory').value.trim();
+    const tagsRaw = $id('newTags').value.trim();
     const tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
     if(!name) return;
     const dup = items.find(i=>!i.deleted && i.name.trim().toLowerCase()===name.toLowerCase());
-    if(dup && !window.confirm('同じ名前の品目「'+dup.name+'」（'+dup.code+'）が既にあります。別の品目として登録しますか？')) return;
+    if(dup && !(await askConfirm('同じ名前の品目「'+dup.name+'」（'+dup.code+'）が既にあります。別の品目として登録しますか？', '登録する'))) return;
     let image = '';
-    const imgFile = document.getElementById('newImage').files[0];
+    const imgFile = $id('newImage').files[0];
     if(imgFile){
       try{ image = await resizeImage(imgFile, 320); }
       catch(err){ showNotice(err.message, true); return; }
     }
-    items.push({ id:newId(), code:nextCode(), name, category, tags, image, status:'available', borrower:'', loanDate:'', dueDate:'', history:[] });
-    document.getElementById('newName').value='';
-    document.getElementById('newCategory').value='';
-    document.getElementById('newTags').value='';
-    document.getElementById('newImage').value='';
+    const code = nextCode();
+    items.push({ id:newId(), code, name, category, tags, image, status:'available', borrower:'', loanDate:'', dueDate:'', history:[] });
+    $id('addForm').reset();
+    closeDlg($id('addDlg'));
     save(); render();
+    showNotice('「'+name+'」を登録しました（'+code+'）。');
   });
 
-  document.getElementById('tabs').addEventListener('click', function(e){
-    const btn = e.target.closest('button[data-tab]'); if(!btn) return;
-    currentTab = btn.dataset.tab;
-    document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
+  function setTab(tab){
+    currentTab = tab;
+    document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
     render();
+  }
+  $id('tabs').addEventListener('click', function(e){
+    const btn = e.target.closest('button[data-tab]'); if(!btn) return;
+    setTab(btn.dataset.tab);
   });
+  document.querySelectorAll('.stat[data-go]').forEach(b=>b.addEventListener('click', function(){
+    setTab(b.dataset.go);
+    $id('tabs').scrollIntoView({ block:'start' });
+  }));
 
   document.getElementById('searchBox').addEventListener('input', render);
   document.getElementById('sortSelect').addEventListener('change', render);
@@ -1341,7 +1539,7 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
       status.textContent = '品目データの形式が正しくありません。';
       return;
     }
-    const ok = window.confirm('インポートすると、現在表示されている品目データ（'+items.length+'件）はすべて置き換わります。よろしいですか？');
+    const ok = await askConfirm('インポートすると、現在表示されている品目データ（'+items.length+'件）はすべて置き換わります。', 'インポートする');
     if(!ok){
       status.textContent = 'インポートを取り消しました。';
       return;
