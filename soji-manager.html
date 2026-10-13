@@ -90,6 +90,7 @@
     border-bottom:1px solid var(--line);
   }
   .app-header h1{ font-size:24px; font-weight:800; margin:0; letter-spacing:.02em; line-height:1.3; }
+  .app-header h1 span{ display:inline-block; } /* 折り返しは「掃除タスク／マネージャー」の切れ目で */
   .app-header .sub{ font-size:13px; color:var(--ink-soft); margin-top:2px; }
   .header-actions{ display:flex; align-items:center; gap:8px; flex-shrink:0; position:relative; }
   .add-btn{
@@ -170,6 +171,7 @@
   .today-title{ font-size:16px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .today-sub{ font-size:13px; color:var(--ink-soft); }
   .today-sub .over{ color:var(--danger); font-weight:700; }
+  .today-sub .now{ color:var(--warn); font-weight:700; }
 
   /* ---------- Summary strip ---------- */
   .summary{
@@ -227,12 +229,17 @@
   .mc-day.selected{ background:var(--surface-2); border-color:var(--ink); }
   .mc-daynum{ flex-shrink:0; line-height:1.4; min-width:24px; text-align:center; }
   .mc-chips{ display:none; flex-direction:column; gap:2px; width:100%; }
+  /* 薄い地に文字色は ink、色は左の線で示す（白文字だとコントラストが足りないため） */
   .mc-chip{
     display:block; width:100%; font-size:11px; line-height:1.35; padding:1px 4px;
     border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    color:#fff; text-align:left; cursor:pointer;
+    background:var(--surface-2); color:var(--ink); text-align:left; cursor:pointer;
+    border-left:3px solid var(--member-color, var(--ink));
   }
-  .mc-chip.mc-done{ background:var(--ok); }
+  @supports (background:color-mix(in srgb, red 10%, white)){
+    .mc-chip{ background:color-mix(in srgb, var(--member-color, var(--ink)) 16%, var(--paper)); }
+  }
+  .mc-chip.mc-done{ background:var(--ok-bg); border-left-color:var(--ok); }
   .mc-more{ font-size:11px; color:var(--ink-soft); line-height:1.2; }
   .mc-dots{ display:flex; gap:3px; flex-wrap:wrap; justify-content:center; min-height:8px; }
   .mc-dot{ width:8px; height:8px; border-radius:50%; background:var(--member-color, var(--ink)); }
@@ -249,7 +256,8 @@
     display:inline-flex; align-items:center; gap:6px;
     background:var(--surface-2); border-radius:999px;
     padding:4px 12px 4px 8px; margin:3px 4px 3px 0;
-    font-size:13px; cursor:pointer; border:1.5px solid transparent;
+    font:inherit; font-size:13px; color:var(--ink); min-height:44px;
+    cursor:pointer; border:1.5px solid transparent;
   }
   .mc-detail-tag:hover{ border-color:var(--ink); }
   .mc-detail-tag .mc-swatch{ width:9px; height:9px; border-radius:50%; }
@@ -268,15 +276,15 @@
   }
   .sort-toggle{
     flex-shrink:0; background:none; border:1px solid var(--line); border-radius:999px;
-    min-height:40px; padding:0 14px; font-size:13px; font-weight:700; color:var(--ink-soft);
+    min-height:44px; padding:0 14px; font-size:13px; font-weight:700; color:var(--ink-soft);
     cursor:pointer; white-space:nowrap;
   }
   .sort-toggle:hover{ border-color:var(--ink); color:var(--ink); }
   .chip{
     display:flex; align-items:center; gap:7px;
-    min-height:40px; padding:0 14px 0 10px;
+    min-height:44px; padding:0 14px 0 10px;
     border-radius:999px; border:1px solid var(--line); background:var(--paper);
-    font-size:14px; font-weight:500; cursor:pointer; color:var(--ink-soft);
+    font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; color:var(--ink-soft);
   }
   .chip .dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
   .chip.active{ border-color:var(--ink); color:var(--ink); font-weight:700; background:var(--surface-2); }
@@ -301,9 +309,15 @@
   .ticket .stripe{ background:var(--member-color, var(--ink)); border-radius:var(--radius) 0 0 var(--radius); }
   .ticket-body{ padding:14px 16px; min-width:0; }
   .ticket-top{ display:flex; align-items:center; gap:8px 10px; flex-wrap:wrap; margin-bottom:10px; }
+  /* 担当者名は ink 文字のタグ。色は先頭の丸で示す */
   .member-tag{
-    font-size:12px; font-weight:700; padding:2px 10px; border-radius:999px;
-    color:#fff; background:var(--member-color, var(--ink));
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:13px; font-weight:700; padding:2px 10px 2px 8px; border-radius:999px;
+    color:var(--ink); background:var(--surface-2); border:1px solid var(--line);
+  }
+  .member-tag::before{
+    content:""; width:10px; height:10px; border-radius:50%; flex-shrink:0;
+    background:var(--member-color, var(--ink));
   }
   .route{ font-size:17px; font-weight:800; letter-spacing:.01em; }
   .status-tag{
@@ -312,6 +326,7 @@
   }
   .status-ok{ background:var(--ok-bg); color:var(--ok); }
   .status-warn{ background:var(--warn-bg); color:var(--warn); }
+  .status-today{ background:var(--warn); color:var(--bg); } /* 本日：塗りつぶしで強調 */
   .status-danger{ background:var(--danger-bg); color:var(--danger); }
 
   .timeline{ display:flex; align-items:center; gap:10px; font-size:13px; color:var(--ink-soft); margin-bottom:4px; }
@@ -345,6 +360,9 @@
     text-align:center; min-height:44px; padding:0 16px; white-space:nowrap;
   }
   .icon-btn:hover{ color:var(--ink); border-color:var(--ink); }
+  .icon-btn:disabled, .icon-btn.primary:disabled{
+    background:none; color:var(--ink-soft); border-color:var(--line); opacity:.75; cursor:default;
+  }
   .icon-btn.primary{ color:#fff; background:var(--ok); border-color:var(--ok); font-size:15px; }
   .icon-btn.primary:hover{ opacity:.88; color:#fff; }
   :root[data-theme="dark"] .icon-btn.primary{ color:#06210f; }
@@ -388,13 +406,13 @@
   .freq-presets{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .freq-chip{
     border:1px solid var(--line); background:var(--paper); border-radius:999px;
-    min-height:36px; padding:0 12px; font-size:13px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+    min-height:44px; padding:0 14px; font-size:13px; font-weight:700; color:var(--ink-soft); cursor:pointer;
   }
   .freq-chip:hover, .freq-chip.active{ border-color:var(--ink); color:var(--ink); background:var(--surface-2); }
   .color-picker{ display:flex; gap:10px; flex-wrap:wrap; }
   .color-swatch{
-    width:36px; height:36px; border-radius:50%;
-    border:3px solid transparent; box-shadow:inset 0 0 0 2px var(--paper); cursor:pointer;
+    width:44px; height:44px; border-radius:50%; padding:0;
+    border:3px solid transparent; box-shadow:inset 0 0 0 3px var(--paper); cursor:pointer;
   }
   .color-swatch.selected{ border-color:var(--ink); }
   .modal-actions{
@@ -413,7 +431,7 @@
   .history-item .h-date{ font-weight:700; }
   .history-item .h-delete, .history-item .h-edit, .history-item .h-save, .history-item .h-cancel{
     border:none; background:none; cursor:pointer; font-size:14px; color:var(--ink-soft);
-    min-height:40px; padding:0 8px;
+    min-height:44px; padding:0 10px;
   }
   .history-item .h-btns{ display:flex; gap:2px; flex-shrink:0; }
   .history-item .h-edit:hover, .history-item .h-save:hover{ color:var(--ink); }
@@ -455,6 +473,7 @@
     .app{ padding:calc(16px + env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom)); }
     .app-header h1{ font-size:21px; }
     .app-header .sub{ display:none; }
+    .add-long{ display:none; }
     .summary{ gap:6px; }
     .summary-cell{ padding:8px 10px; }
     .summary-cell .value{ font-size:19px; }
@@ -500,11 +519,11 @@
 
   <div class="app-header">
     <div>
-      <h1>掃除タスクマネージャー</h1>
+      <h1><span>掃除タスク</span><span>マネージャー</span></h1>
       <div class="sub">家族の掃除タスクをまとめて管理</div>
     </div>
     <div class="header-actions">
-      <button class="add-btn" id="openAdd">＋ タスクを追加</button>
+      <button class="add-btn" id="openAdd">＋ <span class="add-long">タスクを</span>追加</button>
       <button class="menu-btn" id="menuBtn" aria-label="メニュー" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu-backdrop" id="menuBackdrop"></div>
       <div class="pop-menu" id="headerMenu">
@@ -566,7 +585,7 @@
 </div>
 
 <div class="overlay" id="overlay">
-  <div class="modal" role="dialog" aria-modal="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <h2 id="modalTitle">タスクを追加</h2>
     <form id="taskForm">
       <div class="field">
@@ -575,8 +594,8 @@
         <datalist id="memberSuggestions"></datalist>
       </div>
       <div class="field">
-        <label>ラベルカラー</label>
-        <div class="color-picker" id="colorPicker"></div>
+        <label id="colorLabel">ラベルカラー</label>
+        <div class="color-picker" id="colorPicker" role="radiogroup" aria-labelledby="colorLabel"></div>
       </div>
       <div class="field">
         <label for="f-title">タスク名（例：浴室掃除）</label>
@@ -620,7 +639,7 @@
 </div>
 
 <div class="overlay" id="historyOverlay">
-  <div class="modal" role="dialog" aria-modal="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
     <h2 id="historyTitle">実施履歴</h2>
     <div class="history-list" id="historyList"></div>
     <div class="history-add">
@@ -634,8 +653,8 @@
 </div>
 
 <div class="overlay" id="importOverlay">
-  <div class="modal" role="dialog" aria-modal="true">
-    <h2>インポート方法を選択</h2>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <h2 id="importTitle">インポート方法を選択</h2>
     <p id="importInfo" style="font-size:13.5px; margin:0 0 6px;"></p>
     <p style="font-size:12.5px; color:var(--ink-soft); margin:0;">どちらの方法でも、実行前のデータは退避され、「直前のインポートを取り消す」で元に戻せます。</p>
     <div class="modal-actions" style="flex-wrap:wrap;">
@@ -652,7 +671,9 @@
 <script src="cloud-sync.js"></script>
 <script>
 (function(){
-  const COLORS = ['#2B6CB8','#2E9E5B','#C97A1A','#C0392B','#7A5CC9','#1B8A8A'];
+  // 担当者色。状態色（緑＝OK・赤＝期限切れ）と紛らわしい色は使わない
+  const COLORS = ['#2B6CB8','#7A5CC9','#1B8A8A','#C97A1A','#C2477F','#7A5A3C'];
+  const COLOR_NAME = { '#2B6CB8':'青', '#7A5CC9':'紫', '#1B8A8A':'青緑', '#C97A1A':'橙', '#C2477F':'桃', '#7A5A3C':'茶' };
   const FREQ_LABEL = { '1':'毎日', '3':'3日ごと', '7':'1週間ごと', '14':'2週間ごと', '30':'1ヶ月ごと' };
   let tasks = [];
   let activeMember = 'all';
@@ -698,16 +719,26 @@
     return Math.round((end - now) / 86400000);
   }
 
+  // 経過率。日付単位で数える（日中に値が動かないように）
   function pctOf(t){
     const totalSpan = Math.max(1, (new Date(t.next + 'T00:00:00') - new Date(t.last + 'T00:00:00')) / 86400000);
-    const elapsed = Math.max(0, (new Date() - new Date(t.last + 'T00:00:00')) / 86400000);
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    const elapsed = Math.max(0, (today0 - new Date(t.last + 'T00:00:00')) / 86400000);
     return Math.min(100, Math.round((elapsed/totalSpan)*100));
   }
 
+  function doneToday(t){
+    return Array.isArray(t.history) && t.history.includes(todayISO());
+  }
+
+  // 状態は「次回予定日までの日数」で決める（今日カード・件数・一覧で共通）
+  // danger=期限切れ / today=本日 / warn=あと1〜2日 / ok=それ以外（今日完了済みも ok）
   function statusOf(t){
-    const pct = pctOf(t);
-    if(pct >= 100) return 'danger';
-    if(pct >= 75) return 'warn';
+    if(doneToday(t)) return 'ok';
+    const d = daysUntil(t.next);
+    if(d < 0) return 'danger';
+    if(d === 0) return 'today';
+    if(d <= 2) return 'warn';
     return 'ok';
   }
 
@@ -999,15 +1030,15 @@
       bar.style.display = 'flex';
       dot.classList.add('paused');
       btn.textContent = '自動保存ファイルを設定';
-      status.textContent = `自動保存が一時停止中です（${fileName || 'ファイル'}）。再開するには下のボタンを押してください`;
+      status.textContent = `自動保存が一時停止中です（${fileName || 'ファイル'}）。再開するには「再開」を押してください`;
       // ステータス行に再開ボタンを追加
       if(!$('#autosaveResumeBtn')){
         const resumeBtn = document.createElement('button');
         resumeBtn.id = 'autosaveResumeBtn';
         resumeBtn.type = 'button';
         resumeBtn.className = 'btn-secondary';
-        resumeBtn.style.padding = '2px 10px';
-        resumeBtn.style.fontSize = '11.5px';
+        resumeBtn.style.padding = '0 16px';
+        resumeBtn.style.fontSize = '13px';
         resumeBtn.textContent = '再開';
         resumeBtn.addEventListener('click', resumeAutosaveFile);
         bar.appendChild(resumeBtn);
@@ -1022,17 +1053,21 @@
   // ---------- Rendering ----------
   function renderMemberFilter(){
     const members = uniqueMembers();
-    let html = `<div class="chip ${activeMember==='all'?'active':''}" data-member="all">
-        <span class="dot" style="background:var(--ink)"></span>すべて</div>`;
+    let html = `<button type="button" class="chip ${activeMember==='all'?'active':''}" data-member="all" aria-pressed="${activeMember==='all'}">
+        <span class="dot" style="background:var(--ink)"></span>すべて</button>`;
     members.forEach((color, name) => {
-      html += `<div class="chip ${activeMember===name?'active':''}" data-member="${escapeHtml(name)}">
-        <span class="dot" style="background:${color}"></span>${escapeHtml(name)}</div>`;
+      html += `<button type="button" class="chip ${activeMember===name?'active':''}" data-member="${escapeHtml(name)}" aria-pressed="${activeMember===name}">
+        <span class="dot" style="background:${color}"></span>${escapeHtml(name)}</button>`;
     });
     memberRow.innerHTML = html;
     memberRow.querySelectorAll('.chip').forEach(chip => {
       chip.addEventListener('click', () => {
-        activeMember = chip.dataset.member;
+        const picked = chip.dataset.member;
+        activeMember = picked;
         render();
+        // 再描画でボタンが作り直されるため、押したボタンへフォーカスを戻す
+        const again = [...memberRow.querySelectorAll('.chip')].find(c => c.dataset.member === picked);
+        if(again) again.focus();
       });
     });
   }
@@ -1040,14 +1075,15 @@
   function renderStats(){
     const visible = tasks;
     $('#statTotal').textContent = visible.length;
-    $('#statWarn').textContent = visible.filter(t => statusOf(t) === 'warn' || statusOf(t) === 'danger').length;
+    // 要対応＝今日カードと同じ（本日または期限切れ）
+    $('#statWarn').textContent = visible.filter(t => statusOf(t) === 'today' || statusOf(t) === 'danger').length;
     const sum = visible.reduce((a,t) => a + Number(t.duration||0), 0);
     $('#statSum').textContent = `${sum}分`;
   }
 
   function renderToday(){
     const box = $('#todaySection');
-    const due = tasks.filter(t => daysUntil(t.next) <= 0).sort((a,b) => daysUntil(a.next) - daysUntil(b.next));
+    const due = tasks.filter(t => daysUntil(t.next) <= 0 && !doneToday(t)).sort((a,b) => daysUntil(a.next) - daysUntil(b.next));
     const over = due.some(t => daysUntil(t.next) < 0);
     box.className = 'today' + (due.length ? (over ? ' has-over' : ' has-due') : '');
     let html = `<div class="today-head"><h2>今日やること</h2><span class="today-count">${due.length ? due.length + '件' : ''}</span></div>`;
@@ -1060,14 +1096,14 @@
     }else{
       html += due.map((t, i) => {
         const d = daysUntil(t.next);
-        const when = d < 0 ? `<span class="over">⚠ 期限切れ（${Math.abs(d)}日超過）</span>` : '本日';
+        const when = d < 0 ? `<span class="over">⚠ 期限切れ（${Math.abs(d)}日超過）</span>` : '<span class="now">● 本日</span>';
         return `<div class="today-item${i === 0 ? ' first' : ''}" style="--member-color:${t.color}" data-id="${t.id}">
           <span class="today-dot"></span>
           <div class="today-main">
             <div class="today-title">${escapeHtml(t.title)}</div>
             <div class="today-sub">${escapeHtml(t.member)}・${when}・${t.duration}分</div>
           </div>
-          <button class="icon-btn primary today-done">✓ 完了</button>
+          <button class="icon-btn primary today-done" aria-label="「${escapeHtml(t.title)}」を完了">✓ 完了</button>
         </div>`;
       }).join('');
     }
@@ -1093,8 +1129,10 @@
 
     listEl.innerHTML = sorted.map(t => {
       const st = statusOf(t);
-      const label = (st === 'danger' ? '⚠ ' : (st === 'warn' ? '◔ ' : '✓ ')) + statusLabel(t);
-      const statusClass = st === 'ok' ? 'status-ok' : (st === 'warn' ? 'status-warn' : 'status-danger');
+      const finished = doneToday(t);
+      const icon = { danger:'⚠ ', today:'● ', warn:'◔ ', ok:'✓ ' }[st];
+      const label = finished ? `✓ 今日完了（${statusLabel(t)}）` : icon + statusLabel(t);
+      const statusClass = 'status-' + st;
       const pct = pctOf(t);
       return `
       <div class="ticket" style="--member-color:${t.color}" data-id="${t.id}">
@@ -1121,7 +1159,9 @@
           </div>
         </div>
         <div class="ticket-actions">
-          <button class="icon-btn primary done-btn">✓ 完了</button>
+          ${finished
+            ? '<button class="icon-btn primary done-btn" disabled aria-label="' + escapeHtml(t.title) + '：今日は完了済み">完了済み</button>'
+            : '<button class="icon-btn primary done-btn" aria-label="「' + escapeHtml(t.title) + '」を完了">✓ 完了</button>'}
           <button class="icon-btn more-btn" aria-label="その他の操作" aria-haspopup="true" aria-expanded="false">⋯</button>
           <div class="t-menu">
             <button class="history-btn">実施履歴</button>
@@ -1209,13 +1249,13 @@
       if(dateStr === selectedCalDate) classes.push('selected');
 
       const chipItems = [
-        ...done.map(t => ({ id: t.id, text: t.title, style: 'background:var(--ok)' })),
-        ...due.map(t => ({ id: t.id, text: t.title, style: `background:${t.color}` }))
+        ...done.map(t => ({ id: t.id, text: t.title, cls: ' mc-done', style: '' })),
+        ...due.map(t => ({ id: t.id, text: t.title, cls: '', style: `--member-color:${t.color}` }))
       ];
       const MAX_CHIPS = 2;
       const shown = chipItems.slice(0, MAX_CHIPS);
       const extraCount = chipItems.length - shown.length;
-      let chipsHtml = shown.map(c => `<span class="mc-chip" data-task-id="${c.id}" style="${c.style}">${escapeHtml(c.text)}</span>`).join('');
+      let chipsHtml = shown.map(c => `<span class="mc-chip${c.cls}" data-task-id="${c.id}" style="${c.style}">${escapeHtml(c.text)}</span>`).join('');
       if(extraCount > 0) chipsHtml += `<span class="mc-more">+${extraCount}件</span>`;
 
       const dots = [
@@ -1223,10 +1263,12 @@
         ...due.map(t => `<span class="mc-dot" style="--member-color:${t.color}"></span>`)
       ].slice(0, 6).join('');
       const a11y = hasEvent ? ` role="button" tabindex="0" aria-label="${calMonth + 1}月${day}日（実施${done.length}件・予定${due.length}件）"` : '';
-      cells += `<div class="${classes.join(' ')}" data-date="${dateStr}"${a11y}>
+      const cur = dateStr === todayStr ? ' aria-current="date"' : '';
+      // チップ・ドットは見た目用。読み上げは日付セルの aria-label に任せる
+      cells += `<div class="${classes.join(' ')}" data-date="${dateStr}"${a11y}${cur}>
         <span class="mc-daynum">${day}</span>
-        <span class="mc-chips">${chipsHtml}</span>
-        <span class="mc-dots">${dots}</span>
+        <span class="mc-chips" aria-hidden="true">${chipsHtml}</span>
+        <span class="mc-dots" aria-hidden="true">${dots}</span>
       </div>`;
     }
     $('#mcGrid').innerHTML = cells;
@@ -1267,12 +1309,12 @@
     let html = `<div class="mc-detail-block"><b>${y}/${Number(m)}/${Number(d)}</b></div>`;
     if(done.length){
       html += `<div class="mc-detail-block"><span class="mc-detail-label">実施：</span>` +
-        done.map(t => `<span class="mc-detail-tag" data-task-id="${t.id}"><span class="mc-swatch" style="background:${t.color}"></span>${escapeHtml(t.title)}（${escapeHtml(t.member)}）</span>`).join('') +
+        done.map(t => `<button type="button" class="mc-detail-tag" data-task-id="${t.id}"><span class="mc-swatch" style="background:${t.color}"></span>${escapeHtml(t.title)}（${escapeHtml(t.member)}）</button>`).join('') +
         `</div>`;
     }
     if(due.length){
       html += `<div class="mc-detail-block"><span class="mc-detail-label">予定：</span>` +
-        due.map(t => `<span class="mc-detail-tag" data-task-id="${t.id}"><span class="mc-swatch" style="background:${t.color}"></span>${escapeHtml(t.title)}（${escapeHtml(t.member)}）</span>`).join('') +
+        due.map(t => `<button type="button" class="mc-detail-tag" data-task-id="${t.id}"><span class="mc-swatch" style="background:${t.color}"></span>${escapeHtml(t.title)}（${escapeHtml(t.member)}）</button>`).join('') +
         `</div>`;
     }
     if(!done.length && !due.length){
@@ -1297,7 +1339,8 @@
     requestAnimationFrame(() => {
       const el = listEl.querySelector(`.ticket[data-id="${id}"]`);
       if(!el) return;
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'center' });
       el.classList.add('ticket-highlight');
       setTimeout(() => el.classList.remove('ticket-highlight'), 1600);
     });
@@ -1341,13 +1384,17 @@
 
   // ---------- Modal ----------
   function renderColorPicker(){
-    colorPicker.innerHTML = COLORS.map(c =>
-      `<span class="color-swatch ${c===selectedColor?'selected':''}" style="background:${c}" data-color="${c}"></span>`
+    // 以前に選んだ色（現在の候補にない色）も、選択中なら先頭に出す
+    const list = COLORS.includes(selectedColor) ? COLORS : [selectedColor, ...COLORS];
+    colorPicker.innerHTML = list.map(c =>
+      `<button type="button" role="radio" aria-checked="${c===selectedColor}" aria-label="${COLOR_NAME[c] || '以前の色'}" class="color-swatch ${c===selectedColor?'selected':''}" style="background:${c}" data-color="${c}"></button>`
     ).join('');
     colorPicker.querySelectorAll('.color-swatch').forEach(sw => {
       sw.addEventListener('click', () => {
         selectedColor = sw.dataset.color;
         renderColorPicker();
+        const sel = colorPicker.querySelector('.color-swatch.selected');
+        if(sel) sel.focus();
       });
     });
   }
@@ -1961,6 +2008,11 @@
     if(t === 'auto') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', t);
     $('#themeBtn').textContent = THEME_LABEL[t];
+    // ブラウザ上部の色（theme-color）も、手動で選んだ表示に合わせる
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => {
+      const isDarkMeta = (m.getAttribute('media') || '').indexOf('dark') >= 0;
+      m.setAttribute('content', t === 'light' ? '#F4F5F7' : (t === 'dark' ? '#0E1116' : (isDarkMeta ? '#0E1116' : '#F4F5F7')));
+    });
   }
   $('#themeBtn').addEventListener('click', () => {
     const next = THEME_NEXT[getTheme()];
