@@ -2,351 +2,292 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>掃除タスクマネージャー</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#F4F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1116" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="掃除タスク">
+<link rel="manifest" href="soji-manifest.json">
+<link rel="icon" href="soji-icon-192.png">
+<link rel="apple-touch-icon" href="soji-icon-192.png">
+<script>
+  /* 保存済みの表示設定を、画面が描かれる前に反映（ちらつき防止） */
+  try{ var t=localStorage.getItem('soji-manager-theme'); if(t==='light'||t==='dark') document.documentElement.setAttribute('data-theme',t); }catch(e){}
+</script>
 <style>
+  /* ===== デザイントークン（ライト／ダーク。ダークは端末の設定に自動で従う） ===== */
   :root{
-    --bg: #F4F5F7;
-    --ink: #1B2333;
-    --ink-soft: #5B6478;
-    --paper: #FFFFFF;
-    --line: #D7DBE3;
-    --ok: #2E7D5B;
-    --warn: #C97A1A;
-    --danger: #C0392B;
-    --radius: 14px;
+    color-scheme:light dark;
+    --bg:#F4F5F7; --paper:#FFFFFF; --surface-2:#EEF0F4;
+    --ink:#1B2333; --ink-soft:#505A6E; --line:#D7DBE3;
+    --accent:#1B2333; --on-accent:#FFFFFF;
+    --ok:#1F7A52; --ok-bg:#E4F1EA;
+    --warn:#9A5B0C; --warn-bg:#FBEBD6;
+    --danger:#B3281C; --danger-bg:#F8E2DE;
+    --overlay:rgba(27,35,51,.45);
+    --shadow-sm:0 1px 2px rgba(27,35,51,.06);
+    --shadow-lg:0 8px 28px rgba(27,35,51,.22);
+    --radius:14px; --r-s:8px; --r-m:12px;
+    --font:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo UI",system-ui,sans-serif;
   }
-  *{ box-sizing:border-box; }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1116; --paper:#171B22; --surface-2:#1F242C;
+      --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440;
+      --accent:#E8ECF2; --on-accent:#0E1116;
+      --ok:#4CC38A; --ok-bg:#12301F;
+      --warn:#F0A742; --warn-bg:#3A2A0C;
+      --danger:#FF8176; --danger-bg:#3D1A17;
+      --overlay:rgba(0,0,0,.6);
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+      --shadow-lg:0 8px 28px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"]{ color-scheme:light; }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#0E1116; --paper:#171B22; --surface-2:#1F242C;
+    --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440;
+    --accent:#E8ECF2; --on-accent:#0E1116;
+    --ok:#4CC38A; --ok-bg:#12301F;
+    --warn:#F0A742; --warn-bg:#3A2A0C;
+    --danger:#FF8176; --danger-bg:#3D1A17;
+    --overlay:rgba(0,0,0,.6);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    --shadow-lg:0 8px 28px rgba(0,0,0,.6);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; padding:0; }
+  html{ -webkit-text-size-adjust:100%; }
   body{
     background:var(--bg);
     color:var(--ink);
-    font-family:'Noto Sans JP', sans-serif;
+    font-family:var(--font);
     line-height:1.6;
     min-height:100vh;
+  }
+  button{ font-family:inherit; }
+  button:focus-visible, input:focus-visible, select:focus-visible, .mc-day:focus-visible{
+    outline:2px solid var(--ink); outline-offset:2px;
   }
   .app{
     max-width:920px;
     margin:0 auto;
-    padding:32px 20px 80px;
+    padding:calc(28px + env(safe-area-inset-top)) 20px calc(96px + env(safe-area-inset-bottom));
   }
 
   /* ---------- Header ---------- */
   .app-header{
     display:flex;
-    align-items:flex-end;
+    align-items:center;
     justify-content:space-between;
-    gap:16px;
-    margin-bottom:28px;
-    border-bottom:3px solid var(--ink);
-    padding-bottom:16px;
+    gap:12px;
+    margin-bottom:20px;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--line);
   }
-  .app-header h1{
-    font-size:26px;
-    font-weight:900;
-    margin:0;
-    letter-spacing:.02em;
-  }
-  .app-header .sub{
-    font-size:12.5px;
-    color:var(--ink-soft);
-    margin-top:4px;
-  }
+  .app-header h1{ font-size:24px; font-weight:800; margin:0; letter-spacing:.02em; line-height:1.3; }
+  .app-header .sub{ font-size:13px; color:var(--ink-soft); margin-top:2px; }
+  .header-actions{ display:flex; align-items:center; gap:8px; flex-shrink:0; position:relative; }
   .add-btn{
-    background:var(--ink);
-    color:#fff;
+    background:var(--accent);
+    color:var(--on-accent);
     border:none;
     border-radius:999px;
-    padding:11px 22px;
-    font-size:14px;
+    min-height:44px;
+    padding:0 20px;
+    font-size:15px;
     font-weight:700;
-    font-family:inherit;
     cursor:pointer;
     white-space:nowrap;
-    transition:transform .12s ease, background .12s ease;
   }
-  .add-btn:hover{ background:#333d54; transform:translateY(-1px); }
-  .add-btn:active{ transform:translateY(0); }
+  .add-btn:hover{ opacity:.88; }
+  .menu-btn{
+    width:44px; height:44px; border-radius:50%;
+    border:1px solid var(--line); background:var(--paper); color:var(--ink);
+    font-size:22px; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .menu-btn:hover{ background:var(--surface-2); }
+  .menu-backdrop{ position:fixed; inset:0; z-index:30; display:none; }
+  .menu-backdrop.show{ display:block; }
+  .pop-menu{
+    display:none;
+    position:absolute; right:0; top:calc(100% + 6px);
+    z-index:31;
+    min-width:240px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--r-m);
+    box-shadow:var(--shadow-lg);
+    padding:6px;
+    flex-direction:column;
+  }
+  .pop-menu.show{ display:flex; }
+  .pop-menu button{
+    text-align:left; background:none; border:none; color:var(--ink);
+    min-height:44px; padding:0 12px; border-radius:var(--r-s);
+    font-size:15px; cursor:pointer; white-space:nowrap;
+  }
+  .pop-menu button:hover{ background:var(--surface-2); }
 
-  .header-actions{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    flex-wrap:wrap;
-  }
   .autosave-bar{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    font-size:12px;
-    color:var(--ink-soft);
-    margin:-14px 0 22px;
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    font-size:13px; color:var(--ink-soft);
+    margin:-8px 0 18px;
   }
-  .autosave-dot{
-    width:8px; height:8px;
-    border-radius:50%;
-    background:var(--line);
-    flex-shrink:0;
-  }
+  .autosave-dot{ width:8px; height:8px; border-radius:50%; background:var(--line); flex-shrink:0; }
   .autosave-dot.on{ background:var(--ok); }
   .autosave-dot.paused{ background:var(--warn); }
   .autosave-dot.error{ background:var(--danger); }
 
-  /* ---------- Mini calendar ---------- */
-  .mini-calendar{
+  /* ---------- 今日やること ---------- */
+  .today{
     background:var(--paper);
     border:1px solid var(--line);
-    border-radius:12px;
-    padding:14px 16px 16px;
-    margin-bottom:28px;
+    border-radius:var(--radius);
+    padding:14px 16px;
+    margin-bottom:20px;
+    box-shadow:var(--shadow-sm);
   }
-  .mc-header{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    margin-bottom:10px;
+  .today.has-due{ border-color:var(--warn); }
+  .today.has-over{ border-color:var(--danger); }
+  .today-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:6px; }
+  .today-head h2{ font-size:16px; font-weight:800; margin:0; }
+  .today-count{ font-size:13px; font-weight:700; color:var(--ink-soft); }
+  .today-empty{ font-size:14px; color:var(--ink-soft); margin:2px 0 0; }
+  .today-item{
+    display:flex; align-items:center; gap:12px;
+    padding:10px 0;
+    border-top:1px solid var(--line);
   }
-  .mc-title{
-    font-size:14.5px;
-    font-weight:700;
-  }
-  .mc-nav{
-    border:1.5px solid var(--line);
-    background:none;
-    border-radius:8px;
-    width:28px; height:28px;
-    font-size:15px;
-    line-height:1;
-    color:var(--ink-soft);
-    cursor:pointer;
-  }
-  .mc-nav:hover{ border-color:var(--ink); color:var(--ink); }
-  .mc-weekdays{
-    display:grid;
-    grid-template-columns:repeat(7,minmax(0,1fr));
-    text-align:center;
-    font-size:11px;
-    color:var(--ink-soft);
-    margin-bottom:4px;
-  }
-  .mc-grid{
-    display:grid;
-    grid-template-columns:repeat(7,minmax(0,1fr));
-    gap:2px;
-    width:100%;
-  }
-  .mc-day{
-    position:relative;
-    width:100%;
-    min-width:0;
-    min-height:46px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    padding:3px 2px 4px;
-    gap:2px;
-    border-radius:8px;
-    font-size:11px;
-    color:var(--ink);
-    cursor:default;
-  }
-  .mc-day.blank{ visibility:hidden; }
-  .mc-day.has-event{ cursor:pointer; }
-  .mc-day.has-event:hover{ background:var(--bg); }
-  .mc-day.today .mc-daynum{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    width:18px; height:18px;
-    border-radius:50%;
-    background:var(--ink);
-    color:#fff;
-  }
-  .mc-day.selected{ background:var(--bg); border:1.5px solid var(--ink); }
-  .mc-daynum{ flex-shrink:0; line-height:1.3; }
-  .mc-chips{
-    display:flex;
-    flex-direction:column;
-    gap:1px;
-    width:100%;
-  }
-  .mc-chip{
-    display:block;
-    width:100%;
-    font-size:8.5px;
-    line-height:1.3;
-    padding:1px 3px;
-    border-radius:4px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    color:#fff;
-    text-align:center;
-    box-sizing:border-box;
-    cursor:pointer;
-  }
-  .mc-chip.mc-done{ background:var(--ok); }
-  .mc-more{
-    font-size:8px;
-    color:var(--ink-soft);
-    line-height:1.2;
-  }
-  .mc-legend{
-    display:flex;
-    gap:16px;
-    margin-top:10px;
-    font-size:11.5px;
-    color:var(--ink-soft);
-  }
-  .mc-legend span{ display:inline-flex; align-items:center; gap:5px; }
-  .mc-legend .mc-swatch{
-    display:inline-block;
-    width:9px; height:9px;
-    border-radius:3px;
-  }
-  .mc-day-detail{
-    margin-top:10px;
-  }
-  .mc-day-detail:empty{ margin-top:0; }
-  .mc-detail-block{
-    font-size:12.5px;
-    margin-bottom:6px;
-  }
-  .mc-detail-block .mc-detail-label{
-    color:var(--ink-soft);
-    margin-right:6px;
-  }
-  .mc-detail-tag{
-    display:inline-flex;
-    align-items:center;
-    gap:5px;
-    background:var(--bg);
-    border-radius:999px;
-    padding:2px 10px 2px 6px;
-    margin:2px 4px 2px 0;
-    font-size:12px;
-    cursor:pointer;
-    border:1.5px solid transparent;
-    transition:border-color .12s ease;
-  }
-  .mc-detail-tag:hover{ border-color:var(--ink); }
-  .mc-detail-tag .mc-swatch{
-    width:8px; height:8px; border-radius:50%;
-  }
-
-  @keyframes ticketHighlight{
-    0%, 100%{ box-shadow:none; }
-    15%, 85%{ box-shadow:0 0 0 3px var(--ink); }
-  }
-  .ticket.ticket-highlight{
-    animation:ticketHighlight 1.6s ease;
-  }
+  .today-item.first{ border-top:none; }
+  .today-dot{ width:10px; height:10px; border-radius:50%; background:var(--member-color, var(--ink)); flex-shrink:0; }
+  .today-main{ flex:1; min-width:0; }
+  .today-title{ font-size:16px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .today-sub{ font-size:13px; color:var(--ink-soft); }
+  .today-sub .over{ color:var(--danger); font-weight:700; }
 
   /* ---------- Summary strip ---------- */
   .summary{
     display:grid;
     grid-template-columns:repeat(3,1fr);
-    gap:1px;
-    background:var(--line);
-    border:1px solid var(--line);
-    border-radius:12px;
-    overflow:hidden;
-    margin-bottom:28px;
+    gap:8px;
+    margin-bottom:20px;
   }
   .summary-cell{
     background:var(--paper);
-    padding:10px 16px;
-    display:flex;
-    align-items:baseline;
-    gap:8px;
+    border:1px solid var(--line);
+    border-radius:var(--r-m);
+    padding:10px 14px;
+    display:flex; flex-direction:column; gap:2px; min-width:0;
   }
-  .summary-cell .label{
-    font-size:11px;
-    color:var(--ink-soft);
-    margin-bottom:0;
-    white-space:nowrap;
-  }
-  .summary-cell .value{
-    font-family:'Space Mono', monospace;
-    font-size:17px;
-    font-weight:700;
-  }
+  .summary-cell .label{ font-size:12px; color:var(--ink-soft); white-space:nowrap; }
+  .summary-cell .value{ font-size:22px; font-weight:800; line-height:1.2; white-space:nowrap; }
   .summary-cell.warn .value{ color:var(--warn); }
 
-  /* ---------- Member filter ---------- */
-  .member-row{
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-    margin-bottom:0;
+  /* ---------- Mini calendar ---------- */
+  .mini-calendar{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px;
+    margin-bottom:20px;
   }
+  .mc-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .mc-title{ font-size:16px; font-weight:800; }
+  .mc-nav{
+    border:1px solid var(--line); background:none; border-radius:var(--r-s);
+    width:44px; height:44px; font-size:20px; line-height:1; color:var(--ink-soft); cursor:pointer;
+  }
+  .mc-nav:hover{ border-color:var(--ink); color:var(--ink); }
+  .mc-weekdays{
+    display:grid; grid-template-columns:repeat(7,minmax(0,1fr));
+    text-align:center; font-size:12px; color:var(--ink-soft); margin-bottom:4px;
+  }
+  .mc-grid{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; width:100%; }
+  .mc-day{
+    position:relative; width:100%; min-width:0; min-height:52px;
+    display:flex; flex-direction:column; align-items:center;
+    padding:4px 2px; gap:3px;
+    border-radius:var(--r-s); border:1px solid transparent;
+    font-size:13px; color:var(--ink); cursor:default;
+  }
+  .mc-day.blank{ visibility:hidden; }
+  .mc-day.has-event{ cursor:pointer; }
+  .mc-day.has-event:hover{ background:var(--surface-2); }
+  .mc-day.today .mc-daynum{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:24px; height:24px; border-radius:50%;
+    background:var(--accent); color:var(--on-accent); font-weight:700;
+  }
+  .mc-day.selected{ background:var(--surface-2); border-color:var(--ink); }
+  .mc-daynum{ flex-shrink:0; line-height:1.4; min-width:24px; text-align:center; }
+  .mc-chips{ display:none; flex-direction:column; gap:2px; width:100%; }
+  .mc-chip{
+    display:block; width:100%; font-size:11px; line-height:1.35; padding:1px 4px;
+    border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    color:#fff; text-align:left; cursor:pointer;
+  }
+  .mc-chip.mc-done{ background:var(--ok); }
+  .mc-more{ font-size:11px; color:var(--ink-soft); line-height:1.2; }
+  .mc-dots{ display:flex; gap:3px; flex-wrap:wrap; justify-content:center; min-height:8px; }
+  .mc-dot{ width:8px; height:8px; border-radius:50%; background:var(--member-color, var(--ink)); }
+  .mc-dot.done{ border-radius:2px; background:var(--ok); }
+  .mc-legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:12.5px; color:var(--ink-soft); }
+  .mc-legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .mc-legend .mc-swatch{ display:inline-block; width:10px; height:10px; border-radius:50%; }
+  .mc-legend .mc-swatch.sq{ border-radius:2px; }
+  .mc-day-detail{ margin-top:10px; }
+  .mc-day-detail:empty{ margin-top:0; }
+  .mc-detail-block{ font-size:14px; margin-bottom:6px; }
+  .mc-detail-block .mc-detail-label{ color:var(--ink-soft); margin-right:6px; }
+  .mc-detail-tag{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--surface-2); border-radius:999px;
+    padding:4px 12px 4px 8px; margin:3px 4px 3px 0;
+    font-size:13px; cursor:pointer; border:1.5px solid transparent;
+  }
+  .mc-detail-tag:hover{ border-color:var(--ink); }
+  .mc-detail-tag .mc-swatch{ width:9px; height:9px; border-radius:50%; }
+
+  @keyframes ticketHighlight{
+    0%, 100%{ box-shadow:none; }
+    15%, 85%{ box-shadow:0 0 0 3px var(--ink); }
+  }
+  .ticket.ticket-highlight{ animation:ticketHighlight 1.6s ease; }
+
+  /* ---------- Member filter ---------- */
+  .member-row{ display:flex; flex-wrap:wrap; gap:8px; }
   .list-controls{
-    display:flex;
-    align-items:flex-start;
-    justify-content:space-between;
-    gap:12px;
-    flex-wrap:wrap;
-    margin-bottom:22px;
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:12px; flex-wrap:wrap; margin-bottom:16px;
   }
   .sort-toggle{
-    flex-shrink:0;
-    background:none;
-    border:1.5px solid var(--line);
-    border-radius:999px;
-    padding:7px 14px;
-    font-size:12.5px;
-    font-weight:700;
-    font-family:inherit;
-    color:var(--ink-soft);
-    cursor:pointer;
-    white-space:nowrap;
+    flex-shrink:0; background:none; border:1px solid var(--line); border-radius:999px;
+    min-height:40px; padding:0 14px; font-size:13px; font-weight:700; color:var(--ink-soft);
+    cursor:pointer; white-space:nowrap;
   }
   .sort-toggle:hover{ border-color:var(--ink); color:var(--ink); }
   .chip{
-    display:flex;
-    align-items:center;
-    gap:7px;
-    padding:7px 14px 7px 10px;
-    border-radius:999px;
-    border:1.5px solid var(--line);
-    background:var(--paper);
-    font-size:13px;
-    font-weight:500;
-    cursor:pointer;
-    color:var(--ink-soft);
-    transition:border-color .12s ease, color .12s ease;
+    display:flex; align-items:center; gap:7px;
+    min-height:40px; padding:0 14px 0 10px;
+    border-radius:999px; border:1px solid var(--line); background:var(--paper);
+    font-size:14px; font-weight:500; cursor:pointer; color:var(--ink-soft);
   }
-  .chip .dot{
-    width:9px; height:9px; border-radius:50%;
-    flex-shrink:0;
-  }
-  .chip.active{
-    border-color:var(--ink);
-    color:var(--ink);
-    font-weight:700;
-  }
+  .chip .dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .chip.active{ border-color:var(--ink); color:var(--ink); font-weight:700; background:var(--surface-2); }
 
   /* ---------- Task list ---------- */
-  .list{
-    display:flex;
-    flex-direction:column;
-    gap:14px;
-  }
+  .list{ display:flex; flex-direction:column; gap:12px; }
   .empty{
-    text-align:center;
-    padding:60px 20px;
-    color:var(--ink-soft);
-    border:1.5px dashed var(--line);
-    border-radius:var(--radius);
+    text-align:center; padding:48px 20px; color:var(--ink-soft);
+    border:1.5px dashed var(--line); border-radius:var(--radius);
   }
-  .empty .big{
-    font-size:15px;
-    color:var(--ink);
-    font-weight:700;
-    margin-bottom:6px;
-  }
+  .empty .big{ font-size:16px; color:var(--ink); font-weight:700; margin-bottom:6px; }
 
   .ticket{
     position:relative;
@@ -354,344 +295,198 @@
     border-radius:var(--radius);
     border:1px solid var(--line);
     display:grid;
-    grid-template-columns:5px 1fr auto;
-    overflow:hidden;
+    grid-template-columns:6px 1fr auto;
+    box-shadow:var(--shadow-sm);
   }
-  .ticket .stripe{ background:var(--member-color, var(--ink)); }
-  .ticket-body{ padding:16px 18px; min-width:0; }
-  .ticket-top{
-    display:flex;
-    align-items:baseline;
-    gap:10px;
-    flex-wrap:wrap;
-    margin-bottom:10px;
-  }
+  .ticket .stripe{ background:var(--member-color, var(--ink)); border-radius:var(--radius) 0 0 var(--radius); }
+  .ticket-body{ padding:14px 16px; min-width:0; }
+  .ticket-top{ display:flex; align-items:center; gap:8px 10px; flex-wrap:wrap; margin-bottom:10px; }
   .member-tag{
-    font-size:11.5px;
-    font-weight:700;
-    padding:2px 9px;
-    border-radius:999px;
-    color:#fff;
-    background:var(--member-color, var(--ink));
+    font-size:12px; font-weight:700; padding:2px 10px; border-radius:999px;
+    color:#fff; background:var(--member-color, var(--ink));
   }
-  .route{
-    font-size:16.5px;
-    font-weight:700;
-    letter-spacing:.01em;
-  }
+  .route{ font-size:17px; font-weight:800; letter-spacing:.01em; }
   .status-tag{
-    margin-left:auto;
-    font-size:11.5px;
-    font-weight:700;
-    padding:3px 10px;
-    border-radius:999px;
+    margin-left:auto; font-size:13px; font-weight:700;
+    padding:3px 10px; border-radius:999px; white-space:nowrap;
   }
-  .status-ok{ background:#E4F1EA; color:var(--ok); }
-  .status-warn{ background:#FBEBD6; color:var(--warn); }
-  .status-danger{ background:#F8E2DE; color:var(--danger); }
+  .status-ok{ background:var(--ok-bg); color:var(--ok); }
+  .status-warn{ background:var(--warn-bg); color:var(--warn); }
+  .status-danger{ background:var(--danger-bg); color:var(--danger); }
 
-  .timeline{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    font-family:'Space Mono', monospace;
-    font-size:12.5px;
-    color:var(--ink-soft);
-    margin-bottom:4px;
-  }
+  .timeline{ display:flex; align-items:center; gap:10px; font-size:13px; color:var(--ink-soft); margin-bottom:4px; }
   .timeline .start-date{ flex-shrink:0; }
-  .timeline .track{
-    flex:1;
-    height:8px;
-    background:var(--line);
-    border-radius:999px;
-    position:relative;
-    min-width:90px;
-  }
+  .timeline .track{ flex:1; height:8px; background:var(--surface-2); border-radius:999px; position:relative; min-width:90px; }
   .timeline .track .fill{
     position:absolute; left:0; top:0; bottom:0;
-    background:var(--member-color, var(--ink));
-    border-radius:999px;
-    transition:width .2s ease;
+    background:var(--member-color, var(--ink)); border-radius:999px; transition:width .2s ease;
   }
   .timeline .track .marker{
-    position:absolute;
-    top:50%;
-    width:14px; height:14px;
-    background:#fff;
-    border:3px solid var(--member-color, var(--ink));
-    border-radius:50%;
-    transform:translate(-50%,-50%);
-    box-shadow:0 0 0 2px #fff;
+    position:absolute; top:50%; width:14px; height:14px;
+    background:var(--paper); border:3px solid var(--member-color, var(--ink));
+    border-radius:50%; transform:translate(-50%,-50%);
   }
   .timeline .end-date{ color:var(--ink); font-weight:700; flex-shrink:0; }
   .timeline .pct-label{
-    font-size:13px;
-    font-weight:800;
-    color:var(--member-color, var(--ink));
-    background:color-mix(in srgb, var(--member-color, var(--ink)) 14%, white);
-    flex-shrink:0;
-    padding:3px 10px;
-    border-radius:999px;
-    text-align:center;
-    white-space:nowrap;
+    font-size:13px; font-weight:800; color:var(--ink);
+    background:var(--surface-2); flex-shrink:0;
+    padding:2px 10px; border-radius:999px; text-align:center; white-space:nowrap;
   }
-
-  .meta-row{
-    display:flex;
-    gap:16px;
-    flex-wrap:wrap;
-    font-size:12.5px;
-    color:var(--ink-soft);
-    margin-top:8px;
-  }
-  .meta-row b{
-    color:var(--ink);
-    font-family:'Space Mono', monospace;
-    font-weight:700;
-  }
+  .meta-row{ display:flex; gap:4px 16px; flex-wrap:wrap; font-size:13px; color:var(--ink-soft); margin-top:8px; }
+  .meta-row b{ color:var(--ink); font-weight:700; }
 
   .ticket-actions{
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    gap:8px;
-    padding:16px 14px;
-    border-left:1px dashed var(--line);
+    display:flex; flex-direction:column; justify-content:center; gap:8px;
+    padding:14px; border-left:1px dashed var(--line); position:relative;
   }
   .icon-btn{
-    border:1.5px solid var(--line);
-    border-radius:8px;
-    background:none;
-    cursor:pointer;
-    font-size:14px;
-    font-weight:700;
-    color:var(--ink-soft);
-    font-family:inherit;
-    text-align:center;
-    padding:7px 16px;
-    white-space:nowrap;
+    border:1px solid var(--line); border-radius:var(--r-s); background:none;
+    cursor:pointer; font-size:14px; font-weight:700; color:var(--ink-soft);
+    text-align:center; min-height:44px; padding:0 16px; white-space:nowrap;
   }
   .icon-btn:hover{ color:var(--ink); border-color:var(--ink); }
-  .icon-btn.danger:hover{ color:var(--danger); border-color:var(--danger); }
-  .icon-btn.primary{
-    color:var(--ok);
-    border-color:var(--ok);
-    font-weight:700;
+  .icon-btn.primary{ color:#fff; background:var(--ok); border-color:var(--ok); font-size:15px; }
+  .icon-btn.primary:hover{ opacity:.88; color:#fff; }
+  :root[data-theme="dark"] .icon-btn.primary{ color:#06210f; }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .icon-btn.primary{ color:#06210f; } }
+  .more-btn{ font-size:20px; line-height:1; }
+  .t-menu{
+    display:none; position:absolute; right:10px; top:calc(100% - 6px); z-index:20;
+    min-width:150px; background:var(--paper); border:1px solid var(--line);
+    border-radius:var(--r-m); box-shadow:var(--shadow-lg); padding:6px; flex-direction:column;
   }
-  .icon-btn.primary:hover{ color:#fff; background:var(--ok); }
+  .t-menu.show{ display:flex; }
+  .t-menu button{
+    text-align:left; background:none; border:none; color:var(--ink);
+    min-height:44px; padding:0 12px; border-radius:var(--r-s); font-size:15px; cursor:pointer;
+  }
+  .t-menu button:hover{ background:var(--surface-2); }
+  .t-menu button.danger{ color:var(--danger); }
 
   /* ---------- Modal ---------- */
   .overlay{
-    position:fixed; inset:0;
-    background:rgba(27,35,51,.45);
-    display:none;
-    align-items:flex-start;
-    justify-content:center;
-    padding:40px 16px;
-    overflow-y:auto;
-    z-index:50;
+    position:fixed; inset:0; background:var(--overlay);
+    display:none; align-items:center; justify-content:center;
+    padding:24px 16px; overflow-y:auto; z-index:50;
   }
   .overlay.show{ display:flex; }
   .modal{
-    background:var(--paper);
-    border-radius:16px;
-    width:100%;
-    max-width:460px;
-    padding:26px 24px 24px;
+    background:var(--paper); border-radius:18px; width:100%; max-width:460px;
+    padding:24px 22px 22px; max-height:calc(100vh - 48px); max-height:calc(100dvh - 48px); overflow-y:auto;
+    box-shadow:var(--shadow-lg);
   }
-  .modal h2{
-    margin:0 0 18px;
-    font-size:19px;
-    font-weight:900;
-  }
+  .modal h2{ margin:0 0 16px; font-size:20px; font-weight:800; }
   .field{ margin-bottom:14px; }
-  .field label{
-    display:block;
-    font-size:12.5px;
-    font-weight:700;
-    color:var(--ink-soft);
-    margin-bottom:5px;
+  .field label{ display:block; font-size:13px; font-weight:700; color:var(--ink-soft); margin-bottom:5px; }
+  .field input, .field select, .history-add input, .history-item .h-input{
+    width:100%; min-height:44px; padding:0 12px;
+    border:1px solid var(--line); border-radius:var(--r-s);
+    font-family:inherit; font-size:16px; color:var(--ink); background:var(--surface-2);
   }
-  .field input, .field select{
-    width:100%;
-    padding:10px 11px;
-    border:1.5px solid var(--line);
-    border-radius:9px;
-    font-family:inherit;
-    font-size:14px;
-    color:var(--ink);
-    background:var(--paper);
-  }
-  .field input:focus, .field select:focus{
-    outline:2px solid var(--ink);
-    outline-offset:1px;
-  }
+  .field input:focus, .field select:focus{ background:var(--paper); border-color:var(--ink); }
   .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .freq-presets{
-    display:flex;
-    flex-wrap:wrap;
-    gap:6px;
-    margin-top:8px;
-  }
+  .freq-presets{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .freq-chip{
-    border:1.5px solid var(--line);
-    background:var(--paper);
-    border-radius:999px;
-    padding:5px 12px;
-    font-size:12px;
-    font-weight:700;
-    font-family:inherit;
-    color:var(--ink-soft);
-    cursor:pointer;
+    border:1px solid var(--line); background:var(--paper); border-radius:999px;
+    min-height:36px; padding:0 12px; font-size:13px; font-weight:700; color:var(--ink-soft); cursor:pointer;
   }
-  .freq-chip:hover, .freq-chip.active{
-    border-color:var(--ink);
-    color:var(--ink);
-  }
-  .color-picker{ display:flex; gap:8px; flex-wrap:wrap; }
+  .freq-chip:hover, .freq-chip.active{ border-color:var(--ink); color:var(--ink); background:var(--surface-2); }
+  .color-picker{ display:flex; gap:10px; flex-wrap:wrap; }
   .color-swatch{
-    width:28px; height:28px; border-radius:50%;
-    border:2px solid transparent;
-    cursor:pointer;
+    width:36px; height:36px; border-radius:50%;
+    border:3px solid transparent; box-shadow:inset 0 0 0 2px var(--paper); cursor:pointer;
   }
   .color-swatch.selected{ border-color:var(--ink); }
   .modal-actions{
-    display:flex;
-    justify-content:flex-end;
-    gap:10px;
-    margin-top:20px;
+    display:flex; justify-content:flex-end; gap:10px; margin-top:20px;
+    position:sticky; bottom:-1px; background:var(--paper); padding:10px 0 2px;
   }
-  .history-list{
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-    max-height:320px;
-    overflow-y:auto;
-  }
-  .history-empty{
-    text-align:center;
-    padding:30px 10px;
-    color:var(--ink-soft);
-    font-size:13.5px;
-  }
+  /* ダイアログを開いている間は、右下の同期ボタンを隠す */
+  body:has(.overlay.show) #cs-btn, body:has(.overlay.show) #cs-panel{ display:none; }
+  .history-list{ display:flex; flex-direction:column; gap:8px; max-height:320px; overflow-y:auto; }
+  .history-empty{ text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:14px; }
   .history-item{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    padding:9px 12px;
-    border:1px solid var(--line);
-    border-radius:9px;
-    font-size:13.5px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:6px 12px; min-height:48px;
+    border:1px solid var(--line); border-radius:var(--r-s); font-size:15px;
   }
-  .history-item .h-date{
-    font-family:'Space Mono', monospace;
-    font-weight:700;
+  .history-item .h-date{ font-weight:700; }
+  .history-item .h-delete, .history-item .h-edit, .history-item .h-save, .history-item .h-cancel{
+    border:none; background:none; cursor:pointer; font-size:14px; color:var(--ink-soft);
+    min-height:40px; padding:0 8px;
   }
-  .history-item .h-delete,
-  .history-item .h-edit,
-  .history-item .h-save,
-  .history-item .h-cancel{
-    border:none;
-    background:none;
-    cursor:pointer;
-    font-size:12px;
-    color:var(--ink-soft);
-    font-family:inherit;
-  }
-  .history-item .h-btns{ display:flex; gap:6px; flex-shrink:0; }
+  .history-item .h-btns{ display:flex; gap:2px; flex-shrink:0; }
   .history-item .h-edit:hover, .history-item .h-save:hover{ color:var(--ink); }
   .history-item .h-delete:hover{ color:var(--danger); }
   .history-item .h-save{ font-weight:700; color:var(--ok); }
-  .history-item .h-input{
-    flex:1;
-    min-width:0;
-    padding:5px 8px;
-    border:1.5px solid var(--line);
-    border-radius:8px;
-    font-family:inherit;
-    font-size:13.5px;
-  }
-  .history-add{
-    display:flex;
-    gap:8px;
-    align-items:center;
-    margin-top:12px;
-  }
-  .history-add input{
-    flex:1;
-    min-width:0;
-    padding:8px 10px;
-    border:1.5px solid var(--line);
-    border-radius:9px;
-    font-family:inherit;
-    font-size:13.5px;
-  }
+  .history-item .h-input{ flex:1; min-width:0; min-height:40px; }
+  .history-add{ display:flex; gap:8px; align-items:center; margin-top:12px; }
+  .history-add input{ flex:1; min-width:0; }
   .btn-secondary{
-    background:none;
-    border:1.5px solid var(--line);
-    border-radius:999px;
-    padding:9px 18px;
-    font-size:13.5px;
-    font-weight:700;
-    font-family:inherit;
-    color:var(--ink-soft);
-    cursor:pointer;
+    background:none; border:1px solid var(--line); border-radius:999px;
+    min-height:44px; padding:0 18px; font-size:14px; font-weight:700; color:var(--ink-soft); cursor:pointer;
   }
+  .btn-secondary:hover{ border-color:var(--ink); color:var(--ink); }
   .btn-primary{
-    background:var(--ink);
-    color:#fff;
-    border:none;
-    border-radius:999px;
-    padding:9px 20px;
-    font-size:13.5px;
-    font-weight:700;
-    font-family:inherit;
-    cursor:pointer;
+    background:var(--accent); color:var(--on-accent); border:none; border-radius:999px;
+    min-height:44px; padding:0 22px; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .btn-primary:hover{ opacity:.88; }
+
+  /* ---------- お知らせ（トースト） ---------- */
+  .toast-region{
+    position:fixed; left:0; right:0; bottom:calc(24px + env(safe-area-inset-bottom));
+    display:flex; justify-content:center; pointer-events:none; z-index:90;
+  }
+  .toast{
+    background:var(--ink); color:var(--bg); padding:11px 20px; border-radius:999px;
+    font-size:14px; font-weight:600; box-shadow:var(--shadow-lg);
+    max-width:calc(100vw - 32px); text-align:center;
   }
 
-  @media (max-width:520px){
-    .app{ padding:20px 14px 60px; }
-    .app-header{ flex-wrap:wrap; }
-    .app-header h1{ font-size:22px; }
-    .header-actions{
-      width:100%;
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-    .header-actions > *{ flex:1 1 auto; min-width:130px; text-align:center; }
-    .header-actions .add-btn{ flex-basis:100%; }
+  /* ---------- スマホ幅 ---------- */
+  @media (max-width:640px){
+    .app{ padding:calc(16px + env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom)); }
+    .app-header h1{ font-size:21px; }
+    .app-header .sub{ display:none; }
+    .summary{ gap:6px; }
+    .summary-cell{ padding:8px 10px; }
+    .summary-cell .value{ font-size:19px; }
     .list-controls{ flex-direction:column; align-items:stretch; }
-    .mini-calendar{ padding:12px 12px 14px; }
-    .mc-title{ font-size:15px; }
-    .mc-nav{ width:32px; height:32px; font-size:17px; }
-    .mc-day{ min-height:50px; font-size:11px; }
-    .mc-chip{ font-size:9px; }
-    .mc-legend{ font-size:12.5px; }
     .sort-toggle{ width:100%; }
     .timeline{ flex-wrap:wrap; row-gap:4px; }
     .timeline .track{ order:3; flex-basis:100%; }
-    .ticket{ grid-template-columns:5px 1fr; }
+    .ticket{ grid-template-columns:6px 1fr; }
     .ticket-actions{
-      border-left:none;
-      border-top:1px dashed var(--line);
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:8px;
-      grid-column:1 / -1;
-      padding:12px 14px;
+      flex-direction:row; border-left:none; border-top:1px dashed var(--line);
+      grid-column:1 / -1; padding:10px 14px;
     }
-    .icon-btn{ width:100%; padding:9px 10px; font-size:14px; }
-    .summary{ grid-template-columns:1fr; }
+    .ticket-actions .done-btn{ flex:1; }
+    .t-menu{ right:14px; top:auto; bottom:calc(100% - 4px); }
     .two-col{ grid-template-columns:1fr; }
+    .overlay{ align-items:flex-end; padding:0; }
+    .modal{
+      max-width:none; border-radius:18px 18px 0 0;
+      max-height:92vh; max-height:92dvh; padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+    }
+    .modal-actions .btn-primary, .modal-actions .btn-secondary{ flex:1; }
+  }
+  @media (min-width:641px){
+    .mc-chips{ display:flex; }
+    .mc-dots{ display:none; }
+    .mc-day{ min-height:78px; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .ticket.ticket-highlight{ animation:none; }
+    .timeline .track .fill{ transition:none; }
+  }
+  @media print{
+    :root, :root[data-theme]{ color-scheme:light; --bg:#fff; --paper:#fff; --surface-2:#f3f3f3; --ink:#000; --ink-soft:#444; --line:#999; --ok:#1a5a3a; --warn:#6b4a00; --danger:#8a1a12; --ok-bg:#fff; --warn-bg:#fff; --danger-bg:#fff; --shadow-sm:none; }
+    .header-actions, .autosave-bar, .ticket-actions, .toast-region, .overlay, #cs-btn, #cs-panel, .today-item .icon-btn{ display:none !important; }
+    .app{ max-width:none; padding:0; }
   }
 
-  .visually-hidden{
-    position:absolute; width:1px; height:1px;
-    overflow:hidden; clip:rect(0,0,0,0);
-  }
+  .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
 </style>
 </head>
 <body>
@@ -703,12 +498,17 @@
       <div class="sub">家族の掃除タスクをまとめて管理</div>
     </div>
     <div class="header-actions">
-      <button class="btn-secondary" id="autosaveBtn">自動保存ファイルを設定</button>
-      <button class="btn-secondary" id="exportBtn">エクスポート</button>
-      <button class="btn-secondary" id="importBtn">インポート</button>
-      <button class="btn-secondary" id="importUndoBtn" style="display:none;">直前のインポートを取り消す</button>
-      <input type="file" id="importInput" accept="application/json" class="visually-hidden">
       <button class="add-btn" id="openAdd">＋ タスクを追加</button>
+      <button class="menu-btn" id="menuBtn" aria-label="メニュー" aria-haspopup="true" aria-expanded="false">⋯</button>
+      <div class="menu-backdrop" id="menuBackdrop"></div>
+      <div class="pop-menu" id="headerMenu">
+        <button id="autosaveBtn">自動保存ファイルを設定</button>
+        <button id="exportBtn">エクスポート</button>
+        <button id="importBtn">インポート</button>
+        <button id="importUndoBtn" style="display:none;">直前のインポートを取り消す</button>
+        <button id="themeBtn">◐ 表示：自動</button>
+      </div>
+      <input type="file" id="importInput" accept="application/json" class="visually-hidden">
     </div>
   </div>
 
@@ -717,19 +517,21 @@
     <span id="autosaveStatus"></span>
   </div>
 
+  <section class="today" id="todaySection" aria-label="今日やること"></section>
+
   <div class="mini-calendar">
     <div class="mc-header">
-      <button type="button" class="mc-nav" id="mcPrev">‹</button>
+      <button type="button" class="mc-nav" id="mcPrev" aria-label="前の月">‹</button>
       <div class="mc-title" id="mcTitle"></div>
-      <button type="button" class="mc-nav" id="mcNext">›</button>
+      <button type="button" class="mc-nav" id="mcNext" aria-label="次の月">›</button>
     </div>
     <div class="mc-weekdays">
       <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
     </div>
     <div class="mc-grid" id="mcGrid"></div>
     <div class="mc-legend">
-      <span><span class="mc-swatch" style="background:var(--ok)"></span>実施日（緑）</span>
-      <span><span class="mc-swatch" style="background:var(--warn)"></span>予定日（担当者の色）</span>
+      <span><span class="mc-swatch sq" style="background:var(--ok)"></span>実施した日</span>
+      <span><span class="mc-swatch" style="background:var(--ink-soft)"></span>予定日（色は担当者）</span>
     </div>
     <div class="mc-day-detail" id="mcDayDetail"></div>
   </div>
@@ -758,7 +560,7 @@
 </div>
 
 <div class="overlay" id="overlay">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true">
     <h2 id="modalTitle">タスクを追加</h2>
     <form id="taskForm">
       <div class="field">
@@ -812,7 +614,7 @@
 </div>
 
 <div class="overlay" id="historyOverlay">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true">
     <h2 id="historyTitle">実施履歴</h2>
     <div class="history-list" id="historyList"></div>
     <div class="history-add">
@@ -826,7 +628,7 @@
 </div>
 
 <div class="overlay" id="importOverlay">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true">
     <h2>インポート方法を選択</h2>
     <p id="importInfo" style="font-size:13.5px; margin:0 0 6px;"></p>
     <p style="font-size:12.5px; color:var(--ink-soft); margin:0;">どちらの方法でも、実行前のデータは退避され、「直前のインポートを取り消す」で元に戻せます。</p>
@@ -837,6 +639,8 @@
     </div>
   </div>
 </div>
+
+<div class="toast-region" id="toastRegion" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="cloud-sync.js"></script>
@@ -948,7 +752,7 @@
       if(cloud) cloud.notifyChanged();
     }catch(e){
       console.error('保存に失敗しました', e);
-      alert('データの保存に失敗しました。ブラウザの設定をご確認ください。');
+      toast('データの保存に失敗しました。ブラウザの設定をご確認ください。');
     }
   }
 
@@ -1042,7 +846,7 @@
 
   async function chooseAutosaveFile(){
     if(!autosaveSupported){
-      alert('お使いのブラウザは自動保存ファイル機能に対応していません。Chrome または Edge でご利用ください。');
+      toast('お使いのブラウザは自動保存ファイル機能に対応していません。Chrome または Edge でご利用ください。');
       return;
     }
     try{
@@ -1052,7 +856,7 @@
       });
       const granted = await verifyPermission(handle, true);
       if(!granted){
-        alert('ファイルへの書き込み権限が許可されませんでした。');
+        toast('ファイルへの書き込み権限が許可されませんでした。');
         return;
       }
       // 既存ファイルの内容を確認してから設定する（データ消失防止）
@@ -1062,7 +866,7 @@
           tasks = info.tasks;
           saveLocalOnly();
           render();
-          alert(`ファイルから${info.tasks.length}件のデータを読み込みました。`);
+          toast(`ファイルから${info.tasks.length}件のデータを読み込みました。`);
         }else if(confirm(`このファイルには${info.tasks.length}件のデータがあります。\n\n「OK」= ファイルの内容を読み込む（現在の${tasks.length}件は置き換わります）\n「キャンセル」= 次の確認へ`)){
           tasks = info.tasks;
           saveLocalOnly();
@@ -1080,7 +884,7 @@
     }catch(e){
       if(e.name !== 'AbortError'){
         console.error(e);
-        alert('ファイルの選択に失敗しました。');
+        toast('ファイルの選択に失敗しました。');
       }
     }
   }
@@ -1106,7 +910,7 @@
       if(!handle) return;
       const granted = await verifyPermission(handle, true);
       if(!granted){
-        alert('ファイルへの書き込み権限が許可されませんでした。');
+        toast('ファイルへの書き込み権限が許可されませんでした。');
         return;
       }
       autosaveHandle = handle;
@@ -1115,7 +919,7 @@
       updateAutosaveUI('on');
     }catch(e){
       console.error(e);
-      alert('自動保存の再開に失敗しました。');
+      toast('自動保存の再開に失敗しました。');
     }
   }
 
@@ -1213,7 +1017,7 @@
   function renderMemberFilter(){
     const members = uniqueMembers();
     let html = `<div class="chip ${activeMember==='all'?'active':''}" data-member="all">
-        <span class="dot" style="background:${'#1B2333'}"></span>すべて</div>`;
+        <span class="dot" style="background:var(--ink)"></span>すべて</div>`;
     members.forEach((color, name) => {
       html += `<div class="chip ${activeMember===name?'active':''}" data-member="${escapeHtml(name)}">
         <span class="dot" style="background:${color}"></span>${escapeHtml(name)}</div>`;
@@ -1235,6 +1039,38 @@
     $('#statSum').textContent = `${sum}分`;
   }
 
+  function renderToday(){
+    const box = $('#todaySection');
+    const due = tasks.filter(t => daysUntil(t.next) <= 0).sort((a,b) => daysUntil(a.next) - daysUntil(b.next));
+    const over = due.some(t => daysUntil(t.next) < 0);
+    box.className = 'today' + (due.length ? (over ? ' has-over' : ' has-due') : '');
+    let html = `<div class="today-head"><h2>今日やること</h2><span class="today-count">${due.length ? due.length + '件' : ''}</span></div>`;
+    if(!due.length){
+      const upcoming = tasks.filter(t => daysUntil(t.next) > 0).sort((a,b) => daysUntil(a.next) - daysUntil(b.next))[0];
+      let msg = '今日やることはありません。';
+      if(tasks.length === 0) msg = 'タスクを登録すると、期限が来たものがここに並びます。';
+      else if(upcoming) msg += `次は「${escapeHtml(upcoming.title)}」（${escapeHtml(upcoming.member)}・${statusLabel(upcoming)}）です。`;
+      html += `<p class="today-empty">${msg}</p>`;
+    }else{
+      html += due.map((t, i) => {
+        const d = daysUntil(t.next);
+        const when = d < 0 ? `<span class="over">⚠ 期限切れ（${Math.abs(d)}日超過）</span>` : '本日';
+        return `<div class="today-item${i === 0 ? ' first' : ''}" style="--member-color:${t.color}" data-id="${t.id}">
+          <span class="today-dot"></span>
+          <div class="today-main">
+            <div class="today-title">${escapeHtml(t.title)}</div>
+            <div class="today-sub">${escapeHtml(t.member)}・${when}・${t.duration}分</div>
+          </div>
+          <button class="icon-btn primary today-done">✓ 完了</button>
+        </div>`;
+      }).join('');
+    }
+    box.innerHTML = html;
+    box.querySelectorAll('.today-done').forEach(btn => {
+      btn.addEventListener('click', (e) => markDone(e.target.closest('.today-item').dataset.id));
+    });
+  }
+
   function renderList(){
     const filtered = activeMember === 'all' ? tasks : tasks.filter(t => t.member === activeMember);
     const sorted = [...filtered].sort((a,b) =>
@@ -1251,7 +1087,7 @@
 
     listEl.innerHTML = sorted.map(t => {
       const st = statusOf(t);
-      const label = statusLabel(t);
+      const label = (st === 'danger' ? '⚠ ' : (st === 'warn' ? '◔ ' : '✓ ')) + statusLabel(t);
       const statusClass = st === 'ok' ? 'status-ok' : (st === 'warn' ? 'status-warn' : 'status-danger');
       const pct = pctOf(t);
       return `
@@ -1279,10 +1115,13 @@
           </div>
         </div>
         <div class="ticket-actions">
-          <button class="icon-btn primary done-btn">完了</button>
-          <button class="icon-btn history-btn">履歴</button>
-          <button class="icon-btn edit-btn">編集</button>
-          <button class="icon-btn danger delete-btn">削除</button>
+          <button class="icon-btn primary done-btn">✓ 完了</button>
+          <button class="icon-btn more-btn" aria-label="その他の操作" aria-haspopup="true" aria-expanded="false">⋯</button>
+          <div class="t-menu">
+            <button class="history-btn">実施履歴</button>
+            <button class="edit-btn">編集</button>
+            <button class="delete-btn danger">削除</button>
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -1314,6 +1153,7 @@
   }
 
   function render(){
+    renderToday();
     renderMemberFilter();
     renderStats();
     renderList();
@@ -1372,9 +1212,15 @@
       let chipsHtml = shown.map(c => `<span class="mc-chip" data-task-id="${c.id}" style="${c.style}">${escapeHtml(c.text)}</span>`).join('');
       if(extraCount > 0) chipsHtml += `<span class="mc-more">+${extraCount}件</span>`;
 
-      cells += `<div class="${classes.join(' ')}" data-date="${dateStr}">
+      const dots = [
+        ...done.map(() => '<span class="mc-dot done"></span>'),
+        ...due.map(t => `<span class="mc-dot" style="--member-color:${t.color}"></span>`)
+      ].slice(0, 6).join('');
+      const a11y = hasEvent ? ` role="button" tabindex="0" aria-label="${calMonth + 1}月${day}日（実施${done.length}件・予定${due.length}件）"` : '';
+      cells += `<div class="${classes.join(' ')}" data-date="${dateStr}"${a11y}>
         <span class="mc-daynum">${day}</span>
         <span class="mc-chips">${chipsHtml}</span>
+        <span class="mc-dots">${dots}</span>
       </div>`;
     }
     $('#mcGrid').innerHTML = cells;
@@ -1384,6 +1230,12 @@
         const dateStr = cell.dataset.date;
         selectedCalDate = (selectedCalDate === dateStr) ? null : dateStr;
         renderCalendar();
+      });
+    });
+
+    $('#mcGrid').querySelectorAll('.mc-day.has-event').forEach(cell => {
+      cell.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); cell.click(); }
       });
     });
 
@@ -1554,7 +1406,7 @@
     const today = todayISO();
     if(!Array.isArray(t.history)) t.history = t.last ? [t.last] : [];
     if(t.history.includes(today)){
-      alert('今日の完了はすでに記録されています。');
+      toast('今日の完了はすでに記録されています。');
       return;
     }
     t.history.push(today);
@@ -1562,6 +1414,7 @@
     t.next = addDays(today, t.freq);
     saveTasks();
     render();
+    toast(`「${t.title}」を完了しました。次回は${fmtDate(t.next)}です`);
   }
 
   // ---------- History modal ----------
@@ -1652,11 +1505,11 @@
     const t = tasks.find(x => x.id === historyTaskId);
     if(!t || !Array.isArray(t.history)) return;
     if(!isValidDateStr(newDate)){
-      alert('日付を入力してください。');
+      toast('日付を入力してください。');
       return;
     }
     if(newDate !== oldDate && t.history.includes(newDate)){
-      alert('その日付はすでに履歴にあります。');
+      toast('その日付はすでに履歴にあります。');
       return;
     }
     const prevLatest = latestOf(t.history);
@@ -1672,12 +1525,12 @@
     const t = tasks.find(x => x.id === historyTaskId);
     if(!t) return;
     if(!isValidDateStr(dateStr)){
-      alert('追加する日付を入力してください。');
+      toast('追加する日付を入力してください。');
       return;
     }
     if(!Array.isArray(t.history)) t.history = [];
     if(t.history.includes(dateStr)){
-      alert('その日付はすでに履歴にあります。');
+      toast('その日付はすでに履歴にあります。');
       return;
     }
     const prevLatest = latestOf(t.history);
@@ -1855,13 +1708,13 @@
       incoming = JSON.parse(text);
       if(!Array.isArray(incoming)) throw new Error('形式が正しくありません');
     }catch(err){
-      alert('このファイルは読み込めませんでした。掃除タスクマネージャーからエクスポートしたJSONファイルを選択してください。');
+      toast('このファイルは読み込めませんでした。掃除タスクマネージャーからエクスポートしたJSONファイルを選択してください。');
       return;
     }
 
     const valid = incoming.map(sanitizeTask).filter(Boolean);
     if(valid.length === 0){
-      alert('有効なタスクデータが見つかりませんでした。');
+      toast('有効なタスクデータが見つかりませんでした。');
       return;
     }
 
@@ -1892,7 +1745,7 @@
     saveTasks();
     render();
     updateImportUndoBtn();
-    alert('インポートが完了しました。');
+    toast('インポートが完了しました。');
   }
 
   function closeImportModal(){
@@ -1915,7 +1768,7 @@
       const parsed = JSON.parse(raw);
       tasks = Array.isArray(parsed) ? parsed.map(sanitizeTask).filter(Boolean) : [];
     }catch(e){
-      alert('バックアップを読み込めませんでした。');
+      toast('バックアップを読み込めませんでした。');
       return;
     }
     try{ localStorage.removeItem(BACKUP_KEY); }catch(e){}
@@ -1975,7 +1828,7 @@
       e.target.value = '';
     };
     reader.onerror = () => {
-      alert('ファイルの読み込みに失敗しました。');
+      toast('ファイルの読み込みに失敗しました。');
       e.target.value = '';
     };
     reader.readAsText(file);
@@ -2007,6 +1860,114 @@
     if(historyOverlay.classList.contains('show')) renderHistoryList();
   });
 
+  // ---------- お知らせ（トースト） ----------
+  let toastTimer = null;
+  function toast(msg){
+    const region = $('#toastRegion');
+    region.innerHTML = '';
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    region.appendChild(el);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { region.innerHTML = ''; }, msg.length > 36 ? 5000 : 3000);
+  }
+
+  // ---------- ヘッダーのメニュー・表示切替 ----------
+  const headerMenu = $('#headerMenu');
+  const menuBtn = $('#menuBtn');
+  const menuBackdrop = $('#menuBackdrop');
+  function setMenu(open){
+    headerMenu.classList.toggle('show', open);
+    menuBackdrop.classList.toggle('show', open);
+    menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  menuBtn.addEventListener('click', () => setMenu(!headerMenu.classList.contains('show')));
+  menuBackdrop.addEventListener('click', () => setMenu(false));
+  headerMenu.addEventListener('click', (e) => {
+    if(e.target.closest('button') && e.target.id !== 'themeBtn') setMenu(false);
+  });
+
+  const THEME_KEY = 'soji-manager-theme';
+  const THEME_NEXT = { auto:'light', light:'dark', dark:'auto' };
+  const THEME_LABEL = { auto:'◐ 表示：自動', light:'☀ 表示：ライト', dark:'☾ 表示：ダーク' };
+  function getTheme(){
+    try{ const t = localStorage.getItem(THEME_KEY); return (t === 'light' || t === 'dark') ? t : 'auto'; }
+    catch(e){ return 'auto'; }
+  }
+  function applyTheme(t){
+    if(t === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', t);
+    $('#themeBtn').textContent = THEME_LABEL[t];
+  }
+  $('#themeBtn').addEventListener('click', () => {
+    const next = THEME_NEXT[getTheme()];
+    try{ localStorage.setItem(THEME_KEY, next); }catch(e){ /* 保存できなくても表示は切り替える */ }
+    applyTheme(next);
+  });
+  applyTheme(getTheme());
+
+  // ---------- タスクごとの「⋯」メニュー ----------
+  function closeTicketMenus(){
+    document.querySelectorAll('.t-menu.show').forEach(m => {
+      m.classList.remove('show');
+      const btn = m.parentElement.querySelector('.more-btn');
+      if(btn) btn.setAttribute('aria-expanded', 'false');
+    });
+  }
+  document.addEventListener('click', (e) => {
+    const more = e.target.closest('.more-btn');
+    if(more){
+      const menu = more.parentElement.querySelector('.t-menu');
+      const willOpen = !menu.classList.contains('show');
+      closeTicketMenus();
+      if(willOpen){ menu.classList.add('show'); more.setAttribute('aria-expanded', 'true'); }
+      return;
+    }
+    closeTicketMenus();
+  });
+  document.addEventListener('keydown', (e) => {
+    if(e.key !== 'Escape' || e.isComposing) return;
+    closeTicketMenus();
+    setMenu(false);
+  });
+
+  // ---------- ダイアログ：開いたら中へフォーカス、閉じたら元へ戻す。Tab は中で循環 ----------
+  [overlay, historyOverlay, importOverlay].forEach(ov => {
+    let opened = false;
+    let lastFocus = null;
+    new MutationObserver(() => {
+      const open = ov.classList.contains('show');
+      const modal = ov.querySelector('.modal');
+      if(open && !opened){
+        opened = true;
+        lastFocus = document.activeElement;
+        modal.setAttribute('tabindex', '-1');
+        setTimeout(() => { if(!modal.contains(document.activeElement)) modal.focus(); }, 0);
+      }else if(!open && opened){
+        opened = false;
+        if(lastFocus && lastFocus.focus && document.contains(lastFocus)) lastFocus.focus();
+      }
+    }).observe(ov, { attributes: true, attributeFilter: ['class'] });
+  });
+  document.addEventListener('keydown', (e) => {
+    if(e.key !== 'Tab') return;
+    const ov = [overlay, historyOverlay, importOverlay].find(o => o.classList.contains('show'));
+    if(!ov) return;
+    const modal = ov.querySelector('.modal');
+    const items = Array.from(modal.querySelectorAll('button, input, select, textarea')).filter(el => !el.disabled && el.getClientRects().length);
+    if(!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if(!modal.contains(document.activeElement)){ e.preventDefault(); first.focus(); }
+    else if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  });
+
+  // ---------- オフライン対応（PWA） ----------
+  if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
+    navigator.serviceWorker.register('soji-sw.js').catch(() => {});
+  }
+
   updateImportUndoBtn();
   loadTasks();
 
@@ -2021,7 +1982,7 @@
         if(!d || !Array.isArray(d.tasks)) throw new Error('掃除タスクのデータ形式が違います');
         tasks = d.tasks.map(sanitizeTask).filter(Boolean);
         try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
-        catch(e){ alert('クラウドのデータを端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
+        catch(e){ toast('クラウドのデータを端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
         render();
         if(historyOverlay.classList.contains('show')) renderHistoryList();
       }

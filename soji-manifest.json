@@ -1,0 +1,24 @@
+{
+  "name": "掃除タスクマネージャー",
+  "short_name": "掃除タスク",
+  "description": "家族の掃除タスクをまとめて管理",
+  "start_url": "soji-manager.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4F5F7",
+  "theme_color": "#1B2333",
+  "icons": [
+    {
+      "src": "soji-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "soji-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
