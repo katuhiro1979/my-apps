@@ -119,14 +119,14 @@
   /* 詳細・登録のシート（<dialog>。PCは中央、スマホは下から出る） */
   html:has(dialog[open]){overflow:hidden;}
   dialog.sheet{width:min(760px,calc(100vw - 32px));max-width:none;max-height:min(88vh,900px);border:none;padding:0;border-radius:var(--r-l);background:var(--surface);color:var(--text);box-shadow:0 24px 70px rgba(0,0,0,.35);overflow:hidden;}
-  dialog.sheet[open]{display:flex;flex-direction:column;animation:sheet-in .22s ease;}
+  dialog.sheet[open]{display:flex;flex-direction:column;height:auto;animation:sheet-in .22s ease;}
   dialog.sheet::backdrop{background:rgba(0,0,0,.42);}
   @keyframes sheet-in{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
   @keyframes sheet-up{from{transform:translateY(100%);}to{transform:none;}}
   .sheet-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);flex-shrink:0;background:var(--surface);}
   .sheet-bar strong{font-size:16px;text-align:center;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .sheet-bar button{flex-shrink:0;}
-  .sheet-body{padding:18px 20px 28px;overflow-y:auto;flex:1;overscroll-behavior:contain;}
+  .sheet-body{padding:18px 20px 28px;overflow-y:auto;flex:1 1 auto;min-height:0;overscroll-behavior:contain;}
   .sheet .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
   .d-hero{display:grid;grid-template-columns:240px 1fr;gap:18px;align-items:center;margin-bottom:16px;}
   .d-hero .media{border-radius:var(--r-m);}
