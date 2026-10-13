@@ -1,5 +1,6 @@
 // 車両管理のオフライン対応。このアプリのファイルだけを扱い、他のアプリには触れない
-var CACHE='vehicle-manager-v1';
+// ネットワーク優先のため、ファイルを更新しても通常は番号の更新は不要（古いキャッシュを捨てたいときだけ上げる）。
+var CACHE='vehicle-manager-v2';
 var FILES=['vehicle_manager.html','cloud-sync.js','vehicle-manifest.json','vehicle-icon-192.png','vehicle-icon-512.png'];
 
 self.addEventListener('install',function(e){
@@ -21,10 +22,13 @@ self.addEventListener('fetch',function(e){
   var name=url.pathname.split('/').pop();
   if(FILES.indexOf(name)<0)return;
   e.respondWith(
-    fetch(e.request).then(function(res){
-      var copy=res.clone();
-      caches.open(CACHE).then(function(c){c.put(e.request,copy);});
+    // HTTPキャッシュを使わず毎回確認する。正常応答だけを保存し、404/500では保存済みの版を守る
+    fetch(e.request,{cache:'no-cache'}).then(function(res){
+      if(res.ok){
+        var copy=res.clone();
+        e.waitUntil(caches.open(CACHE).then(function(c){return c.put(e.request,copy);}));
+      }
       return res;
-    }).catch(function(){return caches.match(e.request);})
+    }).catch(function(){return caches.match(e.request,{ignoreSearch:true});})
   );
 });
