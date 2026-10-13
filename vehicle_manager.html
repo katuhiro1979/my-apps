@@ -2,222 +2,384 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>車両管理</title>
-<meta name="theme-color" content="#526b4e">
+<meta name="theme-color" content="#f4f5f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121513" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="vehicle-manifest.json">
 <link rel="icon" href="vehicle-icon-192.png">
 <link rel="apple-touch-icon" href="vehicle-icon-192.png">
 <style>
+  /* ===== デザイントークン（色・余白・角丸）。ダークは端末設定に合わせ、右上のボタンで固定も可 ===== */
   :root{
-    --field:#fff;
-    --paper:#f6f4ec;
-    --ink:#23261f;
-    --ink-soft:#5a5c50;
-    --rule:#cfc9b4;
-    --stamp-red:#a8382b;
-    --stamp-red-bg:#f4e3df;
-    --sage:#526b4e;
-    --sage-bg:#e6ebe0;
-    --amber:#a1731f;
-    --amber-bg:#f2e6cf;
-    --card:#fffdf7;
-    --shadow:0 1px 0 rgba(35,38,31,0.06);
+    --paper:#f4f5f2;
+    --surface:#ffffff;
+    --surface-2:#eceee9;
+    --ink:#1d2420;
+    --ink-soft:#5b655f;
+    --line:#d9ddd6;
+    --accent:#2f6f5e;
+    --accent-ink:#ffffff;
+    --ok:#226b3f;--ok-bg:#e1f1e7;
+    --warn:#7a4e00;--warn-bg:#fbebcc;
+    --danger:#b3261e;--danger-bg:#fbe3e0;
+    --shadow:0 1px 2px rgba(20,30,25,.06),0 4px 14px rgba(20,30,25,.06);
+    --r:14px;
+    --r-sm:10px;
+    --font:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Noto Sans JP",Meiryo,sans-serif;
   }
-  /* ダークモード（端末の設定に合わせる。右上のボタンで固定も可） */
   @media screen and (prefers-color-scheme:dark){
     :root:not([data-theme="light"]){
-      --field:#2d3027;--paper:#1c1e1a;--ink:#e8e6dc;--ink-soft:#a9aa9c;--rule:#4a4c42;
-      --stamp-red:#e0796b;--stamp-red-bg:#3d2623;--sage:#8fb08a;--sage-bg:#26301f;
-      --amber:#d9a94a;--amber-bg:#3a2f17;--card:#25271f;--shadow:none;color-scheme:dark;
+      --paper:#121513;--surface:#1b1f1c;--surface-2:#252a26;--ink:#e7ebe6;--ink-soft:#a3aca5;--line:#343b36;
+      --accent:#7cc4a8;--accent-ink:#0f1a15;
+      --ok:#7fd1a0;--ok-bg:#1d3326;--warn:#f0b955;--warn-bg:#3a2c0e;--danger:#ff8a80;--danger-bg:#3e1d1a;
+      --shadow:none;color-scheme:dark;
     }
-    :root:not([data-theme="light"]) .stats{background:var(--rule);border-color:var(--rule);}
   }
   :root[data-theme="dark"]{
-    --field:#2d3027;--paper:#1c1e1a;--ink:#e8e6dc;--ink-soft:#a9aa9c;--rule:#4a4c42;
-    --stamp-red:#e0796b;--stamp-red-bg:#3d2623;--sage:#8fb08a;--sage-bg:#26301f;
-    --amber:#d9a94a;--amber-bg:#3a2f17;--card:#25271f;--shadow:none;color-scheme:dark;
+    --paper:#121513;--surface:#1b1f1c;--surface-2:#252a26;--ink:#e7ebe6;--ink-soft:#a3aca5;--line:#343b36;
+    --accent:#7cc4a8;--accent-ink:#0f1a15;
+    --ok:#7fd1a0;--ok-bg:#1d3326;--warn:#f0b955;--warn-bg:#3a2c0e;--danger:#ff8a80;--danger-bg:#3e1d1a;
+    --shadow:none;color-scheme:dark;
   }
-  :root[data-theme="dark"] .stats{background:var(--rule);border-color:var(--rule);}
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Iowan Old Style","Noto Serif JP",Georgia,serif;line-height:1.6;min-height:100vh;padding:0 0 60px 0;}
-  .wrap{max-width:960px;margin:0 auto;padding:36px 24px;}
-  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:28px;gap:16px;flex-wrap:wrap;}
-  header h1{font-size:28px;letter-spacing:0.04em;margin:0;font-weight:600;}
-  header .sub{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+  [hidden]{display:none !important;}
+  html{-webkit-text-size-adjust:100%;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);line-height:1.6;min-height:100vh;
+    padding:0 0 calc(96px + env(safe-area-inset-bottom,0px));font-variant-numeric:tabular-nums;}
+  h1,h2,h3,p{margin:0;}
+  .wrap{max-width:880px;margin:0 auto;padding:28px 20px;}
+  button{font:inherit;color:inherit;}
+
+  /* ===== 共通部品 ===== */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 18px;border-radius:999px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+  .btn.ghost{background:transparent;}
+  .btn.danger{color:var(--danger);border-color:var(--danger);}
+  .btn.sm{min-height:40px;padding:0 14px;font-size:13px;}
+  .icon-btn{width:44px;height:44px;border-radius:50%;border:1px solid transparent;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:var(--ink-soft);display:inline-flex;align-items:center;justify-content:center;flex:none;}
+  .icon-btn:hover{background:var(--surface-2);}
+  :focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+  .chip{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;white-space:nowrap;line-height:1.7;}
+  .chip.ok{background:var(--ok-bg);color:var(--ok);}
+  .chip.soon{background:var(--warn-bg);color:var(--warn);}
+  .chip.overdue{background:var(--danger-bg);color:var(--danger);}
+  .chip.none{background:var(--surface-2);color:var(--ink-soft);}
+  .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;}
+
+  /* ===== ヘッダー ===== */
+  .top{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:20px;}
+  .top h1{font-size:28px;font-weight:700;letter-spacing:.02em;line-height:1.25;}
+  .top .sub{font-size:13px;color:var(--ink-soft);margin-top:2px;}
+  .top-r{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .date-today{font-size:13px;color:var(--ink-soft);}
 
-  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--ink);border:1px solid var(--ink);margin-bottom:24px;}
-  .stat{background:var(--card);padding:8px 14px;text-align:left;}
-  .stat .num{font-size:20px;font-weight:600;line-height:1.3;}
-  .stat .label{font-size:11px;color:var(--ink-soft);}
-  .stat.overdue .num{color:var(--stamp-red);}
-  .stat.soon .num{color:var(--amber);}
+  /* ===== 状況サマリー ===== */
+  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px;}
+  .stat{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:12px 14px;border-radius:var(--r);
+    background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);}
+  button.stat{cursor:pointer;}
+  button.stat:disabled{cursor:default;opacity:.7;}
+  .stat .num{font-size:26px;font-weight:700;line-height:1.2;}
+  .stat .label{font-size:12px;color:var(--ink-soft);line-height:1.4;}
+  .stat.soon:not(.zero) .num{color:var(--warn);}
+  .stat.overdue:not(.zero) .num{color:var(--danger);}
+  .stat.overdue:not(.zero){background:var(--danger-bg);border-color:transparent;}
 
-  .panel{background:var(--card);border:1px solid var(--rule);box-shadow:var(--shadow);margin-bottom:24px;}
-  .panel-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--rule);gap:10px;flex-wrap:wrap;}
-  .panel-head h2{font-size:16px;margin:0;}
-  .panel-body{padding:18px;}
-  details.add > summary{cursor:pointer;padding:14px 18px;font-size:16px;font-weight:600;list-style:none;}
-  details.add > summary::-webkit-details-marker{display:none;}
-  details.add > summary::before{content:"＋ ";}
-  details.add[open] > summary{border-bottom:1px solid var(--rule);}
+  .next{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:20px;padding:6px 6px 8px;}
+  .next h2{font-size:13px;font-weight:700;color:var(--ink-soft);padding:8px 10px 2px;}
+  .next ul{list-style:none;margin:0;padding:0;}
+  .next-item{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:6px 10px;border:0;background:transparent;border-radius:var(--r-sm);cursor:pointer;text-align:left;}
+  .next-item:hover{background:var(--surface-2);}
+  .next-item .ni-main{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .next-item .ni-main b{font-weight:700;}
+  .next-item time{font-size:12px;color:var(--ink-soft);}
 
-  button{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;cursor:pointer;border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:8px 16px;font-size:13px;border-radius:2px;}
-  button.ghost{background:transparent;color:var(--ink);}
-  button.small{padding:5px 11px;font-size:12px;}
-  button.danger{color:var(--stamp-red);border-color:var(--stamp-red);}
-  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--stamp-red);outline-offset:1px;}
-  input,select,textarea{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;padding:9px 10px;border:1px solid var(--rule);background:var(--field);color:var(--ink);border-radius:2px;width:100%;}
-  label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink-soft);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
-  .form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px;}
-  .form-actions{display:flex;gap:8px;flex-wrap:wrap;}
-  .img-pick{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:12px;color:var(--ink-soft);font-family:-apple-system,sans-serif;}
-  .img-pick img{width:64px;height:64px;object-fit:cover;border:1px solid var(--rule);}
-
-  .vehicle{padding:16px 18px;border-top:1px solid var(--rule);}
-  .vehicle:first-child{border-top:none;}
-  .v-top{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:start;}
-  .thumb{width:120px;height:120px;object-fit:cover;border:1px solid var(--rule);background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:36px;color:var(--rule);}
-  .v-name{font-size:18px;font-weight:600;}
-  .v-meta{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
-  .badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:20px;margin-right:6px;font-family:-apple-system,sans-serif;}
-  .badge.ok{background:var(--sage-bg);color:var(--sage);}
-  .badge.soon{background:var(--amber-bg);color:var(--amber);}
-  .badge.overdue{background:var(--stamp-red-bg);color:var(--stamp-red);}
-  .badge.none{background:var(--paper);color:var(--ink-soft);border:1px solid var(--rule);}
-  .v-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
-
-  .dl-list{list-style:none;margin:14px 0 0;padding:0;border-top:1px dashed var(--rule);}
-  .dl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px dashed var(--rule);font-size:14px;}
-  .dl .t{font-weight:600;min-width:6.5em;}
-  .dl .d{color:var(--ink-soft);font-size:13px;}
-  .dl .sp{flex:1;}
-  .dl-hist{font-size:11.5px;color:var(--ink-soft);padding:0 0 6px 6.5em;font-family:-apple-system,sans-serif;}
-  .dl-form{display:grid;grid-template-columns:1fr 1fr 1.4fr auto auto;gap:8px;margin-top:10px;align-items:end;}
-  .m-box{margin-top:18px;border:1px solid var(--rule);background:var(--field);padding:12px 14px;}
-  .m-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:16px;font-weight:600;}
-  .m-toggle{background:transparent;color:var(--ink);border:none;padding:4px 2px;font-size:16px;font-weight:600;font-family:inherit;text-align:left;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;}
-  .m-toggle .arrow{font-size:11px;color:var(--ink-soft);}
-  .m-brief{font-size:12.5px;font-weight:400;color:var(--ink-soft);font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;margin-left:6px;}
-  .m-sum{display:flex;gap:6px 22px;flex-wrap:wrap;margin-top:10px;padding:8px 10px;background:var(--paper);font-size:13px;font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
-  .m-sum b{display:block;font-size:11px;font-weight:400;color:var(--ink-soft);}
-  .m-next{margin-top:10px;padding:8px 10px;background:var(--amber-bg);font-size:13px;font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;}
-  .m-next b{display:block;font-size:11px;font-weight:600;color:var(--amber);}
-  .m-list{list-style:none;margin:10px 0 0;padding:0;}
-  .m-year{display:flex;justify-content:space-between;padding:6px 0 4px;margin-top:6px;border-bottom:2px solid var(--ink);font-size:13px;font-weight:600;}
-  .m-year:first-child{margin-top:0;}
-  .m-item{display:grid;grid-template-columns:3.2em 1fr auto;gap:8px;align-items:start;padding:9px 0;border-bottom:1px dashed var(--rule);font-size:15px;}
-  .m-date{font-size:14px;color:var(--ink-soft);font-family:-apple-system,sans-serif;padding-top:2px;}
-  .m-row{display:flex;gap:10px;align-items:baseline;justify-content:space-between;}
-  .m-row .t{font-weight:600;}
-  .m-row .c{font-family:-apple-system,sans-serif;font-size:14px;white-space:nowrap;}
-  .m-sub{font-size:12.5px;color:var(--ink-soft);font-family:-apple-system,sans-serif;margin-top:2px;}
-  .m-note{white-space:pre-wrap;word-break:break-word;}
-  .m-btns{display:flex;gap:6px;}
-  .m-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px;align-items:end;}
-  .m-form .w2{grid-column:span 2;}
-  .m-form .w4{grid-column:1 / -1;}
-  .empty{padding:28px 18px;text-align:center;color:var(--ink-soft);font-size:14px;}
-  .io-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px;}
-  .io-row input[type=file]{width:auto;}
-
+  /* ===== 一覧 ===== */
+  .list-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;}
+  .list-head h2{font-size:18px;font-weight:700;}
+  .vehicle{--lv:var(--line);position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;}
+  .vehicle::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--lv);}
+  .vehicle[data-lv="overdue"]{--lv:var(--danger);}
+  .vehicle[data-lv="soon"]{--lv:var(--warn);}
+  .vehicle[data-lv="ok"]{--lv:var(--ok);}
+  .vehicle.sold{opacity:.82;}
+  .v-head{display:flex;align-items:center;gap:4px;padding:6px 6px 6px 12px;}
+  .v-toggle{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:6px 6px 6px 8px;border:0;background:transparent;text-align:left;cursor:pointer;border-radius:var(--r-sm);min-height:64px;}
+  .thumb{width:56px;height:56px;border-radius:12px;object-fit:cover;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:26px;flex:none;}
+  .v-info{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;}
+  .v-name{font-size:17px;font-weight:700;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .v-meta{font-size:12.5px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .v-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:1px;}
+  .chev{font-size:14px;color:var(--ink-soft);transition:transform .18s;flex:none;}
+  .v-toggle[aria-expanded="true"] .chev{transform:rotate(180deg);}
+  .v-body{padding:2px 16px 16px 20px;border-top:1px solid var(--line);}
+  .v-photo{display:block;width:100%;max-height:200px;object-fit:cover;border-radius:var(--r-sm);margin-top:14px;}
+  .specs{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px 16px;margin:14px 0 0;}
+  .specs div{min-width:0;}
+  .specs dt{font-size:11px;color:var(--ink-soft);}
+  .specs dd{margin:0;font-size:14px;word-break:break-word;}
   .v-vin{display:none;}
-  /* 印刷（車ごとの「整備履歴を印刷」ボタンで、その車だけを白黒向けに出力） */
+  .v-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+
+  .sec-title{font-size:13px;font-weight:700;color:var(--ink-soft);margin:20px 0 6px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .dl-list{list-style:none;margin:0;padding:0;}
+  .dl{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:4px 6px;padding:10px 0;border-top:1px solid var(--line);}
+  .dl:first-child{border-top:0;}
+  .dl-title{font-size:15px;font-weight:700;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .dl-sub{font-size:12.5px;color:var(--ink-soft);word-break:break-word;}
+  .bar{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden;margin-top:6px;}
+  .bar i{display:block;height:100%;border-radius:999px;background:var(--ok);}
+  .dl[data-lv="soon"] .bar i{background:var(--warn);}
+  .dl[data-lv="overdue"] .bar i{background:var(--danger);}
+  .dl-hist{grid-column:1 / -1;font-size:11.5px;color:var(--ink-soft);}
+  .empty-sm{font-size:13px;color:var(--ink-soft);padding:6px 0;}
+
+  /* 整備記録 */
+  .m-box{margin-top:20px;border-top:1px solid var(--line);padding-top:14px;}
+  .m-head{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .m-toggle{background:transparent;border:0;padding:6px 2px;font-size:15px;font-weight:700;text-align:left;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;cursor:pointer;min-height:44px;align-items:center;}
+  .m-toggle .arrow{font-size:11px;color:var(--ink-soft);}
+  .m-brief{font-size:12.5px;font-weight:400;color:var(--ink-soft);}
+  .m-sum{display:flex;gap:6px 22px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;background:var(--surface-2);border-radius:var(--r-sm);font-size:13px;}
+  .m-sum b{display:block;font-size:11px;font-weight:400;color:var(--ink-soft);}
+  .m-next{margin-top:10px;padding:10px 12px;background:var(--warn-bg);border-radius:var(--r-sm);font-size:13px;}
+  .m-next b{display:block;font-size:11px;font-weight:700;color:var(--warn);}
+  .m-list{list-style:none;margin:10px 0 0;padding:0;}
+  .m-year{display:flex;justify-content:space-between;padding:8px 0 4px;margin-top:6px;border-bottom:2px solid var(--line);font-size:13px;font-weight:700;color:var(--ink-soft);}
+  .m-year:first-child{margin-top:0;}
+  .m-item{display:grid;grid-template-columns:3.4em minmax(0,1fr) auto;gap:8px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px;}
+  .m-date{font-size:14px;color:var(--ink-soft);padding-top:2px;}
+  .m-row{display:flex;gap:10px;align-items:baseline;justify-content:space-between;}
+  .m-row .t{font-weight:700;}
+  .m-row .c{font-size:14px;white-space:nowrap;}
+  .m-sub{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  .m-note{white-space:pre-wrap;word-break:break-word;}
+
+  .empty{padding:40px 18px;text-align:center;color:var(--ink-soft);font-size:14px;background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);}
+  .empty .big{font-size:40px;line-height:1.2;margin-bottom:6px;}
+  .empty .btn{margin-top:14px;}
+
+  .backup{margin-top:24px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);}
+  .backup summary{cursor:pointer;padding:14px 16px;font-weight:700;font-size:14px;list-style:none;min-height:48px;}
+  .backup summary::-webkit-details-marker{display:none;}
+  .backup summary::after{content:"▾";float:right;color:var(--ink-soft);}
+  .backup[open] summary::after{content:"▴";}
+  .io-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:0 16px 16px;}
+  .file-btn:focus-within{outline:3px solid var(--accent);outline-offset:2px;}
+
+  /* ===== メニュー・トースト ===== */
+  .menu{position:fixed;z-index:60;min-width:168px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);box-shadow:0 8px 28px rgba(0,0,0,.22);padding:6px;}
+  .menu button{display:block;width:100%;min-height:44px;padding:0 12px;border:0;background:transparent;text-align:left;border-radius:8px;font-size:14px;cursor:pointer;}
+  .menu button:hover,.menu button:focus-visible{background:var(--surface-2);}
+  .menu button.danger{color:var(--danger);}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:80;max-width:min(92vw,460px);
+    display:flex;align-items:center;gap:14px;padding:10px 12px 10px 18px;border-radius:999px;background:var(--ink);color:var(--paper);font-size:14px;box-shadow:0 8px 28px rgba(0,0,0,.3);}
+  .toast button{border:0;background:transparent;color:var(--accent);font-weight:700;min-height:40px;padding:0 10px;border-radius:999px;cursor:pointer;}
+  :root:not([data-theme="dark"]) .toast button{color:#8fd8bc;}
+
+  /* ===== ダイアログ（スマホでは下から出るシート） ===== */
+  dialog{border:0;padding:0;background:var(--surface);color:var(--ink);border-radius:20px;width:min(560px,calc(100vw - 24px));
+    max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden;font-family:var(--font);}
+  dialog:not([open]){display:none;}
+  dialog::backdrop{background:rgba(0,0,0,.5);}
+  dialog form{display:flex;flex-direction:column;max-height:inherit;}
+  .dlg-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 8px 10px 20px;border-bottom:1px solid var(--line);}
+  .dlg-head h2{font-size:17px;font-weight:700;}
+  .dlg-body{padding:16px 20px;overflow-y:auto;overscroll-behavior:contain;}
+  .dlg-foot{display:flex;gap:10px;justify-content:flex-end;padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--surface);}
+  .err{color:var(--danger);font-size:13px;min-height:1.4em;margin-top:6px;}
+  .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+  .fields .w2{grid-column:1 / -1;}
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--ink-soft);font-weight:600;}
+  input,select,textarea{font:inherit;font-size:16px;min-height:46px;padding:9px 12px;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:var(--r-sm);width:100%;}
+  textarea{min-height:90px;resize:vertical;}
+  input[type=file]{min-height:0;padding:0;border:0;background:none;}
+  .photo-row{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+  .photo-btn{width:84px;height:84px;border-radius:18px;border:2px dashed var(--line);background:var(--surface-2);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--ink-soft);padding:0;flex:none;}
+  .photo-btn img{width:100%;height:100%;object-fit:cover;}
+  .photo-btn .cam{font-size:26px;line-height:1.1;}
+  .tchips{display:flex;flex-wrap:wrap;gap:8px;}
+  .tchip{min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font-size:14px;cursor:pointer;}
+  .tchip[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700;}
+  .quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .hint{font-size:12.5px;color:var(--ink-soft);margin-top:6px;}
+  .lbl{font-size:12.5px;color:var(--ink-soft);font-weight:600;margin:0 0 6px;display:block;}
+  .dlg-sub{font-size:13px;color:var(--ink-soft);margin-bottom:12px;}
+
+  @media (prefers-reduced-motion:no-preference){
+    .v-body{animation:vfade .18s ease-out;}
+    @keyframes vfade{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
+    dialog[open]{animation:dpop .16s ease-out;}
+    @keyframes dpop{from{opacity:0;transform:translateY(10px) scale(.98);}to{opacity:1;transform:none;}}
+  }
+  @media (prefers-reduced-motion:reduce){.chev{transition:none;}}
+
+  /* 印刷（車ごとの「整備履歴を印刷」で、その車だけを白黒向けに出力） */
   @media print{
-    :root,:root[data-theme]{--field:#fff;--paper:#fff;--ink:#000;--ink-soft:#444;--rule:#999;--card:#fff;--sage:#222;--sage-bg:#fff;--amber:#222;--amber-bg:#fff;--stamp-red:#222;--stamp-red-bg:#fff;--shadow:none;color-scheme:light;}
-    .no-print,.stats,details.add,.v-actions,.dl-form,.m-btns,.m-head [data-act="madd"],.m-toggle .arrow,.m-form,.m-box > button,#cs-btn,#cs-panel{display:none !important;}
-    body{background:#fff;}
+    :root,:root[data-theme]{--paper:#fff;--surface:#fff;--surface-2:#fff;--ink:#000;--ink-soft:#444;--line:#999;--accent:#222;--ok:#222;--ok-bg:#fff;--warn:#222;--warn-bg:#fff;--danger:#222;--danger-bg:#fff;--shadow:none;color-scheme:light;}
+    .no-print,.stats,.next,.list-head,.v-actions,.icon-btn,.chev,.m-head [data-act="madd"],.m-toggle .arrow,.toast,.menu,dialog,.backup,#cs-btn,#cs-panel,.dl-list,.sec-title.dl-t,.bar{display:none !important;}
+    body{background:#fff;padding:0;}
     .wrap{padding:0;max-width:none;}
-    .panel{border:none;margin:0;}
     .v-vin{display:block;}
-    body.printing .vehicle:not(.print-target),body.printing .dl-list,body.printing .panel-head{display:none;}
-    .vehicle{padding:0;}
+    body.printing .vehicle:not(.print-target){display:none;}
+    .vehicle{box-shadow:none;border:0;margin:0;}
+    .vehicle::before{display:none;}
+    .v-body{border:0;padding:0;}
     .m-item,.m-year{break-inside:avoid;}
     .m-next{border:1px solid #999;}
   }
   @media (max-width:640px){
-    .wrap{padding:20px 14px;}
-    header h1{font-size:23px;}
-    .form-grid{grid-template-columns:1fr;}
-    .v-top{grid-template-columns:96px 1fr;gap:12px;}
-    .thumb{width:96px;height:96px;}
-    .m-box{padding:10px;}
-    .m-btns{flex-direction:column;}
-    .m-form{grid-template-columns:1fr 1fr;}
-    .m-form .w2,.m-form .w4{grid-column:1 / -1;}
-    .dl-form{grid-template-columns:1fr 1fr;}
-    .dl-form .wide{grid-column:1 / -1;}
-    .dl-hist{padding-left:0;}
-    .stat{padding:6px 8px;}
-    .stat .label{font-size:10px;}
+    .wrap{padding:18px 14px;}
+    .top h1{font-size:24px;}
+    .stat{padding:10px 10px;}
+    .stat .num{font-size:22px;}
+    .stat .label{font-size:11px;}
+    .fields{grid-template-columns:1fr;}
+    dialog{width:100%;max-width:100%;margin:auto 0 0;border-radius:20px 20px 0 0;max-height:92vh;max-height:92dvh;}
+    .dlg-foot .btn{flex:1;}
+    .v-body{padding-left:16px;}
   }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <header class="top">
     <div>
       <h1>車両管理</h1>
-      <div class="sub">車検・保険・税の期限をまとめて確認</div>
+      <p class="sub">車検・保険・税の期限をまとめて確認</p>
     </div>
-    <div style="text-align:right">
-      <div class="date-today" id="today"></div>
-      <button type="button" class="ghost small no-print" id="btnTheme" style="margin-top:6px"></button>
+    <div class="top-r no-print">
+      <span class="date-today" id="today"></span>
+      <button type="button" class="btn ghost sm" id="btnTheme"></button>
     </div>
   </header>
 
-  <div class="stats">
-    <div class="stat"><div class="num" id="stCount">0</div><div class="label">登録台数</div></div>
-    <div class="stat soon"><div class="num" id="stSoon">0</div><div class="label">まもなく期限（30日以内）</div></div>
-    <div class="stat overdue"><div class="num" id="stOver">0</div><div class="label">期限切れ</div></div>
-  </div>
+  <section class="stats" aria-label="状況のまとめ">
+    <div class="stat"><span class="num" id="stCount">0</span><span class="label">登録台数</span></div>
+    <button type="button" class="stat soon" id="stSoonB" data-jump="soon"><span class="num" id="stSoon">0</span><span class="label">まもなく期限（30日以内）</span></button>
+    <button type="button" class="stat overdue" id="stOverB" data-jump="overdue"><span class="num" id="stOver">0</span><span class="label">期限切れ</span></button>
+  </section>
 
-  <div class="panel">
-    <details class="add" id="addPanel">
-      <summary id="formTitle">車を登録する</summary>
-      <div class="panel-body">
-        <div class="img-pick">
-          <img id="imgPrev" alt="" style="display:none">
-          <input type="file" id="fImage" accept="image/*" style="width:auto">
-          <button type="button" class="ghost small" id="btnImgClear" style="display:none">写真を外す</button>
-        </div>
-        <div class="form-grid">
-          <label class="f">愛称（必須）<input id="fName" maxlength="30" placeholder="例：家族のミニバン"></label>
-          <label class="f">メーカー<input id="fMaker" maxlength="30" placeholder="例：トヨタ"></label>
-          <label class="f">車種<input id="fModel" maxlength="30" placeholder="例：シエンタ"></label>
-          <label class="f">年式<input id="fYear" maxlength="10" placeholder="例：2020"></label>
-          <label class="f">ナンバー<input id="fPlate" maxlength="30" placeholder="例：品川 300 あ 12-34"></label>
-          <label class="f">状態
-            <select id="fStatus"><option>使用中</option><option>保管中</option><option>売却済み</option></select>
-          </label>
-          <label class="f">現在の走行距離（km）<input id="fOdo" type="number" min="0" inputmode="numeric"></label>
-          <label class="f">色<input id="fColor" maxlength="20"></label>
-          <label class="f">車台番号<input id="fVin" maxlength="40"></label>
-        </div>
-        <div class="form-actions">
-          <button type="button" id="btnSave">登録する</button>
-          <button type="button" class="ghost" id="btnCancel" style="display:none">編集をやめる</button>
-        </div>
-      </div>
-    </details>
-  </div>
+  <section class="next" id="nextBox" aria-labelledby="nextTitle" hidden>
+    <h2 id="nextTitle">次に来る期限</h2>
+    <ul id="nextList"></ul>
+  </section>
 
-  <div class="panel">
-    <div class="panel-head"><h2>車両一覧</h2></div>
-    <div id="list"></div>
-  </div>
-
-  <div class="panel no-print">
-    <div class="panel-head"><h2>バックアップ</h2></div>
-    <div class="panel-body">
-      <div class="io-row">
-        <button type="button" class="ghost small" id="btnExport">書き出す（JSON）</button>
-        <label>読み込む：<input type="file" id="fImport" accept="application/json"></label>
-      </div>
+  <section aria-labelledby="listTitle">
+    <div class="list-head">
+      <h2 id="listTitle">車両一覧</h2>
+      <button type="button" class="btn primary" id="btnAdd">＋ 車を登録</button>
     </div>
-  </div>
+    <div id="list"></div>
+  </section>
+
+  <details class="backup no-print">
+    <summary>バックアップ</summary>
+    <div class="io-row">
+      <button type="button" class="btn ghost sm" id="btnExport">書き出す（JSON）</button>
+      <label class="btn ghost sm file-btn">読み込む（JSON）<input type="file" id="fImport" accept="application/json" class="vh"></label>
+    </div>
+  </details>
 </div>
+
+<!-- 車の登録・編集 -->
+<dialog id="dVehicle" aria-labelledby="vTitle">
+  <form id="fVehicle" novalidate>
+    <div class="dlg-head"><h2 id="vTitle">車を登録する</h2><button type="button" class="icon-btn" data-close aria-label="閉じる">✕</button></div>
+    <div class="dlg-body">
+      <div class="photo-row">
+        <button type="button" class="photo-btn" id="vImgBtn" aria-label="写真を選ぶ"><span class="cam" aria-hidden="true">📷</span><span>写真</span></button>
+        <input type="file" id="vImage" accept="image/*" class="vh" tabindex="-1">
+        <button type="button" class="btn ghost sm" id="btnImgClear" hidden>写真を外す</button>
+      </div>
+      <div class="fields">
+        <label class="f w2">愛称（必須）<input id="fName" maxlength="30" placeholder="例：家族のミニバン"></label>
+        <label class="f">メーカー<input id="fMaker" maxlength="30" placeholder="例：トヨタ"></label>
+        <label class="f">車種<input id="fModel" maxlength="30" placeholder="例：シエンタ"></label>
+        <label class="f">年式<input id="fYear" maxlength="10" placeholder="例：2020"></label>
+        <label class="f">色<input id="fColor" maxlength="20"></label>
+        <label class="f w2">ナンバー<input id="fPlate" maxlength="30" placeholder="例：品川 300 あ 12-34"></label>
+        <label class="f">状態
+          <select id="fStatus"><option>使用中</option><option>保管中</option><option>売却済み</option></select>
+        </label>
+        <label class="f">現在の走行距離（km）<input id="fOdo" type="number" min="0" inputmode="numeric"></label>
+        <label class="f w2">車台番号<input id="fVin" maxlength="40"></label>
+      </div>
+      <p class="err" id="vErr" role="alert"></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn ghost" data-close>キャンセル</button>
+      <button type="submit" class="btn primary" id="btnSave">登録する</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 期限の追加・編集 -->
+<dialog id="dDeadline" aria-labelledby="dTitle">
+  <form id="fDeadline" novalidate>
+    <div class="dlg-head"><h2 id="dTitle">期限を追加する</h2><button type="button" class="icon-btn" data-close aria-label="閉じる">✕</button></div>
+    <div class="dlg-body">
+      <span class="lbl" id="dTypeLbl">種類</span>
+      <div class="tchips" id="dTypes" role="radiogroup" aria-labelledby="dTypeLbl"></div>
+      <div class="fields" style="margin-top:14px">
+        <label class="f w2">期限日<input type="date" id="dDue"></label>
+        <label class="f w2">メモ（保険会社・補足など）<input id="dNote" maxlength="40"></label>
+      </div>
+      <p class="err" id="dErr" role="alert"></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn ghost" data-close>キャンセル</button>
+      <button type="submit" class="btn primary" id="dSave">追加する</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 期限の更新 -->
+<dialog id="dRenew" aria-labelledby="rTitle">
+  <form id="fRenew" novalidate>
+    <div class="dlg-head"><h2 id="rTitle">期限を更新する</h2><button type="button" class="icon-btn" data-close aria-label="閉じる">✕</button></div>
+    <div class="dlg-body">
+      <p class="dlg-sub" id="rSub"></p>
+      <label class="f">次の期限日<input type="date" id="rDue"></label>
+      <div class="quick" id="rQuick" role="group" aria-label="期間から入力"></div>
+      <p class="hint" id="rHint"></p>
+      <p class="err" id="rErr" role="alert"></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn ghost" data-close>キャンセル</button>
+      <button type="submit" class="btn primary">更新する</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 整備の記録・編集 -->
+<dialog id="dMaint" aria-labelledby="mTitleH">
+  <form id="fMaint" novalidate>
+    <div class="dlg-head"><h2 id="mTitleH">整備を記録する</h2><button type="button" class="icon-btn" data-close aria-label="閉じる">✕</button></div>
+    <div class="dlg-body">
+      <div class="fields">
+        <label class="f">日付<input type="date" id="mDate"></label>
+        <label class="f">走行距離（km）<input type="number" min="0" inputmode="numeric" id="mOdo"></label>
+        <label class="f w2">内容（必須）<input id="mTitle" maxlength="40" list="mTitles" placeholder="例：オイル交換"></label>
+        <label class="f">費用（円）<input type="number" min="0" inputmode="numeric" id="mCost"></label>
+        <label class="f">店名<input id="mShop" maxlength="40"></label>
+        <label class="f">次回の目安（日付）<input type="date" id="mNextD"></label>
+        <label class="f">次回の目安（km）<input type="number" min="0" inputmode="numeric" id="mNextO"></label>
+        <label class="f w2">メモ（改行できます）<textarea id="mNote" rows="3" maxlength="500"></textarea></label>
+      </div>
+      <datalist id="mTitles"><option>オイル交換</option><option>オイルエレメント交換</option><option>タイヤ交換</option><option>バッテリー交換</option><option>ブレーキパッド交換</option><option>ワイパー交換</option><option>エアコンフィルター交換</option><option>12ヶ月点検</option><option>車検整備</option></datalist>
+      <p class="err" id="mErr" role="alert"></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn ghost" data-close>キャンセル</button>
+      <button type="submit" class="btn primary" id="mSave">記録する</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast no-print" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="cloud-sync.js"></script>
@@ -227,16 +389,18 @@
   var TYPES=['車検','自賠責保険','任意保険','自動車税','免許更新','その他'];
   var data=load();
   var cloud=null;    // 同期モジュール（cloud-sync.js）
-  var editId=null;   // 編集中の車両ID
+  var editId=null;   // 編集中の車両ID（null=新規）
   var imgData='';    // フォーム上の写真
-  var openForm={};   // 期限追加フォームを開いている車両ID
-  var openM={};      // 整備フォーム（true=追加 / 記録ID=編集）
+  var ctx={};        // 開いているダイアログの対象（v=車, d=期限, m=整備）
+  var curType='車検';// 期限ダイアログで選択中の種類
+  var openCard={};   // 展開している車両ID
   var showAllM={};   // 整備記録を全件表示している車両ID
   // 整備記録の折りたたみ状態（この端末の表示設定のみ。同期しない）
   var COLL_KEY='vehicle-manager-collapsed';
   var collM=(function(){try{return JSON.parse(localStorage.getItem(COLL_KEY))||{};}catch(e){return {};}})();
   function saveColl(){try{localStorage.setItem(COLL_KEY,JSON.stringify(collM));}catch(e){}}
   var M_SHOW=6;    // 通常表示する整備記録の件数
+  var reduceMotion=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function load(){
     try{
@@ -252,19 +416,29 @@
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function $(id){return document.getElementById(id);}
+  function q(sel){return document.querySelector(sel);}
+
+  // 1台のときは最初から展開しておく
+  if(data.vehicles.length===1)openCard[data.vehicles[0].id]=true;
 
   // 日付（時刻を除いた日数差）
   function ymd(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
-  function daysLeft(due){
-    var a=new Date(due+'T00:00:00'),b=new Date(ymd(new Date())+'T00:00:00');
-    return Math.round((a-b)/86400000);
-  }
+  function dayDiff(a,b){return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
+  function daysLeft(due){return dayDiff(ymd(new Date()),due);}
   function level(n){return n<0?'overdue':(n<=30?'soon':'ok');}
   function leftText(n){
     if(n<0)return Math.abs(n)+'日超過';
     if(n===0)return '今日まで';
     return 'あと'+n+'日';
   }
+  // 年を加算（2/29 などは月末に丸める）
+  function addYears(s,n){
+    var p=s.split('-'),y=+p[0]+n,m=+p[1]-1,dt=new Date(y,m,+p[2]);
+    if(dt.getMonth()!==m)dt=new Date(y,m+1,0);
+    return ymd(dt);
+  }
+  function typeLabel(d){return d.type==='その他'&&d.note?d.note:d.type;}
+  function num(x){return Number(x).toLocaleString();}
 
   // 写真を縮小してJPEGにする
   function shrink(file,cb){
@@ -283,59 +457,20 @@
     r.readAsDataURL(file);
   }
 
-  function showImg(){
-    $('imgPrev').style.display=imgData?'block':'none';
-    $('imgPrev').src=imgData||'';
-    $('btnImgClear').style.display=imgData?'inline-block':'none';
-  }
-  $('fImage').onchange=function(){
-    var f=this.files[0];if(!f)return;
-    shrink(f,function(u){imgData=u;showImg();});
-  };
-  $('btnImgClear').onclick=function(){imgData='';$('fImage').value='';showImg();};
-
-  var FIELDS=[['fName','name'],['fMaker','maker'],['fModel','model'],['fYear','year'],['fPlate','plate'],['fStatus','status'],['fOdo','odometer'],['fColor','color'],['fVin','vin']];
-
-  function resetForm(){
-    editId=null;imgData='';
-    FIELDS.forEach(function(p){$(p[0]).value=(p[0]==='fStatus')?'使用中':'';});
-    $('fImage').value='';showImg();
-    $('formTitle').textContent='車を登録する';
-    $('btnSave').textContent='登録する';
-    $('btnCancel').style.display='none';
-  }
-  $('btnCancel').onclick=function(){resetForm();$('addPanel').open=false;};
-
-  $('btnSave').onclick=function(){
-    var name=$('fName').value.trim();
-    if(!name){alert('愛称を入力してください');$('fName').focus();return;}
-    var v=editId?find(editId):null;
-    if(!v){
-      if(data.vehicles.length>=20&&!confirm('20台を超えます。登録しますか？'))return;
-      v={id:uid(),deadlines:[]};data.vehicles.push(v);
-    }
-    FIELDS.forEach(function(p){v[p[1]]=$(p[0]).value.trim();});
-    v.image=imgData;
-    save();resetForm();$('addPanel').open=false;render();
-  };
-
   function find(id){
     for(var i=0;i<data.vehicles.length;i++)if(data.vehicles[i].id===id)return data.vehicles[i];
     return null;
   }
-
-  function startEdit(id){
-    var v=find(id);if(!v)return;
-    editId=id;imgData=v.image||'';
-    FIELDS.forEach(function(p){$(p[0]).value=v[p[1]]||'';});
-    showImg();
-    $('formTitle').textContent='車を編集する';
-    $('btnSave').textContent='保存する';
-    $('btnCancel').style.display='inline-block';
-    $('addPanel').open=true;
-    $('addPanel').scrollIntoView({behavior:'smooth',block:'start'});
+  function findDl(v,id){
+    var a=v.deadlines||[];
+    for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];
+    return null;
   }
-
+  function findM(v,id){
+    var a=v.maintenance||[];
+    for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];
+    return null;
+  }
   function nearest(v){
     var best=null;
     (v.deadlines||[]).forEach(function(d){
@@ -345,71 +480,186 @@
     return best;
   }
 
+  /* ===== ダイアログ共通（フォーカス戻し・背景タップ・IME中のEsc対策） ===== */
+  var returnTarget=null;   // 閉じたあとにフォーカスを戻す先を返す関数
+  var imeEsc=0;
+  function afterClose(){
+    var t=returnTarget&&returnTarget();
+    returnTarget=null;
+    if(t&&t.isConnected)t.focus();
+  }
+  function showDlg(dlg,ret){
+    returnTarget=ret||null;
+    if(dlg.showModal)dlg.showModal();else dlg.setAttribute('open','');
+  }
+  function hideDlg(dlg){
+    // close イベントは遅れることがあるため、ここでもフォーカスを戻す（二重実行しても無害）
+    if(dlg.close)dlg.close();else dlg.removeAttribute('open');
+    afterClose();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('dialog'),function(dl){
+    var downOnBackdrop=false;
+    dl.addEventListener('close',afterClose);
+    dl.addEventListener('keydown',function(e){
+      if(e.key==='Escape'&&(e.isComposing||e.keyCode===229)){e.preventDefault();imeEsc=Date.now();}
+    });
+    dl.addEventListener('cancel',function(e){if(Date.now()-imeEsc<150)e.preventDefault();});
+    dl.addEventListener('pointerdown',function(e){downOnBackdrop=(e.target===dl);});
+    dl.addEventListener('click',function(e){
+      if(e.target===dl&&downOnBackdrop){hideDlg(dl);return;}
+      if(e.target.closest&&e.target.closest('[data-close]'))hideDlg(dl);
+    });
+  });
+
+  /* ===== 小さなメニュー（⋯） ===== */
+  var menuEl=null,menuBtn=null;
+  function closeMenu(refocus){
+    if(!menuEl)return;
+    menuEl.remove();menuEl=null;
+    if(menuBtn){
+      menuBtn.setAttribute('aria-expanded','false');
+      if(refocus&&menuBtn.isConnected)menuBtn.focus();
+    }
+    menuBtn=null;
+  }
+  function openMenu(btn,items){
+    closeMenu();
+    menuEl=document.createElement('div');
+    menuEl.className='menu';menuEl.setAttribute('role','menu');
+    items.forEach(function(it){
+      var b=document.createElement('button');
+      b.type='button';b.setAttribute('role','menuitem');
+      if(it.danger)b.className='danger';
+      b.textContent=it.label;
+      b.onclick=function(){closeMenu(false);it.fn();};
+      menuEl.appendChild(b);
+    });
+    document.body.appendChild(menuEl);
+    menuBtn=btn;btn.setAttribute('aria-expanded','true');
+    var r=btn.getBoundingClientRect(),mh=menuEl.offsetHeight,mw=menuEl.offsetWidth;
+    var top=r.bottom+4;
+    if(top+mh>window.innerHeight-8)top=Math.max(8,r.top-mh-4);
+    menuEl.style.top=top+'px';
+    menuEl.style.left=Math.max(8,Math.min(window.innerWidth-mw-8,r.right-mw))+'px';
+    menuEl.querySelector('button').focus();
+  }
+  document.addEventListener('pointerdown',function(e){
+    if(menuEl&&!menuEl.contains(e.target)&&e.target!==menuBtn)closeMenu(false);
+  });
+  document.addEventListener('keydown',function(e){
+    if(!menuEl)return;
+    var bs=Array.prototype.slice.call(menuEl.querySelectorAll('button')),i=bs.indexOf(document.activeElement);
+    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeMenu(true);}
+    else if(e.key==='ArrowDown'){e.preventDefault();bs[(i+1)%bs.length].focus();}
+    else if(e.key==='ArrowUp'){e.preventDefault();bs[(i-1+bs.length)%bs.length].focus();}
+    else if(e.key==='Tab'){closeMenu(false);}
+  },true);
+  window.addEventListener('resize',function(){closeMenu(false);});
+
+  /* ===== トースト（元に戻す付き） ===== */
+  var toastTimer=null;
+  function toast(msg,snap){
+    var t=$('toast');
+    t.innerHTML='';
+    var s=document.createElement('span');s.textContent=msg;t.appendChild(s);
+    if(snap!=null){
+      var b=document.createElement('button');
+      b.type='button';b.textContent='元に戻す';
+      b.onclick=function(){
+        data=JSON.parse(snap);save();t.hidden=true;render();
+      };
+      t.appendChild(b);
+    }
+    t.hidden=false;
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){t.hidden=true;},8000);
+  }
+  function snapshot(){return JSON.stringify(data);}
+
+  /* ===== 画面の描画 ===== */
   function render(){
     $('today').textContent=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
-    var soon=0,over=0;
+    var soon=0,over=0,all=[];
     data.vehicles.forEach(function(v){
       (v.deadlines||[]).forEach(function(d){
-        var l=level(daysLeft(d.dueDate));
+        var n=daysLeft(d.dueDate),l=level(n);
         if(l==='soon')soon++;else if(l==='overdue')over++;
+        all.push({v:v,d:d,n:n,l:l});
       });
     });
     $('stCount').textContent=data.vehicles.length;
     $('stSoon').textContent=soon;
     $('stOver').textContent=over;
+    $('stSoonB').disabled=!soon;$('stSoonB').classList.toggle('zero',!soon);
+    $('stOverB').disabled=!over;$('stOverB').classList.toggle('zero',!over);
+
+    // 次に来る期限（近い順に最大3件）
+    all.sort(function(a,b){return a.n-b.n;});
+    var top=all.slice(0,3);
+    $('nextBox').hidden=!top.length;
+    $('nextList').innerHTML=top.map(function(x){
+      return '<li><button type="button" class="next-item" data-jump-v="'+esc(x.v.id)+'">'
+        +'<span class="chip '+x.l+'">'+leftText(x.n)+'</span>'
+        +'<span class="ni-main"><b>'+esc(typeLabel(x.d))+'</b>　'+esc(x.v.name)+'</span>'
+        +'<time>'+esc(x.d.dueDate)+'</time></button></li>';
+    }).join('');
 
     if(!data.vehicles.length){
-      $('list').innerHTML='<div class="empty">まだ車が登録されていません。上の「車を登録する」から追加してください。</div>';
+      $('list').innerHTML='<div class="empty"><div class="big" aria-hidden="true">🚗</div>まだ車が登録されていません。<br>車を登録すると、車検・保険・税の期限をここで確認できます。'
+        +'<div><button type="button" class="btn primary" data-act="vadd">＋ 車を登録する</button></div></div>';
       return;
     }
     $('list').innerHTML=data.vehicles.map(vehicleHtml).join('');
   }
 
+  function barPct(d,n){
+    if(n<0)return 100;
+    var total=365,h=d.history&&d.history.length?d.history[d.history.length-1].doneAt:'';
+    if(h){var t=dayDiff(h,d.dueDate);if(t>=30)total=t;}
+    return Math.round(Math.min(1,Math.max(0,1-n/total))*100);
+  }
+
   function vehicleHtml(v){
-    var nr=nearest(v),badge;
-    if(nr){
-      var l=level(nr.n);
-      badge='<span class="badge '+l+'">'+esc(nr.d.type==='その他'&&nr.d.note?nr.d.note:nr.d.type)+'：'+leftText(nr.n)+'</span>';
-    }else badge='<span class="badge none">期限の登録なし</span>';
-    var meta=[v.maker,v.model,v.year?v.year+'年式':'',v.color].filter(Boolean).join(' / ');
-    var meta2=[v.plate,v.odometer?Number(v.odometer).toLocaleString()+' km':'',v.status].filter(Boolean).join(' ・ ');
-    var thumb=v.image?'<img class="thumb" src="'+v.image+'" alt="">':'<div class="thumb">🚗</div>';
-    var dls=(v.deadlines||[]).slice().sort(function(a,b){return a.dueDate<b.dueDate?-1:1;});
-    var dlHtml=dls.map(function(d){
-      var n=daysLeft(d.dueDate),l=level(n);
-      var label=esc(d.type)+(d.type==='その他'?'':(d.note?'':''));
-      var hist=(d.history&&d.history.length)?'<div class="dl-hist">更新履歴：'+d.history.slice(-3).reverse().map(function(h){return esc(h.due)+'分（'+esc(h.doneAt)+'に更新）';}).join('、')+'</div>':'';
-      return '<li><div class="dl"><span class="t">'+label+'</span><span class="d">'+esc(d.dueDate)+(d.type!=='その他'&&d.note?'　'+esc(d.note):'')+(d.type==='その他'&&d.note?'　'+esc(d.note):'')+'</span>'
-        +'<span class="badge '+l+'">'+leftText(n)+'</span><span class="sp"></span>'
-        +'<button class="small" data-act="renew" data-v="'+v.id+'" data-d="'+d.id+'">更新する</button>'
-        +'<button class="ghost small" data-act="dedit" data-v="'+v.id+'" data-d="'+d.id+'">編集</button>'
-        +'<button class="ghost small danger" data-act="ddel" data-v="'+v.id+'" data-d="'+d.id+'">削除</button></div>'+hist+'</li>';
-    }).join('');
-    var form='';
-    if(openForm[v.id]){
-      var od=openForm[v.id]===true?null:findDl(v,openForm[v.id]);
-      var opts=TYPES.map(function(t){return '<option'+(od&&od.type===t?' selected':'')+'>'+t+'</option>';}).join('');
-      form='<div class="dl-form" data-form="'+v.id+'">'
-        +'<label class="f">種類<select class="dType">'+opts+'</select></label>'
-        +'<label class="f">期限日<input type="date" class="dDue" value="'+(od?esc(od.dueDate):'')+'"></label>'
-        +'<label class="f wide">メモ（保険会社・補足など）<input class="dNote" maxlength="40" value="'+(od?esc(od.note||''):'')+'"></label>'
-        +'<button class="small" data-act="dsave" data-v="'+v.id+'">'+(od?'保存':'追加')+'</button>'
-        +'<button class="ghost small" data-act="dcancel" data-v="'+v.id+'">やめる</button></div>';
+    var nr=nearest(v),lv=nr?level(nr.n):'none';
+    var open=!!openCard[v.id];
+    var chips='';
+    if(nr)chips+='<span class="chip '+lv+'">'+esc(typeLabel(nr.d))+'：'+leftText(nr.n)+'</span>';
+    else chips+='<span class="chip none">期限の登録なし</span>';
+    if(v.status&&v.status!=='使用中')chips+='<span class="chip none">'+esc(v.status)+'</span>';
+    var meta=[[v.maker,v.model].filter(Boolean).join(' '),v.plate,v.odometer?num(v.odometer)+' km':''].filter(Boolean).join(' ・ ');
+    var thumb=v.image?'<img class="thumb" src="'+esc(v.image)+'" alt="">':'<span class="thumb" aria-hidden="true">🚗</span>';
+    var head='<div class="v-head"><button type="button" class="v-toggle" data-act="vtoggle" data-v="'+esc(v.id)+'" aria-expanded="'+open+'" aria-controls="vb-'+esc(v.id)+'">'
+      +thumb+'<span class="v-info"><span class="v-name">'+esc(v.name)+'</span>'
+      +(meta?'<span class="v-meta">'+esc(meta)+'</span>':'')
+      +'<span class="v-chips">'+chips+'</span></span><span class="chev" aria-hidden="true">▾</span></button>'
+      +'<button type="button" class="icon-btn" data-act="vmenu" data-v="'+esc(v.id)+'" aria-haspopup="menu" aria-expanded="false" aria-label="「'+esc(v.name)+'」のメニュー">⋯</button></div>';
+    var body='';
+    if(open){
+      var specs=[['メーカー',v.maker],['車種',v.model],['年式',v.year?v.year+'年式':''],['色',v.color],['ナンバー',v.plate],['走行距離',v.odometer?num(v.odometer)+' km':''],['状態',v.status]]
+        .filter(function(s){return s[1];})
+        .map(function(s){return '<div><dt>'+s[0]+'</dt><dd>'+esc(s[1])+'</dd></div>';}).join('');
+      if(v.vin)specs+='<div class="v-vin"><dt>車台番号</dt><dd>'+esc(v.vin)+'</dd></div>';
+      var dls=(v.deadlines||[]).slice().sort(function(a,b){return a.dueDate<b.dueDate?-1:1;});
+      var dlHtml=dls.map(function(d){
+        var n=daysLeft(d.dueDate),l=level(n);
+        var hist=(d.history&&d.history.length)?'<div class="dl-hist">更新履歴：'+d.history.slice(-3).reverse().map(function(h){return esc(h.due)+'分（'+esc(h.doneAt)+'に更新）';}).join('、')+'</div>':'';
+        return '<li class="dl" data-lv="'+l+'" data-did="'+esc(d.id)+'"><div><div class="dl-title">'+esc(d.type)+'<span class="chip '+l+'">'+leftText(n)+'</span></div>'
+          +'<div class="dl-sub">'+esc(d.dueDate)+(d.note?'　'+esc(d.note):'')+'</div>'
+          +'<div class="bar" aria-hidden="true"><i style="width:'+barPct(d,n)+'%"></i></div></div>'
+          +'<button type="button" class="btn primary sm" data-act="renew" data-v="'+esc(v.id)+'" data-d="'+esc(d.id)+'" aria-label="'+esc(d.type)+'を更新する">更新する</button>'
+          +'<button type="button" class="icon-btn" data-act="dmenu" data-v="'+esc(v.id)+'" data-d="'+esc(d.id)+'" aria-haspopup="menu" aria-expanded="false" aria-label="'+esc(d.type)+'のメニュー">⋯</button>'
+          +hist+'</li>';
+      }).join('');
+      body='<div class="v-body" id="vb-'+esc(v.id)+'">'
+        +(v.image?'<img class="v-photo" src="'+esc(v.image)+'" alt="">':'')
+        +(specs?'<dl class="specs">'+specs+'</dl>':'')
+        +'<div class="v-actions no-print"><button type="button" class="btn sm" data-act="dadd" data-v="'+esc(v.id)+'">＋ 期限を追加</button>'
+        +'<button type="button" class="btn sm" data-act="madd" data-v="'+esc(v.id)+'">🔧 整備を記録</button></div>'
+        +'<h3 class="sec-title dl-t">期限</h3>'
+        +(dlHtml?'<ul class="dl-list">'+dlHtml+'</ul>':'<p class="empty-sm dl-list">期限はまだありません。「期限を追加」から登録してください。</p>')
+        +maintHtml(v)+'</div>';
     }
-    var mhtml=maintHtml(v);
-    return '<div class="vehicle" data-vid="'+v.id+'"><div class="v-top">'+thumb+'<div>'
-      +'<div class="v-name">'+esc(v.name)+'</div>'
-      +(meta?'<div class="v-meta">'+esc(meta)+'</div>':'')
-      +(meta2?'<div class="v-meta">'+esc(meta2)+'</div>':'')
-      +(v.vin?'<div class="v-meta v-vin">車台番号：'+esc(v.vin)+'</div>':'')
-      +'<div style="margin-top:6px">'+badge+'</div>'
-      +'<div class="v-actions"><button class="small" data-act="dadd" data-v="'+v.id+'">期限を追加</button>'
-      +'<button class="ghost small" data-act="vedit" data-v="'+v.id+'">編集</button>'
-      +'<button class="ghost small" data-act="vprint" data-v="'+v.id+'">整備履歴を印刷</button>'
-      +'<button class="ghost small danger" data-act="vdel" data-v="'+v.id+'">削除</button></div>'
-      +'</div></div>'
-      +(dlHtml?'<ul class="dl-list">'+dlHtml+'</ul>':'')
-      +form+mhtml+'</div>';
+    return '<article class="vehicle'+(v.status==='売却済み'?' sold':'')+'" data-vid="'+esc(v.id)+'" data-lv="'+lv+'">'+head+body+'</article>';
   }
 
   // 整備記録（新しい順）
@@ -424,152 +674,281 @@
     var done=function(m){return all.some(function(o){return o.title===m.title&&o.date>m.date;});};
     var upcoming=all.filter(function(m){return m.nextDate&&!done(m);}).sort(function(a,b){return a.nextDate<b.nextDate?-1:1;});
     var folded=!!collM[v.id];
-    var head='<div class="m-head"><button type="button" class="m-toggle" data-act="mtoggle" data-v="'+v.id+'" aria-expanded="'+(!folded)+'">'
-      +'<span class="arrow">'+(folded?'▶':'▼')+'</span> 🔧 整備記録'
-      +(all.length?'<span class="m-brief">'+all.length+'件・'+total.toLocaleString()+'円</span>':'')+'</button>'
-      +'<button class="small" data-act="madd" data-v="'+v.id+'">＋ 整備を記録</button></div>';
+    var head='<div class="m-head"><button type="button" class="m-toggle" data-act="mtoggle" data-v="'+esc(v.id)+'" aria-expanded="'+(!folded)+'">'
+      +'<span class="arrow" aria-hidden="true">'+(folded?'▶':'▼')+'</span> 整備記録'
+      +(all.length?'<span class="m-brief">'+all.length+'件・'+num(total)+'円</span>':'')+'</button></div>';
     var h='';
     if(all.length){
-      h+='<div class="m-sum"><div><b>記録</b>'+all.length+'件</div><div><b>費用の合計</b>'+total.toLocaleString()+'円</div>'
+      h+='<div class="m-sum"><div><b>記録</b>'+all.length+'件</div><div><b>費用の合計</b>'+num(total)+'円</div>'
         +'<div><b>最後の整備</b>'+esc(all[0].date)+'（'+esc(all[0].title)+'）</div></div>';
     }
     if(upcoming.length){
       h+='<div class="m-next"><b>次の整備予定</b>'+upcoming.slice(0,3).map(function(m){
         var n=daysLeft(m.nextDate);
-        return '<div>'+esc(m.title)+'　'+esc(m.nextDate)+' <span class="badge '+level(n)+'">'+leftText(n)+'</span>'
-          +(m.nextOdometer?'　'+Number(m.nextOdometer).toLocaleString()+' km ごろ':'')+'</div>';
+        return '<div>'+esc(m.title)+'　'+esc(m.nextDate)+' <span class="chip '+level(n)+'">'+leftText(n)+'</span>'
+          +(m.nextOdometer?'　'+num(m.nextOdometer)+' km ごろ':'')+'</div>';
       }).join('')+'</div>';
     }
-    if(!all.length&&!openM[v.id])h+='<div class="m-sub" style="margin-top:8px">まだ整備の記録がありません。「整備を記録」から追加してください。</div>';
+    if(!all.length)h+='<p class="empty-sm">まだ整備の記録がありません。「整備を記録」から追加してください。</p>';
     var lastY='';
     h+='<ul class="m-list">'+rows.map(function(m){
       var y=m.date.slice(0,4),yh='';
-      if(y!==lastY){lastY=y;yh='<li class="m-year"><span>'+esc(y)+'年</span><span>'+yearCost[y].toLocaleString()+'円</span></li>';}
+      if(y!==lastY){lastY=y;yh='<li class="m-year"><span>'+esc(y)+'年</span><span>'+num(yearCost[y])+'円</span></li>';}
       var nx=[];
-      if(m.nextDate&&!done(m)){var n=daysLeft(m.nextDate);nx.push('次回 '+esc(m.nextDate)+' <span class="badge '+level(n)+'">'+leftText(n)+'</span>');}
-      if(m.nextOdometer&&!done(m))nx.push('次回 '+Number(m.nextOdometer).toLocaleString()+' km');
-      var sub=(m.odometer?'<div class="m-sub">'+Number(m.odometer).toLocaleString()+' km</div>':'')
+      if(m.nextDate&&!done(m)){var n=daysLeft(m.nextDate);nx.push('次回 '+esc(m.nextDate)+' <span class="chip '+level(n)+'">'+leftText(n)+'</span>');}
+      if(m.nextOdometer&&!done(m))nx.push('次回 '+num(m.nextOdometer)+' km');
+      var sub=(m.odometer?'<div class="m-sub">'+num(m.odometer)+' km</div>':'')
         +(m.shop?'<div class="m-sub">'+esc(m.shop)+'</div>':'')
         +(m.note?'<div class="m-sub m-note">'+esc(m.note)+'</div>':'');
-      return yh+'<li class="m-item"><div class="m-date">'+Number(m.date.slice(5,7))+'/'+Number(m.date.slice(8,10))+'</div>'
+      return yh+'<li class="m-item" data-mid="'+esc(m.id)+'"><div class="m-date">'+Number(m.date.slice(5,7))+'/'+Number(m.date.slice(8,10))+'</div>'
         +'<div class="m-main"><div class="m-row"><span class="t">'+esc(m.title)+'</span>'
-        +(m.cost?'<span class="c">'+Number(m.cost).toLocaleString()+'円</span>':'')+'</div>'
+        +(m.cost?'<span class="c">'+num(m.cost)+'円</span>':'')+'</div>'
         +sub
         +(nx.length?'<div class="m-sub">'+nx.join('　')+'</div>':'')
-        +'</div><div class="m-btns"><button class="ghost small" data-act="medit" data-v="'+v.id+'" data-m="'+m.id+'">編集</button>'
-        +'<button class="ghost small danger" data-act="mdel" data-v="'+v.id+'" data-m="'+m.id+'">削除</button></div></li>';
+        +'</div><button type="button" class="icon-btn" data-act="mmenu" data-v="'+esc(v.id)+'" data-m="'+esc(m.id)+'" aria-haspopup="menu" aria-expanded="false" aria-label="「'+esc(m.title)+'」のメニュー">⋯</button></li>';
     }).join('')+'</ul>';
-    if(all.length>M_SHOW)h+='<button class="ghost small" style="margin-top:8px" data-act="mmore" data-v="'+v.id+'">'+(showAllM[v.id]?'新しい'+M_SHOW+'件だけ表示':'すべて表示（'+all.length+'件）')+'</button>';
-    if(openM[v.id]){
-      var om=openM[v.id]===true?null:findM(v,openM[v.id]);
-      var g=function(k){return om&&om[k]!=null?esc(om[k]):'';};
-      h+='<div class="m-form" data-mform="'+v.id+'">'
-        +'<label class="f">日付<input type="date" class="mDate" value="'+(om?g('date'):ymd(new Date()))+'"></label>'
-        +'<label class="f">走行距離（km）<input type="number" min="0" inputmode="numeric" class="mOdo" value="'+(om?g('odometer'):esc(v.odometer||''))+'"></label>'
-        +'<label class="f w2">内容（必須）<input class="mTitle" maxlength="40" list="mTitles" placeholder="例：オイル交換" value="'+g('title')+'"></label>'
-        +'<label class="f">費用（円）<input type="number" min="0" inputmode="numeric" class="mCost" value="'+g('cost')+'"></label>'
-        +'<label class="f w2">店名<input class="mShop" maxlength="40" value="'+g('shop')+'"></label>'
-        +'<label class="f">次回の目安（日付）<input type="date" class="mNextD" value="'+g('nextDate')+'"></label>'
-        +'<label class="f">次回の目安（km）<input type="number" min="0" inputmode="numeric" class="mNextO" value="'+g('nextOdometer')+'"></label>'
-        +'<label class="f w4">メモ（改行できます）<textarea class="mNote" rows="3" maxlength="500">'+g('note')+'</textarea></label>'
-        +'<button class="small" data-act="msave" data-v="'+v.id+'">'+(om?'保存':'記録する')+'</button>'
-        +'<button class="ghost small" data-act="mcancel" data-v="'+v.id+'">やめる</button></div>'
-        +'<datalist id="mTitles"><option>オイル交換</option><option>オイルエレメント交換</option><option>タイヤ交換</option><option>バッテリー交換</option><option>ブレーキパッド交換</option><option>ワイパー交換</option><option>エアコンフィルター交換</option><option>12ヶ月点検</option><option>車検整備</option></datalist>';
-    }
+    if(all.length>M_SHOW)h+='<button type="button" class="btn ghost sm" style="margin-top:8px" data-act="mmore" data-v="'+esc(v.id)+'">'+(showAllM[v.id]?'新しい'+M_SHOW+'件だけ表示':'すべて表示（'+all.length+'件）')+'</button>';
     return '<div class="m-box">'+head+(folded?'':h)+'</div>';
   }
-  function findM(v,id){
-    var a=v.maintenance||[];
-    for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];
-    return null;
+
+  /* ===== 車の登録・編集 ===== */
+  var FIELDS=[['fName','name'],['fMaker','maker'],['fModel','model'],['fYear','year'],['fPlate','plate'],['fStatus','status'],['fOdo','odometer'],['fColor','color'],['fVin','vin']];
+
+  function showImg(){
+    var b=$('vImgBtn');
+    b.innerHTML=imgData?'<img src="'+esc(imgData)+'" alt="">':'<span class="cam" aria-hidden="true">📷</span><span>写真</span>';
+    $('btnImgClear').hidden=!imgData;
+  }
+  $('vImgBtn').onclick=function(){$('vImage').click();};
+  $('vImage').onchange=function(){
+    var f=this.files[0];if(!f)return;
+    shrink(f,function(u){imgData=u;showImg();});
+  };
+  $('btnImgClear').onclick=function(){imgData='';$('vImage').value='';showImg();};
+
+  function openVehicleDlg(id,ret){
+    var v=id?find(id):null;
+    editId=v?v.id:null;imgData=v?(v.image||''):'';
+    FIELDS.forEach(function(p){$(p[0]).value=v?(v[p[1]]||''):(p[0]==='fStatus'?'使用中':'');});
+    $('vImage').value='';showImg();
+    $('vTitle').textContent=v?'車を編集する':'車を登録する';
+    $('btnSave').textContent=v?'保存する':'登録する';
+    $('vErr').textContent='';
+    showDlg($('dVehicle'),ret||(v?function(){return q('[data-vid="'+v.id+'"] [data-act="vmenu"]');}:function(){return $('btnAdd');}));
+    $('fName').focus();
+  }
+  $('btnAdd').onclick=function(){openVehicleDlg(null);};
+
+  $('fVehicle').onsubmit=function(e){
+    e.preventDefault();
+    var name=$('fName').value.trim();
+    if(!name){$('vErr').textContent='愛称を入力してください';$('fName').focus();return;}
+    var v=editId?find(editId):null;
+    if(!v){
+      if(data.vehicles.length>=20&&!confirm('20台を超えます。登録しますか？'))return;
+      v={id:uid(),deadlines:[]};data.vehicles.push(v);
+      openCard[v.id]=true;
+    }
+    FIELDS.forEach(function(p){v[p[1]]=$(p[0]).value.trim();});
+    v.image=imgData;
+    save();render();hideDlg($('dVehicle'));
+  };
+
+  /* ===== 期限の追加・編集 ===== */
+  function renderTypes(){
+    $('dTypes').innerHTML=TYPES.map(function(t){
+      return '<button type="button" class="tchip" role="radio" aria-checked="'+(t===curType)+'" data-type="'+t+'">'+t+'</button>';
+    }).join('');
+  }
+  $('dTypes').onclick=function(e){
+    var b=e.target.closest('[data-type]');if(!b)return;
+    curType=b.dataset.type;renderTypes();
+    var again=q('#dTypes [data-type="'+curType+'"]');if(again)again.focus();
+  };
+  function openDeadlineDlg(v,d){
+    ctx={v:v,d:d||null};
+    curType=d?d.type:TYPES[0];renderTypes();
+    $('dDue').value=d?d.dueDate:'';
+    $('dNote').value=d?(d.note||''):'';
+    $('dTitle').textContent=d?'期限を編集する':'期限を追加する';
+    $('dSave').textContent=d?'保存する':'追加する';
+    $('dErr').textContent='';
+    showDlg($('dDeadline'),function(){
+      return d?q('[data-did="'+d.id+'"] [data-act="dmenu"]'):q('[data-vid="'+v.id+'"] [data-act="dadd"]');
+    });
+  }
+  $('fDeadline').onsubmit=function(e){
+    e.preventDefault();
+    var v=ctx.v,cur=ctx.d,due=$('dDue').value,note=$('dNote').value.trim();
+    if(!due){$('dErr').textContent='期限日を入力してください';$('dDue').focus();return;}
+    if(cur){cur.type=curType;cur.dueDate=due;cur.note=note;}
+    else{(v.deadlines=v.deadlines||[]).push({id:uid(),type:curType,dueDate:due,note:note,history:[]});}
+    save();render();hideDlg($('dDeadline'));
+  };
+
+  /* ===== 期限の更新（次の期限日を入れる） ===== */
+  function openRenewDlg(v,d){
+    ctx={v:v,d:d};
+    var today=ymd(new Date()),base=d.dueDate>=today?d.dueDate:today;
+    ctx.base=base;
+    $('rSub').textContent=d.type+'（現在の期限：'+d.dueDate+'）';
+    $('rDue').value=addYears(base,1);
+    $('rHint').textContent='下のボタンは、'+base+(base===d.dueDate?'（現在の期限）':'（今日）')+'からの期間で入力します。';
+    $('rQuick').innerHTML=[1,2,3].map(function(n){return '<button type="button" class="btn ghost sm" data-yr="'+n+'">＋'+n+'年</button>';}).join('');
+    $('rErr').textContent='';
+    showDlg($('dRenew'),function(){return q('[data-did="'+d.id+'"] [data-act="renew"]');});
+  }
+  $('rQuick').onclick=function(e){
+    var b=e.target.closest('[data-yr]');if(!b)return;
+    $('rDue').value=addYears(ctx.base,Number(b.dataset.yr));
+  };
+  $('fRenew').onsubmit=function(e){
+    e.preventDefault();
+    var d=ctx.d,nd=$('rDue').value;
+    if(!nd||isNaN(new Date(nd+'T00:00:00'))){$('rErr').textContent='次の期限日を入力してください';$('rDue').focus();return;}
+    var snap=snapshot();
+    (d.history=d.history||[]).push({due:d.dueDate,doneAt:ymd(new Date())});
+    d.dueDate=nd;save();render();hideDlg($('dRenew'));
+    toast(d.type+'を更新しました（次の期限：'+nd+'）',snap);
+  };
+
+  /* ===== 整備の記録・編集 ===== */
+  function openMaintDlg(v,m){
+    ctx={v:v,m:m||null};
+    var g=function(k){return m&&m[k]!=null?m[k]:'';};
+    $('mDate').value=m?g('date'):ymd(new Date());
+    $('mOdo').value=m?g('odometer'):(v.odometer||'');
+    $('mTitle').value=g('title');$('mCost').value=g('cost');$('mShop').value=g('shop');
+    $('mNextD').value=g('nextDate');$('mNextO').value=g('nextOdometer');$('mNote').value=g('note');
+    $('mTitleH').textContent=m?'整備を編集する':'整備を記録する';
+    $('mSave').textContent=m?'保存する':'記録する';
+    $('mErr').textContent='';
+    if(collM[v.id]){collM[v.id]=false;saveColl();}
+    showDlg($('dMaint'),function(){
+      return m?q('[data-mid="'+m.id+'"] [data-act="mmenu"]'):q('[data-vid="'+v.id+'"] [data-act="madd"]');
+    });
+  }
+  $('fMaint').onsubmit=function(e){
+    e.preventDefault();
+    var v=ctx.v,cm=ctx.m;
+    var rec={
+      date:$('mDate').value,
+      odometer:$('mOdo').value,
+      title:$('mTitle').value.trim(),
+      cost:$('mCost').value,
+      shop:$('mShop').value.trim(),
+      nextDate:$('mNextD').value,
+      nextOdometer:$('mNextO').value,
+      note:$('mNote').value.trim()
+    };
+    if(!rec.date){$('mErr').textContent='日付を入力してください';$('mDate').focus();return;}
+    if(!rec.title){$('mErr').textContent='内容を入力してください';$('mTitle').focus();return;}
+    if(cm){for(var k in rec)cm[k]=rec[k];}
+    else{rec.id=uid();(v.maintenance=v.maintenance||[]).push(rec);}
+    // 走行距離が現在値より大きければ車の走行距離を更新
+    if(rec.odometer&&Number(rec.odometer)>(Number(v.odometer)||0))v.odometer=rec.odometer;
+    save();render();hideDlg($('dMaint'));
+  };
+
+  /* ===== 削除（確認ではなく「元に戻す」で守る） ===== */
+  function delVehicle(v){
+    var snap=snapshot();
+    data.vehicles=data.vehicles.filter(function(x){return x.id!==v.id;});
+    save();render();
+    toast('「'+v.name+'」を削除しました（期限・整備の記録も消えます）',snap);
+  }
+  function delDeadline(v,d){
+    var snap=snapshot();
+    v.deadlines=v.deadlines.filter(function(x){return x.id!==d.id;});
+    save();render();
+    toast(d.type+'の期限を削除しました',snap);
+  }
+  function delMaint(v,m){
+    var snap=snapshot();
+    v.maintenance=v.maintenance.filter(function(x){return x.id!==m.id;});
+    save();render();
+    toast('「'+m.title+'」（'+m.date+'）を削除しました',snap);
   }
 
-  function findDl(v,id){
-    var a=v.deadlines||[];
-    for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];
-    return null;
+  function printVehicle(v){
+    // 整備記録を全件表示にして、この車だけを印刷する
+    openCard[v.id]=true;showAllM[v.id]=true;collM[v.id]=false;render();
+    document.body.classList.add('printing');
+    q('[data-vid="'+v.id+'"]').classList.add('print-target');
+    window.print();
   }
+
+  /* ===== 画面のクリック処理 ===== */
+  function jumpTo(id){
+    openCard[id]=true;render();
+    var el=q('[data-vid="'+id+'"]');if(!el)return;
+    el.scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
+    var t=el.querySelector('.v-toggle');if(t)t.focus({preventScroll:true});
+  }
+  document.querySelector('.stats').onclick=function(e){
+    var b=e.target.closest('[data-jump]');if(!b||b.disabled)return;
+    var lv=b.dataset.jump,best=null;
+    data.vehicles.forEach(function(v){
+      var nr=nearest(v);
+      if(nr&&level(nr.n)===lv&&(best===null||nr.n<best.n))best={v:v,n:nr.n};
+    });
+    // 期限切れ・まもなくのどちらも、その車の中の最も近い期限で判断する
+    if(!best){
+      data.vehicles.forEach(function(v){
+        (v.deadlines||[]).forEach(function(d){var n=daysLeft(d.dueDate);if(level(n)===lv&&(best===null||n<best.n))best={v:v,n:n};});
+      });
+    }
+    if(best)jumpTo(best.v.id);
+  };
+  $('nextList').onclick=function(e){
+    var b=e.target.closest('[data-jump-v]');if(b)jumpTo(b.dataset.jumpV);
+  };
 
   $('list').onclick=function(e){
     var b=e.target.closest('button[data-act]');if(!b)return;
-    var act=b.dataset.act,v=find(b.dataset.v);if(!v)return;
+    var act=b.dataset.act;
+    if(act==='vadd'){openVehicleDlg(null);return;}
+    var v=find(b.dataset.v);if(!v)return;
     var d=b.dataset.d?findDl(v,b.dataset.d):null;
-    if(act==='vedit'){startEdit(v.id);return;}
-    if(act==='vprint'){
-      // 整備記録を全件表示にして、この車だけを印刷する
-      showAllM[v.id]=true;collM[v.id]=false;render();
-      document.body.classList.add('printing');
-      document.querySelector('[data-vid="'+v.id+'"]').classList.add('print-target');
-      window.print();
+    var m=b.dataset.m?findM(v,b.dataset.m):null;
+    if(act==='vtoggle'){
+      openCard[v.id]=!openCard[v.id];render();
+      var t=q('[data-vid="'+v.id+'"] .v-toggle');if(t)t.focus({preventScroll:true});
       return;
     }
-    if(act==='vdel'){
-      if(confirm('「'+v.name+'」を削除しますか？期限の記録も消えます。')){
-        data.vehicles=data.vehicles.filter(function(x){return x.id!==v.id;});
-        save();render();
-      }
+    if(act==='vmenu'){
+      openMenu(b,[
+        {label:'編集',fn:function(){openVehicleDlg(v.id);}},
+        {label:'整備履歴を印刷',fn:function(){printVehicle(v);}},
+        {label:'削除',danger:true,fn:function(){delVehicle(v);}}
+      ]);
       return;
     }
-    if(act==='mtoggle'){collM[v.id]=!collM[v.id];saveColl();render();return;}
-    if(act==='madd'){openM[v.id]=true;if(collM[v.id]){collM[v.id]=false;saveColl();}render();return;}
-    if(act==='medit'){openM[v.id]=b.dataset.m;render();return;}
-    if(act==='mcancel'){delete openM[v.id];render();return;}
-    if(act==='mmore'){showAllM[v.id]=!showAllM[v.id];render();return;}
-    if(act==='mdel'){
-      var dm=findM(v,b.dataset.m);
-      if(dm&&confirm('「'+dm.title+'」（'+dm.date+'）の整備記録を削除しますか？')){
-        v.maintenance=v.maintenance.filter(function(x){return x.id!==dm.id;});
-        save();render();
-      }
+    if(act==='dmenu'&&d){
+      openMenu(b,[
+        {label:'編集',fn:function(){openDeadlineDlg(v,d);}},
+        {label:'削除',danger:true,fn:function(){delDeadline(v,d);}}
+      ]);
       return;
     }
-    if(act==='msave'){
-      var mf=document.querySelector('[data-mform="'+v.id+'"]');
-      var rec={
-        date:mf.querySelector('.mDate').value,
-        odometer:mf.querySelector('.mOdo').value,
-        title:mf.querySelector('.mTitle').value.trim(),
-        cost:mf.querySelector('.mCost').value,
-        shop:mf.querySelector('.mShop').value.trim(),
-        nextDate:mf.querySelector('.mNextD').value,
-        nextOdometer:mf.querySelector('.mNextO').value,
-        note:mf.querySelector('.mNote').value.trim()
-      };
-      if(!rec.date){alert('日付を入力してください');return;}
-      if(!rec.title){alert('内容を入力してください');mf.querySelector('.mTitle').focus();return;}
-      var cm=openM[v.id]===true?null:findM(v,openM[v.id]);
-      if(cm){for(var k in rec)cm[k]=rec[k];}
-      else{rec.id=uid();(v.maintenance=v.maintenance||[]).push(rec);}
-      // 走行距離が現在値より大きければ車の走行距離を更新
-      if(rec.odometer&&Number(rec.odometer)>(Number(v.odometer)||0))v.odometer=rec.odometer;
-      delete openM[v.id];save();render();return;
-    }
-    if(act==='dadd'){openForm[v.id]=true;render();return;}
-    if(act==='dedit'&&d){openForm[v.id]=d.id;render();return;}
-    if(act==='dcancel'){delete openForm[v.id];render();return;}
-    if(act==='dsave'){
-      var f=document.querySelector('[data-form="'+v.id+'"]');
-      var type=f.querySelector('.dType').value,due=f.querySelector('.dDue').value,note=f.querySelector('.dNote').value.trim();
-      if(!due){alert('期限日を入力してください');return;}
-      var cur=openForm[v.id]===true?null:findDl(v,openForm[v.id]);
-      if(cur){cur.type=type;cur.dueDate=due;cur.note=note;}
-      else{(v.deadlines=v.deadlines||[]).push({id:uid(),type:type,dueDate:due,note:note,history:[]});}
-      delete openForm[v.id];save();render();return;
-    }
-    if(act==='ddel'&&d){
-      if(confirm(d.type+'の期限を削除しますか？')){
-        v.deadlines=v.deadlines.filter(function(x){return x.id!==d.id;});
-        save();render();
-      }
+    if(act==='mmenu'&&m){
+      openMenu(b,[
+        {label:'編集',fn:function(){openMaintDlg(v,m);}},
+        {label:'削除',danger:true,fn:function(){delMaint(v,m);}}
+      ]);
       return;
     }
-    if(act==='renew'&&d){
-      var nd=prompt(d.type+'を更新します。次の期限日を入力してください（例：2028-10-31）',d.dueDate);
-      if(nd===null)return;
-      nd=nd.trim();
-      if(!/^\d{4}-\d{2}-\d{2}$/.test(nd)||isNaN(new Date(nd+'T00:00:00'))){alert('「2028-10-31」の形式で入力してください');return;}
-      (d.history=d.history||[]).push({due:d.dueDate,doneAt:ymd(new Date())});
-      d.dueDate=nd;save();render();
+    if(act==='dadd'){openDeadlineDlg(v,null);return;}
+    if(act==='madd'){openMaintDlg(v,null);return;}
+    if(act==='renew'&&d){openRenewDlg(v,d);return;}
+    if(act==='mtoggle'){
+      collM[v.id]=!collM[v.id];saveColl();render();
+      var mt=q('[data-vid="'+v.id+'"] .m-toggle');if(mt)mt.focus({preventScroll:true});
+      return;
+    }
+    if(act==='mmore'){
+      showAllM[v.id]=!showAllM[v.id];render();
+      var mm=q('[data-vid="'+v.id+'"] [data-act="mmore"]');if(mm)mm.focus({preventScroll:true});
     }
   };
 
@@ -589,7 +968,9 @@
         var d=JSON.parse(r.result);
         if(!d||!Array.isArray(d.vehicles))throw new Error();
         if(!confirm('現在のデータを、読み込んだ内容（'+d.vehicles.length+'台）で置き換えますか？'))return;
+        var snap=snapshot();
         data=d;save();render();
+        toast('読み込みました（'+d.vehicles.length+'台）',snap);
       }catch(e){alert('読み込めませんでした。書き出したJSONファイルを選んでください。');}
       $('fImport').value='';
     };
@@ -599,17 +980,24 @@
   // 印刷が終わったら通常表示に戻す
   window.addEventListener('afterprint',function(){
     document.body.classList.remove('printing');
-    var t=document.querySelector('.print-target');if(t)t.classList.remove('print-target');
+    var t=q('.print-target');if(t)t.classList.remove('print-target');
   });
 
   // ダークモード切り替え（自動 → ダーク → ライト）
   var THEME_KEY='vehicle-manager-theme';
   var THEME_LABEL={auto:'表示：自動',dark:'表示：ダーク',light:'表示：ライト'};
+  var THEME_COLOR={light:'#f4f5f2',dark:'#121513'};
   function getTheme(){try{return localStorage.getItem(THEME_KEY)||'auto';}catch(e){return 'auto';}}
   function applyTheme(t){
     if(t==='auto')document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme',t);
     $('btnTheme').textContent=THEME_LABEL[t];
+    // 手動で固定したときは、ブラウザ上部の色（theme-color）も合わせる
+    var metas=document.querySelectorAll('meta[name="theme-color"]');
+    Array.prototype.forEach.call(metas,function(m,i){
+      var auto=i===0?THEME_COLOR.light:THEME_COLOR.dark;
+      m.setAttribute('content',t==='auto'?auto:THEME_COLOR[t]);
+    });
   }
   $('btnTheme').onclick=function(){
     var n={auto:'dark',dark:'light',light:'auto'}[getTheme()];
@@ -631,7 +1019,7 @@
         if(!d||!Array.isArray(d.vehicles))throw new Error('車両管理のデータ形式が違います');
         data={vehicles:d.vehicles};
         try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}
-        editId=null;openForm={};openM={};
+        editId=null;ctx={};
         render();
       }
     });
