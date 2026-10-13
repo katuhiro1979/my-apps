@@ -139,14 +139,15 @@
 
     // ---- 画面(右下の ☁ ボタンとパネル) ----
     const css = document.createElement("style");
+    // 色は各アプリのテーマ変数（--paper / --ink など）に合わせる。無いアプリは従来の色のまま。位置は iPhone の安全領域を避ける
     css.textContent =
-      "#cs-btn{position:fixed;right:12px;bottom:12px;z-index:99998;width:44px;height:44px;border-radius:50%;border:1px solid #888;background:#fff;color:#333;font-size:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25)}" +
+      "#cs-btn{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:99998;width:44px;height:44px;border-radius:50%;border:1px solid var(--line,#888);background:var(--paper,var(--surface,#fff));color:var(--ink,var(--text,#333));font-size:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25)}" +
       "#cs-btn.on{background:#2c4d66;color:#fff;border-color:#2c4d66}" +
-      "#cs-panel{position:fixed;right:12px;bottom:64px;z-index:99999;width:min(320px,calc(100vw - 24px));box-sizing:border-box;padding:12px;border-radius:10px;background:#fff;color:#222;border:1px solid #bbb;box-shadow:0 4px 16px rgba(0,0,0,.3);font:14px/1.5 sans-serif;display:none}" +
+      "#cs-panel{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:99999;width:min(320px,calc(100vw - 24px));box-sizing:border-box;padding:12px;border-radius:10px;background:var(--paper,var(--surface,#fff));color:var(--ink,var(--text,#222));border:1px solid var(--line,#bbb);box-shadow:0 4px 16px rgba(0,0,0,.3);font:14px/1.5 sans-serif;display:none}" +
       "#cs-panel.open{display:block}#cs-panel *{box-sizing:border-box;font-family:inherit}" +
-      "#cs-panel input{display:block;width:100%;margin:6px 0;padding:8px;font-size:16px}" +
-      "#cs-panel button{margin:4px 4px 0 0;padding:8px 10px;font-size:14px;cursor:pointer}" +
-      "#cs-panel .cs-msg{color:#c00;font-size:13px}#cs-panel .cs-st{color:#555;font-size:13px}";
+      "#cs-panel input{display:block;width:100%;margin:6px 0;padding:8px;font-size:16px;background:var(--surface-2,#fff);color:var(--ink,var(--text,#222));border:1px solid var(--line,#bbb);border-radius:6px}" +
+      "#cs-panel button{margin:4px 4px 0 0;padding:8px 10px;font-size:14px;cursor:pointer;background:var(--surface-2,#efefef);color:var(--ink,var(--text,#222));border:1px solid var(--line,#bbb);border-radius:6px}" +
+      "#cs-panel .cs-msg{color:var(--danger,var(--bad,#c00));font-size:13px}#cs-panel .cs-st{color:var(--ink-soft,var(--text-2,#555));font-size:13px}";
     document.head.appendChild(css);
     const btn = document.createElement("button");
     btn.id = "cs-btn";
