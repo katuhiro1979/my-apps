@@ -442,6 +442,12 @@
     background:var(--ink); color:var(--bg); padding:11px 20px; border-radius:999px;
     font-size:14px; font-weight:600; box-shadow:var(--shadow-lg);
     max-width:calc(100vw - 32px); text-align:center;
+    display:flex; align-items:center; gap:14px; pointer-events:auto;
+  }
+  .toast-action{
+    flex:none; min-height:36px; padding:4px 14px; border-radius:999px;
+    border:1px solid currentColor; background:transparent; color:inherit;
+    font:inherit; font-size:14px; font-weight:700; cursor:pointer;
   }
 
   /* ---------- スマホ幅 ---------- */
@@ -1364,6 +1370,7 @@
     renderColorPicker();
     refreshMemberSuggestions();
     updateFreqPresetHighlight();
+    returnTarget = () => $('#openAdd');
     overlay.classList.add('show');
     $('#f-member').focus();
   }
@@ -1384,8 +1391,12 @@
     renderColorPicker();
     refreshMemberSuggestions();
     updateFreqPresetHighlight();
+    returnTarget = () => document.querySelector(`.ticket[data-id="${id}"] .more-btn`);
     overlay.classList.add('show');
   }
+
+  // ダイアログを閉じたあとにフォーカスを戻す先（開く直前に設定する）
+  let returnTarget = null;
 
   function closeModal(){
     overlay.classList.remove('show');
@@ -1409,18 +1420,34 @@
       toast('今日の完了はすでに記録されています。');
       return;
     }
+    // 取り消し用に、完了前の状態を控える
+    const before = { last: t.last, next: t.next, history: [...t.history] };
     t.history.push(today);
     t.last = today;
     t.next = addDays(today, t.freq);
     saveTasks();
     render();
-    toast(`「${t.title}」を完了しました。次回は${fmtDate(t.next)}です`);
+    toast(`「${t.title}」を完了しました。次回は${fmtDate(t.next)}です`, {
+      actionLabel: '元に戻す',
+      onAction: () => {
+        const cur = tasks.find(x => x.id === id);
+        if(!cur) return;
+        cur.last = before.last;
+        cur.next = before.next;
+        cur.history = before.history;
+        saveTasks();
+        render();
+        if(historyOverlay.classList.contains('show')) renderHistoryList();
+        toast('完了を取り消しました。');
+      }
+    });
   }
 
   // ---------- History modal ----------
   function openHistory(id){
     historyTaskId = id;
     renderHistoryList();
+    returnTarget = () => document.querySelector(`.ticket[data-id="${id}"] .more-btn`);
     historyOverlay.classList.add('show');
   }
 
@@ -1572,8 +1599,14 @@
     render();
   });
   $('#cancelBtn').addEventListener('click', closeModal);
-  overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
-  historyOverlay.addEventListener('click', (e) => { if(e.target === historyOverlay) closeHistoryModal(); });
+  // 背景タップで閉じる。入力欄からのドラッグが背景側で終わった場合は閉じない
+  function closeOnBackdrop(ov, close){
+    let downOnBackdrop = false;
+    ov.addEventListener('pointerdown', (e) => { downOnBackdrop = e.target === ov; });
+    ov.addEventListener('click', (e) => { if(e.target === ov && downOnBackdrop) close(); downOnBackdrop = false; });
+  }
+  closeOnBackdrop(overlay, closeModal);
+  closeOnBackdrop(historyOverlay, closeHistoryModal);
   $('#historyCloseBtn').addEventListener('click', closeHistoryModal);
   $('#historyAddBtn').addEventListener('click', () => addHistoryEntry($('#historyAddDate').value));
 
@@ -1640,9 +1673,12 @@
     render();
   });
 
+  // 日本語変換中の Esc（変換の取り消し）ではダイアログを閉じない
+  const isImeEsc = (e) => e.key !== 'Escape' || e.isComposing || e.keyCode === 229;
   document.addEventListener('keydown', (e) => {
-    if(e.key === 'Escape' && overlay.classList.contains('show')) closeModal();
-    if(e.key === 'Escape' && historyOverlay.classList.contains('show')) closeHistoryModal();
+    if(isImeEsc(e)) return;
+    if(overlay.classList.contains('show')) closeModal();
+    if(historyOverlay.classList.contains('show')) closeHistoryModal();
   });
 
   // ---------- Export / Import ----------
@@ -1724,6 +1760,7 @@
     }
     pendingImport = valid;
     $('#importInfo').textContent = `${valid.length}件のデータが見つかりました（現在は${tasks.length}件登録中）。`;
+    returnTarget = () => $('#menuBtn');
     importOverlay.classList.add('show');
   }
 
@@ -1731,8 +1768,17 @@
 
   function applyImport(valid, mode){
     // 取り消せるよう、インポート前のデータを退避する
+    // 古いバックアップに戻らないよう、先に消してから退避する
+    try{ localStorage.removeItem(BACKUP_KEY); }catch(e){}
     if(tasks.length){
-      try{ localStorage.setItem(BACKUP_KEY, JSON.stringify(tasks)); }catch(e){ console.error(e); }
+      try{ localStorage.setItem(BACKUP_KEY, JSON.stringify(tasks)); }
+      catch(e){
+        console.error(e);
+        if(!confirm('インポート前のデータを退避できませんでした。このまま続けると、取り消しはできません。続けますか？')){
+          updateImportUndoBtn();
+          return;
+        }
+      }
     }
     if(mode === 'merge'){
       // 同じIDがあれば上書き、なければ追加
@@ -1787,9 +1833,10 @@
   });
   $('#importCancelBtn').addEventListener('click', closeImportModal);
   $('#importUndoBtn').addEventListener('click', undoImport);
-  importOverlay.addEventListener('click', (e) => { if(e.target === importOverlay) closeImportModal(); });
+  closeOnBackdrop(importOverlay, closeImportModal);
   document.addEventListener('keydown', (e) => {
-    if(e.key === 'Escape' && importOverlay.classList.contains('show')) closeImportModal();
+    if(isImeEsc(e)) return;
+    if(importOverlay.classList.contains('show')) closeImportModal();
   });
 
   $('#importBtn').addEventListener('click', async () => {
@@ -1862,15 +1909,30 @@
 
   // ---------- お知らせ（トースト） ----------
   let toastTimer = null;
-  function toast(msg){
+  // opt.actionLabel / opt.onAction を渡すと、お知らせに操作ボタン（元に戻す等）が付く
+  function toast(msg, opt){
     const region = $('#toastRegion');
     region.innerHTML = '';
     const el = document.createElement('div');
     el.className = 'toast';
-    el.textContent = msg;
+    const text = document.createElement('span');
+    text.textContent = msg;
+    el.appendChild(text);
+    if(opt && opt.onAction){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'toast-action';
+      btn.textContent = opt.actionLabel || '元に戻す';
+      btn.addEventListener('click', () => {
+        clearTimeout(toastTimer);
+        region.innerHTML = '';
+        opt.onAction();
+      });
+      el.appendChild(btn);
+    }
     region.appendChild(el);
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { region.innerHTML = ''; }, msg.length > 36 ? 5000 : 3000);
+    toastTimer = setTimeout(() => { region.innerHTML = ''; }, opt && opt.onAction ? 8000 : (msg.length > 36 ? 5000 : 3000));
   }
 
   // ---------- ヘッダーのメニュー・表示切替 ----------
@@ -1927,7 +1989,7 @@
     closeTicketMenus();
   });
   document.addEventListener('keydown', (e) => {
-    if(e.key !== 'Escape' || e.isComposing) return;
+    if(isImeEsc(e)) return;
     closeTicketMenus();
     setMenu(false);
   });
@@ -1946,7 +2008,12 @@
         setTimeout(() => { if(!modal.contains(document.activeElement)) modal.focus(); }, 0);
       }else if(!open && opened){
         opened = false;
-        if(lastFocus && lastFocus.focus && document.contains(lastFocus)) lastFocus.focus();
+        // 開く前に決めた戻り先を優先し、見つからなければ直前のフォーカス、最後は「追加」へ
+        let back = returnTarget ? returnTarget() : null;
+        returnTarget = null;
+        if(!back || !back.getClientRects().length) back = lastFocus;
+        if(!back || !document.contains(back) || !back.getClientRects().length) back = $('#openAdd');
+        if(back && back.focus) back.focus();
       }
     }).observe(ov, { attributes: true, attributeFilter: ['class'] });
   });
