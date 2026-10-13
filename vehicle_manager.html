@@ -199,6 +199,10 @@
   input[aria-invalid="true"]{border-color:var(--danger);}
   ::placeholder{color:var(--ink-soft);opacity:.8;}
   .print-only{display:none;}
+  .alert-box{background:var(--danger-bg);color:var(--ink);border:1px solid var(--danger);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:13px;}
+  .alert-box p{margin:0 0 8px;}
+  .alert-box b{color:var(--danger);}
+  .alert-actions{display:flex;gap:8px;flex-wrap:wrap;}
   .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
   .fields .w2{grid-column:1 / -1;}
   label.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--ink-soft);font-weight:600;}
@@ -266,6 +270,15 @@
       <button type="button" class="btn ghost sm" id="btnTheme"></button>
     </div>
   </header>
+
+  <div class="alert-box no-print" id="brokenBox" role="alert" hidden>
+    <p><b>保存データを読み込めませんでした。</b>元のデータは消さずに退避してあります。表示中の内容は空の状態です。復旧するには「退避データを書き出す」でファイルを保存してください。</p>
+    <div class="alert-actions">
+      <button type="button" class="btn sm" id="btnBrokenExport">退避データを書き出す</button>
+      <button type="button" class="btn ghost sm" id="btnBrokenDrop">退避データを破棄する</button>
+      <button type="button" class="btn ghost sm" id="btnBrokenClose">閉じる</button>
+    </div>
+  </div>
 
   <section class="stats" aria-label="状況のまとめ">
     <div class="stat"><span class="num"><span id="stCount">0</span><small>台</small></span><span class="label">登録台数</span></div>
@@ -399,6 +412,7 @@
 <script>
 (function(){
   var KEY='vehicle-manager-data';
+  var BROKEN_KEY='vehicle-manager-data-broken';   // 読み込めなかった保存データの退避先
   var TYPES=['車検','自賠責保険','任意保険','自動車税','免許更新','その他'];
   var data=load();
   var cloud=null;    // 同期モジュール（cloud-sync.js）
@@ -446,10 +460,16 @@
     return {vehicles:out};
   }
   function load(){
-    try{
-      var d=JSON.parse(localStorage.getItem(KEY));
-      if(d&&Array.isArray(d.vehicles))return normalize(d);
-    }catch(e){}
+    var raw=null;
+    try{raw=localStorage.getItem(KEY);}catch(e){}
+    if(raw){
+      try{
+        var d=JSON.parse(raw);
+        if(d&&Array.isArray(d.vehicles))return normalize(d);
+      }catch(e){}
+      // 読めないデータは、次の保存で上書きされる前に別のキーへ退避する
+      try{if(localStorage.getItem(BROKEN_KEY)!==raw)localStorage.setItem(BROKEN_KEY,raw);}catch(e){}
+    }
     return {vehicles:[]};
   }
   function save(){
@@ -1009,6 +1029,23 @@
     });
   }
 
+  // 読めなかった保存データの退避がある間は、警告を出す
+  function brokenRaw(){try{return localStorage.getItem(BROKEN_KEY);}catch(e){return null;}}
+  function showBroken(){$('brokenBox').hidden=!brokenRaw();}
+  $('btnBrokenExport').onclick=function(){
+    var raw=brokenRaw();if(!raw)return;
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([raw],{type:'text/plain'}));
+    a.download='vehicle-manager-broken-'+ymd(new Date())+'.txt';
+    a.click();URL.revokeObjectURL(a.href);
+  };
+  $('btnBrokenDrop').onclick=function(){
+    if(!confirm('退避してある元のデータを破棄します。書き出していない場合は、元に戻せません。よろしいですか？'))return;
+    try{localStorage.removeItem(BROKEN_KEY);}catch(e){}
+    showBroken();
+  };
+  $('btnBrokenClose').onclick=function(){$('brokenBox').hidden=true;};
+
   // 印刷：この車だけを出力する。終わったら通常表示へ戻す
   function endPrint(){
     document.body.classList.remove('printing');
@@ -1150,6 +1187,7 @@
   };
   applyTheme(getTheme());
 
+  showBroken();
   render();
 
   // クラウド同期（cloud-sync.js）。端末内が主で、ログイン中のみクラウドと合わせる
