@@ -1587,12 +1587,67 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       else {
         list = [ { label: isDone(it) ? '未完了に戻す' : '完了にする', run:()=>toggleDone(id) }, { label:'編集', run:()=>openEdit(id) }, { label:'状態を選ぶ', run:()=>openStatusMenu(m, id) } ];
         if(groups.length) list.push({ label:'グループを移す', run:()=>openGroupMenu(m, id) });
+        if(it.date){
+          list.push({ label:'Googleカレンダーに追加', run:()=>addToGoogleCal(it) });
+          list.push({ label:'Outlookに追加（.ics）', run:()=>addToOutlookIcs(it) });
+        }
         if(isDone(it)) list.push({ label:'アーカイブ', run:()=>archiveItems([id]) });
         list.push({ label:'ごみ箱へ移動', danger:true, run:()=>trashItem(id) });
       }
       openMenu(m, list);
     }
   });
+
+  // ---- カレンダーへ追加（通信・ログインなし。ブラウザの画面を開く／ファイルを渡すだけ）----
+  // 予定の日時を返す。時刻があれば1時間、なければ終日（終了は翌日）
+  function calSpan(it){
+    const p = n=>String(n).padStart(2,'0');
+    const ymd = d=>d.getFullYear()+p(d.getMonth()+1)+p(d.getDate());
+    const [y,mo,da] = it.date.split('-').map(Number);
+    if(!it.time) return { allDay:true, start:ymd(new Date(y,mo-1,da)), end:ymd(new Date(y,mo-1,da+1)) };
+    const [h,mi] = it.time.split(':').map(Number);
+    const f = d=>ymd(d)+'T'+p(d.getHours())+p(d.getMinutes())+'00';
+    return { allDay:false, start:f(new Date(y,mo-1,da,h,mi)), end:f(new Date(y,mo-1,da,h+1,mi)) };
+  }
+  function calNote(it){
+    const g = groupById(it.group);
+    return (g ? 'グループ：'+g.name+'\n' : '')+'ToDoから追加';
+  }
+  function addToGoogleCal(it){
+    const sp = calSpan(it);
+    const url = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+      +'&text='+encodeURIComponent(it.text)
+      +'&dates='+sp.start+'/'+sp.end
+      +'&details='+encodeURIComponent(calNote(it));
+    window.open(url, '_blank', 'noopener');
+  }
+  function addToOutlookIcs(it){
+    const sp = calSpan(it);
+    const esc = t=>String(t).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');
+    // 1行は75バイトまで。超えたら次の行へ折り返す（文字の途中では切らない）
+    const fold = line=>{
+      const out = []; let cur = '', bytes = 0;
+      for(const ch of line){
+        const b = new TextEncoder().encode(ch).length;
+        if(bytes + b > (out.length ? 74 : 75)){ out.push(cur); cur = ''; bytes = 0; }
+        cur += ch; bytes += b;
+      }
+      out.push(cur);
+      return out.join('\r\n ');
+    };
+    const now = new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+    const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//todo-app//JP','CALSCALE:GREGORIAN','BEGIN:VEVENT',
+      'UID:'+it.id+'@todo-app','DTSTAMP:'+now,
+      sp.allDay ? 'DTSTART;VALUE=DATE:'+sp.start : 'DTSTART:'+sp.start,
+      sp.allDay ? 'DTEND;VALUE=DATE:'+sp.end : 'DTEND:'+sp.end,
+      'SUMMARY:'+esc(it.text),'DESCRIPTION:'+esc(calNote(it)),'END:VEVENT','END:VCALENDAR'];
+    const blob = new Blob([lines.map(fold).join('\r\n')+'\r\n'], { type:'text/calendar;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'ToDo予定.ics';
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    showToast('予定ファイルを書き出しました。開くとOutlookに追加できます。');
+  }
 
   // 状態チップの長押し（右クリック）で、状態を一覧から選ぶ
   let lpTimer = null, lpPos = null;
