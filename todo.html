@@ -152,6 +152,14 @@
 
   /* ===== 一覧 ===== */
   .grp{margin-top:14px;scroll-margin-top:var(--top-h,56px);}
+  /* 週・月の区切り線（日付順のときだけ） */
+  .mo-line,.wk-line{display:flex;align-items:center;gap:8px;color:var(--ink-soft);}
+  .mo-line:before,.mo-line:after,.wk-line:after{content:"";height:1px;flex:1;background:var(--line);}
+  .mo-line{margin:22px 4px 0;font-size:14px;font-weight:700;color:var(--ink);}
+  .mo-line:before,.mo-line:after{background:var(--ink-soft);opacity:.5;}
+  .wk-line{margin:14px 4px 0;font-size:12px;font-weight:600;}
+  .wk-line:after{height:1px;opacity:.8;}
+  .wk-line.is-now{color:var(--accent);}
   .grp:first-child{margin-top:2px;}
   .grp-h{position:sticky;top:var(--top-h,56px);z-index:5;display:flex;align-items:baseline;gap:8px;padding:6px 4px;margin:0 0 4px;
     background:var(--paper);background:color-mix(in srgb,var(--paper) 94%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
@@ -1471,6 +1479,31 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     empty.style.display = 'none';
 
     const plain = currentTab==='trash' || currentTab==='archive';
+    // 週・月の区切り線：日付順（新しい順・古い順）のときだけ。メモ（日付なし）には入れない
+    const lines = (mode==='dateDesc' || mode==='dateAsc') && !plain;
+    let prevWeek = '', prevMonth = '';
+    const mondayOf = (iso)=>{ const d = new Date(iso+'T00:00:00'); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return localISO(d); };
+    const thisWeek = mondayOf(today);
+    const weekLabel = (ws)=>{
+      const a = new Date(ws+'T00:00:00'), b = new Date(a); b.setDate(b.getDate()+6);
+      const diff = Math.round((a - new Date(thisWeek+'T00:00:00')) / 604800000);
+      const name = diff===0 ? '今週' : diff===1 ? '来週' : diff===-1 ? '先週' : '';
+      return { name, range:(a.getMonth()+1)+'/'+a.getDate()+'〜'+(b.getMonth()+1)+'/'+b.getDate(), now: diff===0 };
+    };
+    const dividerHtml = (key)=>{
+      let out = '';
+      const ym = key.slice(0,7), ws = mondayOf(key);
+      if(ym!==prevMonth){
+        prevMonth = ym;
+        out += '<div class="mo-line">'+(key.slice(0,4)!==today.slice(0,4) ? key.slice(0,4)+'年' : '')+Number(key.slice(5,7))+'月</div>';
+      }
+      if(ws!==prevWeek){
+        prevWeek = ws;
+        const w = weekLabel(ws);
+        out += '<div class="wk-line'+(w.now ? ' is-now' : '')+'">'+(w.name ? w.name+' ' : '')+w.range+'</div>';
+      }
+      return out;
+    };
     const noFold = plain || currentTab==='done' || !!query;
     area.innerHTML = groups.map(g=>{
       let head = '';
@@ -1508,7 +1541,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
           '<li class="fold"><button type="button" data-fold="'+escapeHtml(fk)+'" aria-expanded="'+opened+'">'+(opened ? '完了を隠す' : '完了 '+doneIt.length+'件を表示')+'</button></li>'+
           (opened ? doneIt.map(row).join('') : '');
       } else rows = g.items.map(row).join('');
-      return '<section class="'+cls+'"'+dayAttr+'>'+head+'<ul class="task-list">'+rows+'</ul></section>';
+      return (lines && g.key ? dividerHtml(g.key) : '')+'<section class="'+cls+'"'+dayAttr+'>'+head+'<ul class="task-list">'+rows+'</ul></section>';
     }).join('');
 
     if(fId){
