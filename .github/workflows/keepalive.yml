@@ -1,0 +1,18 @@
+# Supabase（無料枠）が7日間アクセスなしで一時停止しないよう、毎日1回、軽い読み取りを送る
+name: keepalive
+
+on:
+  schedule:
+    - cron: "0 0 * * *"   # 毎日 09:00（日本時間）
+  workflow_dispatch:        # 手動実行も可
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Supabase へ読み取りを1回送る
+        run: |
+          # 公開済みの anon キーのみ使用（cloud-sync.js と同じ）。RLS により結果は空になるが、DBへのアクセスとして数えられる
+          code=$(curl -s -o /dev/null -w "%{http_code}"             "https://kcadsiwjxlmhzremgzet.supabase.co/rest/v1/app_kv?select=key&limit=1"             -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjYWRzaXdqeGxtaHpyZW1nemV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4ODgzNzAsImV4cCI6MjEwNTQ2NDM3MH0.ZOm5zNFazsLKFl8N-oLhBeUxZcYscPNdOpYPOwq8d9M"             -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjYWRzaXdqeGxtaHpyZW1nemV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4ODgzNzAsImV4cCI6MjEwNTQ2NDM3MH0.ZOm5zNFazsLKFl8N-oLhBeUxZcYscPNdOpYPOwq8d9M")
+          echo "HTTP $code"
+          test "$code" = "200"
