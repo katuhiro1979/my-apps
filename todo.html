@@ -131,6 +131,19 @@
   .tabs::-webkit-scrollbar{display:none;}
   .tabs button{flex:none;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;cursor:pointer;white-space:nowrap;}
   .tabs button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
+  /* グループの切り替え帯 */
+  .gbar{display:flex;gap:6px;overflow-x:auto;padding:0 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .gbar::-webkit-scrollbar{display:none;}
+  .gbar button{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13px;cursor:pointer;white-space:nowrap;}
+  .gd{width:8px;height:8px;border-radius:50%;background:var(--gc,var(--ink-soft));flex:none;}
+  .gn{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
+  .gbar button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
+  .gbar button[aria-pressed="true"][data-gf]:not([data-gf=""]),.chip-btn.gsel[aria-pressed="true"]{background:var(--gbg);color:var(--gc);border-color:var(--gc);}
+  .gbar button[aria-pressed="true"] .gn{color:inherit;}
+  .chip-btn.gsel{display:inline-flex;align-items:center;gap:6px;}
+  .addgrp{flex:none;width:40px;min-height:40px;border:none;background:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%;}
+  .addgrp::before{content:"";width:14px;height:14px;border-radius:50%;background:var(--gc,transparent);border:2px solid var(--gc,var(--ink-soft));box-sizing:border-box;}
+  .addgrp.none::before{background:transparent;border-color:var(--ink-soft);}
   #tabs{scroll-margin-top:calc(var(--top-h,56px) + 8px);}
 
   /* ===== 一覧 ===== */
@@ -281,6 +294,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   <form class="addbox" id="addForm" autocomplete="off">
     <div class="addrow">
+      <button type="button" class="addgrp" id="addGroupDot" aria-haspopup="menu" hidden></button>
       <input type="text" class="field" id="addText" placeholder="やることを追加（例：明日 会議）" aria-label="やること" maxlength="500">
       <button type="submit" class="btn primary" id="addBtn">追加</button>
     </div>
@@ -301,6 +315,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     <button type="button" data-tab="trash">ごみ箱</button>
   </div>
 
+  <div class="gbar" id="groupBar" role="group" aria-label="グループで絞り込む" hidden></div>
+
   <div id="taskArea"></div>
   <div class="empty" id="emptyState" style="display:none;"></div>
   <button type="button" class="jump" id="jumpToday" hidden>今日へ移動</button>
@@ -315,7 +331,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     <label class="fld">内容<textarea id="editText" rows="3" maxlength="500" required></textarea></label>
     <div class="fld" id="editDpWrap">日付・時刻<div id="editDp" class="dp"></div></div>
     <label class="fld">状態<select id="editStatus"></select></label>
-    <label class="fld" id="editGroupWrap">グループ<select id="editGroup"></select></label>
+    <div class="fld" id="editGroupWrap">グループ<input type="hidden" id="editGroup"><div class="chips" id="editGroupChips"></div></div>
     <div class="row">
       <button type="button" class="btn danger-text" id="editDelete">ごみ箱へ</button>
       <span class="grow"></span>
@@ -989,11 +1005,24 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     sel.innerHTML = statuses.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+(s.done ? '（完了扱い）' : '')+'</option>').join('');
     sel.value = statusOf(it).id;
     $id('editGroupWrap').hidden = groups.length===0;
-    $id('editGroup').innerHTML = '<option value="">グループなし</option>'+groups.map(g=>'<option value="'+escapeHtml(g.id)+'">'+escapeHtml(g.name)+'</option>').join('');
     $id('editGroup').value = groupById(it.group) ? it.group : '';
+    renderEditGroup();
     openDlg($id('editDlg'));
     if(finePointer()) $id('editText').focus();
   }
+  // グループは、プルダウンではなくチップで1タップ選択にする
+  function renderEditGroup(){
+    const v = $id('editGroup').value;
+    $id('editGroupChips').innerHTML = [{ id:'', name:'なし', color:'gray' }].concat(groups).map(g=>
+      '<button type="button" class="chip-btn gsel" data-eg="'+escapeHtml(g.id)+'" style="--gc:var(--c-'+g.color+'-fg);--gbg:var(--c-'+g.color+'-bg)" aria-pressed="'+(v===g.id)+'">'+(g.id ? '<span class="gd"></span>' : '')+escapeHtml(g.name)+'</button>'
+    ).join('');
+  }
+  $id('editGroupChips').addEventListener('click', function(e){
+    const b = e.target.closest('[data-eg]'); if(!b) return;
+    $id('editGroup').value = b.dataset.eg;
+    renderEditGroup();
+    const nb = $id('editGroupChips').querySelector('[data-eg="'+CSS.escape(b.dataset.eg)+'"]'); if(nb) nb.focus();
+  });
   $id('editDlg').addEventListener('close', function(){ editingId = null; });
   $id('editForm').addEventListener('submit', function(e){
     e.preventDefault();
@@ -1172,12 +1201,59 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     b.className = 'chip c-'+(g ? g.color : 'gray');
     b.textContent = (g ? g.name : 'グループなし')+' ▾';
     b.setAttribute('aria-label', 'グループ：'+(g ? g.name : 'なし')+'（タップで変更）');
+    // 閉じた状態でも見えるよう、追加先のグループを色の丸で常に出す
+    const d = $id('addGroupDot');
+    d.hidden = groups.length===0;
+    d.classList.toggle('none', !g);
+    if(g) d.style.setProperty('--gc', 'var(--c-'+g.color+'-fg)'); else d.style.removeProperty('--gc');
+    d.setAttribute('aria-label', '追加先のグループ：'+(g ? g.name : 'なし')+'（タップで変更）');
   }
-  $id('addGroupBtn').addEventListener('click', function(){
-    openMenu($id('addGroupBtn'), [{ id:'', name:'グループなし' }].concat(groups).map(g=>({
+  function openAddGroupMenu(btn){
+    openMenu(btn, [{ id:'', name:'グループなし' }].concat(groups).map(g=>({
       label:(g.id===addGroupId ? '✓ ' : '　')+g.name, run:()=>{ addGroupId = g.id; renderAddGroup(); }
     })));
+  }
+  $id('addGroupBtn').addEventListener('click', function(){ openAddGroupMenu($id('addGroupBtn')); });
+  $id('addGroupDot').addEventListener('click', function(){ openAddGroupMenu($id('addGroupDot')); });
+  // 一覧で絞り込んだグループは、そのまま追加先にもする
+  function setGroupFilter(v){
+    groupFilter = v || null;
+    if(groupFilter && groupFilter!=='__none') addGroupId = groupFilter;
+    renderGroupFilter(); render();
+  }
+  // 一覧の上のグループ帯（グループがないときは出さない）
+  function renderGroupBar(live){
+    const bar = $id('groupBar');
+    bar.hidden = groups.length===0;
+    if(bar.hidden) return;
+    const left = bar.scrollLeft;
+    const open = live.filter(i=>!isDone(i));
+    const nOf = id=>open.filter(i=>id==='__none' ? !groupById(i.group) : i.group===id).length;
+    const list = [{ id:'', name:'すべて', n:open.length }].concat(groups.map(g=>({ id:g.id, name:g.name, n:nOf(g.id), color:g.color })));
+    const nn = nOf('__none');
+    if(nn>0 || groupFilter==='__none') list.push({ id:'__none', name:'なし', n:nn, color:'gray' });
+    bar.innerHTML = list.map(g=>
+      '<button type="button" data-gf="'+escapeHtml(g.id)+'" aria-pressed="'+((groupFilter||'')===g.id)+'"'+(g.color ? ' style="--gc:var(--c-'+g.color+'-fg);--gbg:var(--c-'+g.color+'-bg)"' : '')+'>'+
+      (g.color ? '<span class="gd"></span>' : '')+escapeHtml(g.name)+'<span class="gn">'+g.n+'</span></button>'
+    ).join('');
+    bar.scrollLeft = left;
+  }
+  $id('groupBar').addEventListener('click', function(e){
+    const b = e.target.closest('[data-gf]'); if(!b) return;
+    const v = b.dataset.gf;
+    setGroupFilter((groupFilter||'')===v ? '' : v);
+    const bar = $id('groupBar'), nb = bar.querySelector('[data-gf="'+CSS.escape(v)+'"]');
+    if(nb){ nb.focus({ preventScroll:true }); bar.scrollLeft = nb.offsetLeft - (bar.clientWidth - nb.offsetWidth)/2; }
   });
+  // 行のメニューから、グループを移す
+  function openGroupMenu(btn, id){
+    const it = items.find(i=>i.id===id); if(!it) return;
+    const cur = groupById(it.group) ? it.group : '';
+    openMenu(btn, [{ id:'', name:'グループなし' }].concat(groups).map(g=>({
+      label:(g.id===cur ? '✓ ' : '　')+g.name,
+      run:()=>{ const t = items.find(x=>x.id===id); if(!t) return; if(g.id) t.group = g.id; else delete t.group; flashId = id; commit(); }
+    })));
+  }
   function renderGroupFilter(){
     $id('groupFilterWrap').hidden = groups.length===0;
     const chips = [{ id:'', name:'すべて' }].concat(groups, [{ id:'__none', name:'グループなし' }]);
@@ -1187,8 +1263,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   }
   $id('groupFilterChips').addEventListener('click', function(e){
     const b = e.target.closest('[data-gf]'); if(!b) return;
-    groupFilter = b.dataset.gf || null;
-    renderGroupFilter(); render();
+    setGroupFilter(b.dataset.gf);
   });
 
   // ---- 表示（並び替え・絞り込み）----
@@ -1246,6 +1321,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     renderAddStatus();
 
     const live = items.filter(i=>!i.deleted && !i.archived);
+    renderGroupBar(live);
     const open = live.filter(i=>!isDone(i));
     const todayList = open.filter(i=>i.date===today);
     const overList = live.filter(isOverdue);
@@ -1456,6 +1532,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       else if(it.archived) list = [ { label:'ごみ箱へ移動', danger:true, run:()=>trashItem(id) } ];
       else {
         list = [ { label: isDone(it) ? '未完了に戻す' : '完了にする', run:()=>toggleDone(id) }, { label:'編集', run:()=>openEdit(id) }, { label:'状態を選ぶ', run:()=>openStatusMenu(m, id) } ];
+        if(groups.length) list.push({ label:'グループを移す', run:()=>openGroupMenu(m, id) });
         if(isDone(it)) list.push({ label:'アーカイブ', run:()=>archiveItems([id]) });
         list.push({ label:'ごみ箱へ移動', danger:true, run:()=>trashItem(id) });
       }
