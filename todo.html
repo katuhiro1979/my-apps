@@ -132,18 +132,22 @@
   .tabs button{flex:none;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;cursor:pointer;white-space:nowrap;}
   .tabs button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
   /* グループの切り替え帯 */
-  .gbar{display:flex;gap:6px;overflow-x:auto;padding:0 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .gbar{display:flex;gap:8px;overflow-x:auto;padding:0 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
   .gbar::-webkit-scrollbar{display:none;}
-  .gbar button{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13px;cursor:pointer;white-space:nowrap;}
+  .gbar button{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13px;cursor:pointer;white-space:nowrap;}
+  /* 右に続きがあるときだけ、右端をぼかして知らせる */
+  .gbar.more{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 32px),transparent);}
   .gd{width:8px;height:8px;border-radius:50%;background:var(--gc,var(--ink-soft));flex:none;}
   .gn{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
   .gbar button[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
-  .gbar button[aria-pressed="true"][data-gf]:not([data-gf=""]),.chip-btn.gsel[aria-pressed="true"]{background:var(--gbg);color:var(--gc);border-color:var(--gc);}
+  /* 選択中のグループは、グループの色で塗りつぶす（淡い色だと、選んでいないものとの差が小さいため） */
+  .gbar button[aria-pressed="true"][data-gf]:not([data-gf=""]),.chip-btn.gsel[aria-pressed="true"]{background:var(--gc);color:var(--paper);border-color:var(--gc);}
+  .gbar button[aria-pressed="true"] .gd,.chip-btn.gsel[aria-pressed="true"] .gd{background:var(--paper);}
   .gbar button[aria-pressed="true"] .gn{color:inherit;}
   .chip-btn.gsel{display:inline-flex;align-items:center;gap:6px;}
-  .addgrp{flex:none;width:40px;min-height:40px;border:none;background:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%;}
-  .addgrp::before{content:"";width:14px;height:14px;border-radius:50%;background:var(--gc,transparent);border:2px solid var(--gc,var(--ink-soft));box-sizing:border-box;}
-  .addgrp.none::before{background:transparent;border-color:var(--ink-soft);}
+  .addgrp{flex:none;max-width:9em;min-width:44px;min-height:44px;padding:0 8px;border:none;background:none;display:inline-flex;align-items:center;gap:6px;cursor:pointer;border-radius:var(--r-sm);font-size:12.5px;font-weight:600;color:var(--gc,var(--ink-soft));}
+  .agd{width:12px;height:12px;border-radius:50%;background:var(--gc,transparent);border:2px solid var(--gc,var(--ink-soft));box-sizing:border-box;flex:none;}
+  .agn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #tabs{scroll-margin-top:calc(var(--top-h,56px) + 8px);}
 
   /* ===== 一覧 ===== */
@@ -313,7 +317,6 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     <div class="addopts">
       <div id="addDp" class="dp"></div>
       <button type="button" class="chip" id="addStatusBtn" aria-haspopup="menu" aria-label="状態を選ぶ"></button>
-      <button type="button" class="chip c-gray" id="addGroupBtn" aria-haspopup="menu" aria-label="グループを選ぶ" hidden></button>
     </div>
   </form>
 
@@ -1218,29 +1221,29 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   $id('openGroupMgr').addEventListener('click', function(){ closeDlg($id('viewDlg')); openGroupMgr(); });
   function renderAddGroup(){
     if(!groupById(addGroupId)) addGroupId = '';
-    const g = groupById(addGroupId), b = $id('addGroupBtn');
-    b.hidden = groups.length===0;
-    b.className = 'chip c-'+(g ? g.color : 'gray');
-    b.textContent = (g ? g.name : 'グループなし')+' ▾';
-    b.setAttribute('aria-label', 'グループ：'+(g ? g.name : 'なし')+'（タップで変更）');
-    // 閉じた状態でも見えるよう、追加先のグループを色の丸で常に出す
+    const g = groupById(addGroupId);
+    // 閉じた状態でも見えるよう、追加先のグループを「色の丸＋名前」で常に出す
     const d = $id('addGroupDot');
     d.hidden = groups.length===0;
-    d.classList.toggle('none', !g);
+    d.innerHTML = '<span class="agd"></span><span class="agn">'+escapeHtml(g ? g.name : 'なし')+'</span><span aria-hidden="true">▾</span>';
     if(g) d.style.setProperty('--gc', 'var(--c-'+g.color+'-fg)'); else d.style.removeProperty('--gc');
     d.setAttribute('aria-label', '追加先のグループ：'+(g ? g.name : 'なし')+'（タップで変更）');
   }
   function openAddGroupMenu(btn){
     openMenu(btn, [{ id:'', name:'グループなし' }].concat(groups).map(g=>({
-      label:(g.id===addGroupId ? '✓ ' : '　')+g.name, run:()=>{ addGroupId = g.id; renderAddGroup(); }
+      label:(g.id===addGroupId ? '✓ ' : '　')+g.name, run:()=>{ addGroupId = g.id; filterOwnsAdd = false; renderAddGroup(); }
     })));
   }
-  $id('addGroupBtn').addEventListener('click', function(){ openAddGroupMenu($id('addGroupBtn')); });
   $id('addGroupDot').addEventListener('click', function(){ openAddGroupMenu($id('addGroupDot')); });
   // 一覧で絞り込んだグループは、そのまま追加先にもする
+  // 絞り込みを解除したら、追加先は絞り込む前の選択に戻す（自分で選び直したときは、そのまま）
+  let filterOwnsAdd = false, addBeforeFilter = '';
   function setGroupFilter(v){
     groupFilter = v || null;
-    if(groupFilter && groupFilter!=='__none') addGroupId = groupFilter;
+    if(groupFilter && groupFilter!=='__none'){
+      if(!filterOwnsAdd){ addBeforeFilter = addGroupId; filterOwnsAdd = true; }
+      addGroupId = groupFilter;
+    } else if(filterOwnsAdd){ addGroupId = addBeforeFilter; filterOwnsAdd = false; }
     renderGroupFilter(); render();
     const ta = $id('taskArea'); ta.classList.remove('fade'); void ta.offsetWidth; ta.classList.add('fade');
   }
@@ -1260,13 +1263,20 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       (g.color ? '<span class="gd"></span>' : '')+escapeHtml(g.name)+'<span class="gn">'+g.n+'</span></button>'
     ).join('');
     bar.scrollLeft = left;
+    updateBarMore();
   }
+  function updateBarMore(){
+    const bar = $id('groupBar');
+    bar.classList.toggle('more', bar.scrollWidth - bar.clientWidth - bar.scrollLeft > 4);
+  }
+  $id('groupBar').addEventListener('scroll', updateBarMore, { passive:true });
+  window.addEventListener('resize', updateBarMore);
   $id('groupBar').addEventListener('click', function(e){
     const b = e.target.closest('[data-gf]'); if(!b) return;
     const v = b.dataset.gf;
     setGroupFilter((groupFilter||'')===v ? '' : v);
     const bar = $id('groupBar'), nb = bar.querySelector('[data-gf="'+CSS.escape(v)+'"]');
-    if(nb){ nb.focus({ preventScroll:true }); bar.scrollLeft = nb.offsetLeft - (bar.clientWidth - nb.offsetWidth)/2; }
+    if(nb){ nb.focus({ preventScroll:true }); bar.scrollLeft = nb.offsetLeft - (bar.clientWidth - nb.offsetWidth)/2; updateBarMore(); }
   });
   // 行のメニューから、グループを移す
   function openGroupMenu(btn, id){
