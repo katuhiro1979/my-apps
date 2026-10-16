@@ -72,16 +72,36 @@
   .icon-btn{ width:44px; padding:0; font-size:18px; }
 
   /* 集計 */
-  .sum{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:12px; }
+  .sum{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:12px; }
   .sum div{ background:var(--paper); border:1px solid var(--line); border-radius:var(--r-m); padding:8px 12px; }
   .sum span{ display:block; font-size:.75rem; color:var(--ink-soft); }
   .sum strong{ font-size:1.15rem; font-weight:600; }
 
-  /* 不足の帯 */
-  .short{ background:var(--warn-bg); color:var(--warn); border-radius:var(--r-m); padding:10px 12px; margin-bottom:12px; }
-  .short p{ margin:0 0 6px; font-size:.85rem; font-weight:600; }
-  .short .chips{ display:flex; flex-wrap:wrap; gap:6px; }
-  .chip{ min-height:32px; padding:0 12px; font-size:.8rem; border-radius:999px; background:var(--paper); color:var(--warn); border:1px solid var(--warn); }
+  /* ホーム：充足率のリングと不足リスト */
+  .hero{ display:flex; align-items:center; gap:16px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:12px; }
+  .ring{ flex:none; }
+  .ring-bg{ stroke:var(--line); }
+  .ring-fg{ stroke:var(--ok); transition:stroke-dasharray .4s ease; }
+  .ring text{ fill:var(--ink); font-size:20px; font-weight:600; }
+  .hero p{ margin:0; }
+  .hero .sub{ font-size:.8rem; color:var(--ink-soft); }
+  .sec{ font-size:.95rem; margin:16px 4px 8px; }
+  .sl{ display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:8px; border-radius:var(--radius); }
+  .sl .r{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .sl .pill{ font-size:.75rem; padding:0 10px; border-radius:999px; background:var(--warn-bg); color:var(--warn); font-weight:600; }
+  .bar{ height:6px; border-radius:3px; background:var(--line); overflow:hidden; margin-top:6px; }
+  .bar i{ display:block; height:100%; background:var(--warn); }
+  .okmsg{ color:var(--ok); background:var(--ok-bg); border-radius:var(--r-m); padding:10px 12px; font-size:.9rem; }
+  .planrow{ display:flex; justify-content:space-between; align-items:center; width:100%; margin-top:8px; padding:0 14px; }
+  .planrow .pill{ font-size:.8rem; padding:2px 10px; border-radius:999px; background:var(--surface-2); }
+  .total{ font-size:.85rem; color:var(--ink-soft); margin:0 4px 8px; }
+
+  /* 下のナビ（右下の同期ボタンを避けて、左に寄せる） */
+  .nav{ position:fixed; left:calc(12px + env(safe-area-inset-left)); right:calc(68px + env(safe-area-inset-right)); max-width:480px; bottom:calc(12px + env(safe-area-inset-bottom)); height:56px; display:flex; gap:2px; padding:4px; background:var(--paper); border:1px solid var(--line); border-radius:999px; box-shadow:var(--shadow-lg); z-index:20; }
+  .nav button{ flex:1; min-height:0; padding:0; border:0; border-radius:999px; background:none; color:var(--ink-soft); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; font-size:.68rem; position:relative; }
+  .nav button[aria-current="page"]{ background:var(--surface-2); color:var(--ink); font-weight:600; }
+  .nav svg{ width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .nav .cnt{ position:absolute; top:2px; left:calc(50% + 8px); min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:var(--accent); color:var(--on-accent); font-size:.65rem; line-height:16px; text-align:center; }
 
   /* タブ・検索 */
   .tabs{ display:flex; gap:2px; border-bottom:1px solid var(--line); margin-bottom:10px; overflow-x:auto; }
@@ -109,7 +129,7 @@
   .buy{ min-height:36px; margin-top:6px; font-size:.8rem; }
   .empty{ color:var(--ink-soft); text-align:center; padding:36px 8px; }
 
-  .fab{ position:fixed; right:calc(12px + env(safe-area-inset-right)); bottom:calc(68px + env(safe-area-inset-bottom)); /* 右下端は同期の☁ボタン。その上に置く */ width:56px; height:56px; border-radius:50%; font-size:28px; padding:0; box-shadow:var(--shadow-lg); z-index:20; }
+  .fab{ position:fixed; right:calc(12px + env(safe-area-inset-right)); bottom:calc(76px + env(safe-area-inset-bottom)); /* 右下端は同期の☁ボタン。その上に置く */ width:56px; height:56px; border-radius:50%; font-size:28px; padding:0; box-shadow:var(--shadow-lg); z-index:20; }
 
   /* メニュー・トースト */
   .menu{ position:absolute; right:0; top:100%; min-width:200px; background:var(--paper); border:1px solid var(--line); border-radius:var(--r-m); box-shadow:var(--shadow-lg); padding:4px; z-index:30; display:none; }
@@ -117,13 +137,17 @@
   .menu button{ display:block; width:100%; text-align:left; border:0; background:none; border-radius:8px; }
   .menu button:hover{ background:var(--surface-2); }
   .menu .sep{ border-top:1px solid var(--line); margin:4px 0; }
-  .toast{ position:fixed; left:50%; bottom:calc(136px + env(safe-area-inset-bottom)); transform:translateX(-50%); display:none; align-items:center; gap:12px; padding:10px 14px; background:var(--ink); color:var(--bg); border-radius:12px; box-shadow:var(--shadow-lg); z-index:50; max-width:calc(100vw - 32px); }
+  .toast{ position:fixed; left:50%; bottom:calc(140px + env(safe-area-inset-bottom)); transform:translateX(-50%); display:none; align-items:center; gap:12px; padding:10px 14px; background:var(--ink); color:var(--bg); border-radius:12px; box-shadow:var(--shadow-lg); z-index:50; max-width:calc(100vw - 32px); }
   .toast.show{ display:flex; }
   .toast button{ min-height:36px; background:transparent; color:inherit; border-color:currentColor; }
 
   /* ダイアログ（入力・目標数） */
-  dialog{ width:min(520px, calc(100vw - 24px)); max-height:calc(100dvh - 24px); padding:0; border:1px solid var(--line); border-radius:16px; background:var(--paper); color:var(--ink); box-shadow:var(--shadow-lg); }
+  /* 下から出るシート */
+  dialog{ width:min(560px, 100vw); max-width:100vw; margin:auto auto 0; max-height:calc(100dvh - 24px); padding:0 0 env(safe-area-inset-bottom); border:1px solid var(--line); border-bottom:0; border-radius:20px 20px 0 0; background:var(--paper); color:var(--ink); box-shadow:var(--shadow-lg); }
   dialog::backdrop{ background:var(--overlay); }
+  dialog[open]{ animation:sheet .22s ease-out; }
+  @keyframes sheet{ from{ transform:translateY(40px); opacity:0; } }
+  dialog form::before{ content:""; width:36px; height:4px; border-radius:2px; background:var(--line); margin:8px auto 0; }
   dialog form{ display:flex; flex-direction:column; max-height:calc(100dvh - 24px); }
   dialog h2{ font-size:1.05rem; margin:0; padding:16px 16px 8px; }
   .dbody{ padding:0 16px 8px; overflow-y:auto; }
@@ -144,7 +168,7 @@
 <body>
 <main>
   <header>
-    <h1>衣服管理</h1>
+    <h1 id="pageTitle">ホーム</h1>
     <div style="position:relative">
       <button id="menuBtn" class="icon-btn" type="button" aria-label="メニュー" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menu" role="menu">
@@ -158,17 +182,29 @@
     </div>
   </header>
 
-  <section class="sum" aria-label="集計">
-    <div><span>所持</span><strong id="sCount">0点</strong></div>
-    <div><span>購入額</span><strong id="sPrice">¥0</strong></div>
-    <div><span>購入予定</span><strong id="sPlan">0点</strong></div>
-  </section>
+  <div id="pgHome">
+    <section class="hero" aria-label="充足率">
+      <svg class="ring" id="ring" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="充足率">
+        <circle class="ring-bg" cx="48" cy="48" r="38" fill="none" stroke-width="10"/>
+        <circle class="ring-fg" id="ringFg" cx="48" cy="48" r="38" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 239" transform="rotate(-90 48 48)"/>
+        <text id="ringTxt" x="48" y="55" text-anchor="middle">—</text>
+      </svg>
+      <div>
+        <p><b>目標に対する充足率</b></p>
+        <p class="sub" id="heroSub"></p>
+        <button type="button" id="heroSet" style="min-height:36px;margin-top:6px;font-size:.8rem" hidden>目標数を設定する</button>
+      </div>
+    </section>
+    <section class="sum" aria-label="集計">
+      <div><span>所持</span><strong id="sCount">0点</strong></div>
+      <div><span>購入額</span><strong id="sPrice">¥0</strong></div>
+    </section>
+    <h2 class="sec">足りないもの</h2>
+    <div id="shortList"></div>
+    <button type="button" class="planrow" id="planRow"><span>購入予定</span><span class="pill" id="sPlan">0点</span></button>
+  </div>
 
-  <section class="short" id="short" hidden>
-    <p id="shortTitle"></p>
-    <div class="chips" id="shortChips"></div>
-  </section>
-
+  <div id="pgList" hidden>
   <div class="tabs" id="tabs" role="tablist" aria-label="区分"></div>
 
   <div class="tools">
@@ -191,7 +227,19 @@
   <div class="filterbar" id="filterbar" hidden><span id="filterText"></span><button type="button" id="filterClear" style="min-height:32px">解除</button></div>
 
   <div id="list"></div>
+  </div>
+
+  <div id="pgPlan" hidden>
+    <p class="total" id="planTotal"></p>
+    <div id="planList"></div>
+  </div>
 </main>
+
+<nav class="nav" id="nav" aria-label="ページ切り替え">
+  <button type="button" data-go="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>ホーム</button>
+  <button type="button" data-go="list"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>一覧</button>
+  <button type="button" data-go="plan"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.5 12h11L21 7H6"/></svg>購入予定<span class="cnt" id="navCnt" hidden></span></button>
+</nav>
 
 <button class="fab primary" id="addBtn" type="button" aria-label="衣服を追加">＋</button>
 <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastUndo" type="button">元に戻す</button></div>
@@ -280,7 +328,7 @@
 
   let items = [];     // 衣服の一覧
   let targets = {};   // 品目ごとの目標数 { 品目: { target, spare } }
-  let view = { tab: 'all', sort: 'dateDesc', status: 'active' };
+  let view = { tab: 'all', sort: 'dateDesc', status: 'active', page: 'home' };
   let catFilter = '';
   let cloud = null;
   let editingId = null;
@@ -334,6 +382,7 @@
       if(v.tab === 'all' || SECTIONS.includes(v.tab)) view.tab = v.tab;
       if(['dateDesc','dateAsc','priceDesc','priceAsc','name'].includes(v.sort)) view.sort = v.sort;
       if(['active','all'].concat(STATUSES).includes(v.status)) view.status = v.status;
+      if(['home','list','plan'].includes(v.page)) view.page = v.page;
     }catch(e){ /* 保存した表示設定が壊れていたら既定のまま */ }
   }
   function save(){
@@ -366,16 +415,54 @@
     const own = items.filter((it) => it.status === '所持');
     $('#sCount').textContent = own.reduce((a, it) => a + it.qty, 0) + '点';
     $('#sPrice').textContent = yen(own.reduce((a, it) => a + it.price * it.qty, 0));
-    $('#sPlan').textContent = items.filter((it) => it.status === '購入予定').reduce((a, it) => a + it.qty, 0) + '点';
+    const plan = items.filter((it) => it.status === '購入予定');
+    $('#sPlan').textContent = plan.reduce((a, it) => a + it.qty, 0) + '点・' + yen(plan.reduce((a, it) => a + it.price * it.qty, 0));
+    $('#navCnt').hidden = plan.length === 0;
+    $('#navCnt').textContent = plan.length;
   }
-  function renderShort(){
+  // ホーム：充足率のリングと、足りない品目
+  function renderHome(){
+    renderSummary();
     const owned = ownedByCat();
-    const lack = Object.keys(targets).filter((c) => targets[c].target > (owned[c] || 0));
-    $('#short').hidden = lack.length === 0;
-    if(!lack.length) return;
-    $('#shortTitle').textContent = '不足 ' + lack.length + '品目';
-    $('#shortChips').innerHTML = lack.map((c) =>
-      '<button type="button" class="chip" data-cat="' + esc(c) + '">' + esc(c) + ' ' + (owned[c] || 0) + '/' + targets[c].target + '</button>').join('');
+    const cats = Object.keys(targets).filter((c) => targets[c].target > 0);
+    const goal = cats.reduce((a, c) => a + targets[c].target, 0);
+    const have = cats.reduce((a, c) => a + Math.min(owned[c] || 0, targets[c].target), 0);
+    const pct = goal ? Math.round(have / goal * 100) : 0;
+    $('#ringFg').setAttribute('stroke-dasharray', (goal ? 238.76 * have / goal : 0).toFixed(1) + ' 239');
+    $('#ringTxt').textContent = goal ? pct + '%' : '—';
+    $('#ring').setAttribute('aria-label', goal ? '充足率 ' + pct + '%' : '目標数が未設定です');
+    $('#heroSub').textContent = goal ? '目標 ' + goal + ' 点のうち ' + have + ' 点そろっています' : '品目ごとの目標数を決めると、足りないものが分かります。';
+    $('#heroSet').hidden = !!goal;
+    const lack = cats.filter((c) => targets[c].target > (owned[c] || 0))
+      .sort((a, b) => (targets[b].target - (owned[b] || 0)) - (targets[a].target - (owned[a] || 0)));
+    $('#shortList').innerHTML = lack.length
+      ? lack.map((c) => {
+          const o = owned[c] || 0, t = targets[c].target;
+          return '<button type="button" class="sl" data-cat="' + esc(c) + '"><div class="r"><span>' + esc(c) + '　' + o + '/' + t + '</span><span class="pill">あと' + (t - o) + '</span></div><div class="bar"><i style="width:' + Math.round(o / t * 100) + '%"></i></div></button>';
+        }).join('')
+      : (cats.length ? '<p class="okmsg">不足はありません。目標数がそろっています。</p>' : '<p class="empty">目標数を設定すると、ここに足りない品目が出ます。</p>');
+  }
+  // 購入予定ページ
+  function renderPlan(){
+    const plan = items.filter((it) => it.status === '購入予定').sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    const sum = plan.reduce((a, it) => a + it.price * it.qty, 0);
+    $('#planTotal').textContent = plan.length ? plan.length + '件・合計 ' + yen(sum) : '';
+    $('#planList').innerHTML = plan.length ? plan.map(cardHtml).join('') : '<p class="empty">購入予定はありません。右下の＋から、状態を「購入予定」にして追加します。</p>';
+  }
+  // ページの切り替え
+  const PAGE_TITLE = { home: 'ホーム', list: '一覧', plan: '購入予定' };
+  function showPage(){
+    $('#pgHome').hidden = view.page !== 'home';
+    $('#pgList').hidden = view.page !== 'list';
+    $('#pgPlan').hidden = view.page !== 'plan';
+    $('#pageTitle').textContent = PAGE_TITLE[view.page];
+    document.querySelectorAll('#nav [data-go]').forEach((b) => {
+      if(b.dataset.go === view.page) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+  }
+  function go(page){
+    const run = () => { view.page = page; saveView(); showPage(); window.scrollTo(0, 0); };
+    if(document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(run); else run();
   }
   function renderTabs(){
     const all = [['all', 'すべて']].concat(SECTIONS.map((s) => [s, s]));
@@ -437,7 +524,7 @@
       return '<div class="gh"><b>' + esc(g.cat) + '</b>' + st + '</div>' + g.items.map(cardHtml).join('');
     }).join('');
   }
-  function render(){ renderSummary(); renderShort(); renderTabs(); renderList(); }
+  function render(){ renderHome(); renderTabs(); renderList(); renderPlan(); showPage(); }
 
   // ---------- 操作（一覧） ----------
   $('#tabs').addEventListener('click', (e) => {
@@ -448,16 +535,19 @@
   $('#q').addEventListener('input', renderList);
   $('#sort').addEventListener('change', (e) => { view.sort = e.target.value; saveView(); renderList(); });
   $('#status').addEventListener('change', (e) => { view.status = e.target.value; saveView(); renderList(); });
-  $('#shortChips').addEventListener('click', (e) => {
+  $('#shortList').addEventListener('click', (e) => {
     const b = e.target.closest('[data-cat]');
     if(!b) return;
     catFilter = b.dataset.cat;
-    view.tab = 'all'; view.status = 'active'; $('#status').value = 'active'; saveView();
-    render();
+    view.tab = 'all'; view.status = 'active'; $('#status').value = 'active';
+    render(); go('list');
   });
+  $('#nav').addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if(b) go(b.dataset.go); });
+  $('#planRow').addEventListener('click', () => go('plan'));
+  $('#heroSet').addEventListener('click', () => openTargets());
   $('#filterClear').addEventListener('click', () => { catFilter = ''; renderList(); });
 
-  $('#list').addEventListener('click', (e) => {
+  function onListClick(e){
     const buy = e.target.closest('[data-buy]');
     if(buy){
       const it = items.find((x) => x.id === buy.dataset.buy);
@@ -470,10 +560,11 @@
     }
     const card = e.target.closest('.card');
     if(card) openEdit(card.dataset.id);
-  });
-  $('#list').addEventListener('keydown', (e) => {
+  }
+  function onListKey(e){
     if((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('card')){ e.preventDefault(); openEdit(e.target.dataset.id); }
-  });
+  }
+  ['#list', '#planList'].forEach((id) => { $(id).addEventListener('click', onListClick); $(id).addEventListener('keydown', onListKey); });
 
   // ---------- 入力ダイアログ ----------
   const dlg = $('#dlg');
@@ -490,7 +581,7 @@
     fillCatList();
     $('#dlgTitle').textContent = it ? '衣服を編集' : '衣服を追加';
     $('#fDel').hidden = !it;
-    const d = it || { name: '', section: SECTIONS.includes(view.tab) ? view.tab : '冬', status: '所持', category: catFilter, size: '', color: '', price: '', qty: 1, boughtAt: todayStr(), shop: '', productNo: '', feel: '', note: '' };
+    const d = it || { name: '', section: SECTIONS.includes(view.tab) ? view.tab : '冬', status: view.page === 'plan' ? '購入予定' : '所持', category: catFilter, size: '', color: '', price: '', qty: 1, boughtAt: todayStr(), shop: '', productNo: '', feel: '', note: '' };
     $('#fName').value = d.name; $('#fSection').value = d.section; $('#fStatus').value = d.status;
     $('#fCat').value = d.category; $('#fSize').value = d.size; $('#fColor').value = d.color;
     $('#fPrice').value = d.price === 0 ? '' : d.price; $('#fQty').value = d.qty; $('#fDate').value = d.boughtAt;
