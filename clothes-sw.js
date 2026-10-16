@@ -20,7 +20,11 @@ self.addEventListener('fetch',function(e){
   var url=new URL(e.request.url);
   if(e.request.method!=='GET'||url.origin!==location.origin)return;
   var name=url.pathname.split('/').pop();
-  if(FILES.indexOf(name)<0)return;
+  if(FILES.indexOf(name)<0){
+    // 他のアプリのファイル：通常どおり取得し、つながらないときだけ、端末に保存済みの版を出す（同じ範囲の別アプリのSWが入れ替わっていても、オフラインで開けるように）
+    e.respondWith(fetch(e.request).catch(function(){return caches.match(e.request,{ignoreSearch:true}).then(function(r){return r||Response.error();});}));
+    return;
+  }
   e.respondWith(
     // HTTPキャッシュを使わず毎回確認する。正常応答だけを保存し、404/500では保存済みの版を守る
     fetch(e.request,{cache:'no-cache'}).then(function(res){

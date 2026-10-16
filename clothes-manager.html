@@ -22,7 +22,7 @@
   :root{
     color-scheme:light dark;
     --bg:#F4F5F7; --paper:#FFFFFF; --surface-2:#EEF0F4;
-    --ink:#1B2333; --ink-soft:#505A6E; --line:#D7DBE3;
+    --ink:#1B2333; --ink-soft:#505A6E; --line:#D7DBE3; --field-line:#7C8699;
     --accent:#1B2333; --on-accent:#FFFFFF;
     --ok:#1F7A52; --ok-bg:#E4F1EA;
     --warn:#9A5B0C; --warn-bg:#FBEBD6;
@@ -35,7 +35,7 @@
   @media (prefers-color-scheme:dark){
     :root:not([data-theme="light"]){
       --bg:#0E1116; --paper:#171B22; --surface-2:#1F242C;
-      --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440;
+      --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440; --field-line:#6B778B;
       --accent:#E8ECF2; --on-accent:#0E1116;
       --ok:#4CC38A; --ok-bg:#12301F;
       --warn:#F0A742; --warn-bg:#3A2A0C;
@@ -48,7 +48,7 @@
   :root[data-theme="dark"]{
     color-scheme:dark;
     --bg:#0E1116; --paper:#171B22; --surface-2:#1F242C;
-    --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440;
+    --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440; --field-line:#6B778B;
     --accent:#E8ECF2; --on-accent:#0E1116;
     --ok:#4CC38A; --ok-bg:#12301F;
     --warn:#F0A742; --warn-bg:#3A2A0C;
@@ -64,6 +64,7 @@
   main{ max-width:640px; margin:0 auto; }
   header{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:16px 0 10px; }
   h1{ font-size:1.25rem; margin:0; }
+  h1:focus{ outline:none; }
   button, input, select, textarea{ font:inherit; color:inherit; }
   button{ min-height:44px; padding:0 14px; border:1px solid var(--line); border-radius:10px; background:var(--paper); cursor:pointer; }
   button.primary{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
@@ -87,7 +88,7 @@
   .hero .sub{ font-size:.8rem; color:var(--ink-soft); }
   .sec{ font-size:.95rem; margin:0; }
   .sech{ display:flex; justify-content:space-between; align-items:center; margin:12px 4px 4px; }
-  .link{ min-height:36px; padding:0 10px; border:0; background:none; color:var(--ink-soft); font-size:.8rem; text-decoration:underline; }
+  .link{ min-height:44px; padding:0 10px; border:0; background:none; color:var(--ink-soft); font-size:.8rem; text-decoration:underline; }
   .sl{ display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:8px; border-radius:var(--radius); }
   .sl .r{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
   .sl .pill{ font-size:.75rem; padding:0 10px; border-radius:999px; background:var(--warn-bg); color:var(--warn); font-weight:600; }
@@ -99,8 +100,8 @@
   .total{ font-size:.85rem; color:var(--ink-soft); margin:0 4px 8px; }
 
   /* 下のナビ（右下の同期ボタンを避けて、左に寄せる） */
-  .nav{ position:fixed; left:calc(12px + env(safe-area-inset-left)); right:calc(68px + env(safe-area-inset-right)); max-width:480px; bottom:calc(12px + env(safe-area-inset-bottom)); height:56px; display:flex; gap:2px; padding:4px; background:var(--paper); border:1px solid var(--line); border-radius:999px; box-shadow:var(--shadow-lg); z-index:20; }
-  .nav button{ flex:1; min-height:0; padding:0; border:0; border-radius:999px; background:none; color:var(--ink-soft); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; font-size:.68rem; position:relative; }
+  .nav{ position:fixed; left:max(calc(12px + env(safe-area-inset-left)), calc((100% - 640px) / 2)); right:calc(68px + env(safe-area-inset-right)); max-width:480px; bottom:calc(12px + env(safe-area-inset-bottom)); height:56px; display:flex; gap:2px; padding:4px; background:var(--paper); border:1px solid var(--line); border-radius:999px; box-shadow:var(--shadow-lg); z-index:20; }
+  .nav button{ flex:1; min-height:0; padding:0; border:0; border-radius:999px; background:none; color:var(--ink-soft); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; font-size:.72rem; position:relative; }
   .nav button[aria-current="page"]{ background:var(--surface-2); color:var(--ink); font-weight:600; }
   .nav svg{ width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   .nav .cnt{ position:absolute; top:2px; left:calc(50% + 8px); min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:var(--accent); color:var(--on-accent); font-size:.65rem; line-height:16px; text-align:center; }
@@ -108,10 +109,10 @@
   /* タブ・検索 */
   .tabs{ display:flex; gap:2px; border-bottom:1px solid var(--line); margin-bottom:10px; overflow-x:auto; }
   .tab{ min-height:44px; padding:0 14px; border:0; border-bottom:3px solid transparent; border-radius:0; background:none; color:var(--ink-soft); white-space:nowrap; }
-  .tab[aria-selected="true"]{ color:var(--ink); font-weight:600; border-bottom-color:var(--ink); }
+  .tab[aria-pressed="true"]{ color:var(--ink); font-weight:600; border-bottom-color:var(--ink); }
   .tools{ display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
-  .tools input[type=search]{ flex:1 1 160px; min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:10px; background:var(--paper); }
-  .tools select{ min-height:44px; padding:0 10px; border:1px solid var(--line); border-radius:10px; background:var(--paper); }
+  .tools input[type=search]{ flex:1 1 100%; min-height:44px; padding:0 12px; border:1px solid var(--field-line); border-radius:10px; background:var(--paper); }
+  .tools select{ flex:1 1 140px; min-height:44px; padding:0 10px; border:1px solid var(--field-line); border-radius:10px; background:var(--paper); }
   .filterbar{ display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:.85rem; color:var(--ink-soft); }
 
   /* 一覧 */
@@ -119,8 +120,9 @@
   .gh b{ font-weight:600; }
   .gh .ok{ color:var(--ok); font-size:.8rem; }
   .gh .ng{ color:var(--warn); font-size:.8rem; font-weight:600; }
-  .card{ display:flex; align-items:center; gap:12px; padding:10px 12px; margin-bottom:8px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); cursor:pointer; }
-  .card.gone{ opacity:.55; }
+  .cw{ margin-bottom:8px; }
+  .card{ display:flex; align-items:center; gap:12px; padding:10px 12px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); cursor:pointer; }
+  .card.gone .t{ text-decoration:line-through; color:var(--ink-soft); }
   .dot{ width:10px; align-self:stretch; min-height:36px; border-radius:3px; flex:none; background:#888780; }
   .card .body{ flex:1; min-width:0; }
   .card .t{ font-size:.95rem; word-break:break-word; }
@@ -128,7 +130,7 @@
   .card .qty{ text-align:right; flex:none; font-size:.75rem; color:var(--ink-soft); }
   .card .qty b{ display:block; font-size:1.05rem; font-weight:600; color:var(--ink); }
   .badge{ display:inline-block; font-size:.7rem; padding:0 8px; border-radius:999px; background:var(--warn-bg); color:var(--warn); margin-right:6px; }
-  .buy{ min-height:36px; margin-top:6px; font-size:.8rem; }
+  .buy{ width:100%; min-height:44px; margin-top:4px; font-size:.85rem; }
   .empty{ color:var(--ink-soft); text-align:center; padding:36px 8px; }
 
   .fab{ position:fixed; right:calc(12px + env(safe-area-inset-right)); bottom:calc(76px + env(safe-area-inset-bottom)); /* 右下端は同期の☁ボタン。その上に置く */ width:56px; height:56px; border-radius:50%; font-size:28px; padding:0; box-shadow:var(--shadow-lg); z-index:20; }
@@ -151,17 +153,24 @@
   @keyframes sheet{ from{ transform:translateY(40px); opacity:0; } }
   dialog form::before{ content:""; width:36px; height:4px; border-radius:2px; background:var(--line); margin:8px auto 0; }
   dialog form{ display:flex; flex-direction:column; max-height:calc(100dvh - 24px); }
+  dialog h2:focus{ outline:none; }
   dialog h2{ font-size:1.05rem; margin:0; padding:16px 16px 8px; }
   .dbody{ padding:0 16px 8px; overflow-y:auto; }
   .dfoot{ display:flex; gap:8px; justify-content:flex-end; padding:12px 16px 16px; border-top:1px solid var(--line); }
   .dfoot .left{ margin-right:auto; }
   .f{ display:block; margin-bottom:10px; font-size:.8rem; color:var(--ink-soft); }
-  .f input, .f select, .f textarea{ display:block; width:100%; margin-top:2px; min-height:44px; padding:8px 10px; font-size:1rem; border:1px solid var(--line); border-radius:10px; background:var(--bg); }
+  .f input, .f select, .f textarea{ display:block; width:100%; margin-top:2px; min-height:44px; padding:8px 10px; font-size:1rem; border:1px solid var(--field-line); border-radius:10px; background:var(--bg); }
   .f textarea{ min-height:64px; resize:vertical; }
+  .more{ margin-bottom:10px; }
+  .more summary{ min-height:44px; display:flex; align-items:center; cursor:pointer; color:var(--ink-soft); font-size:.85rem; }
+  .step{ display:flex; gap:6px; margin-top:2px; }
+  .step input{ margin-top:0 !important; text-align:center; }
+  .step button{ width:44px; padding:0; flex:none; }
+  .f input[aria-invalid="true"]{ border-color:var(--danger); }
   .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .err{ color:var(--danger); font-size:.85rem; min-height:1.2em; margin:0; }
   .trow{ display:grid; grid-template-columns:1fr 72px 72px; gap:8px; align-items:center; margin-bottom:6px; font-size:.9rem; }
-  .trow input{ min-height:40px; padding:4px 8px; border:1px solid var(--line); border-radius:8px; background:var(--bg); width:100%; }
+  .trow input{ min-height:40px; padding:4px 8px; border:1px solid var(--field-line); border-radius:8px; background:var(--bg); width:100%; }
   .trow.h{ color:var(--ink-soft); font-size:.75rem; }
   .hint{ font-size:.8rem; color:var(--ink-soft); margin:0 0 8px; }
   @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
@@ -170,7 +179,7 @@
 <body>
 <main>
   <header>
-    <h1 id="pageTitle">ホーム</h1>
+    <h1 id="pageTitle" tabindex="-1">ホーム</h1>
     <div style="position:relative">
       <button id="menuBtn" class="icon-btn" type="button" aria-label="メニュー" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menu" role="menu">
@@ -194,23 +203,23 @@
       <div>
         <p><b>目標に対する充足率</b></p>
         <p class="sub" id="heroSub"></p>
-        <button type="button" id="heroSet" style="min-height:36px;margin-top:6px;font-size:.8rem" hidden>目標数を設定する</button>
+        <button type="button" id="heroSet" style="margin-top:6px;font-size:.85rem" hidden>目標数を設定する</button>
       </div>
-    </section>
-    <section class="sum" aria-label="集計">
-      <div><span>所持</span><strong id="sCount">0点</strong></div>
-      <div><span>購入額</span><strong id="sPrice">¥0</strong></div>
     </section>
     <div class="sech"><h2 class="sec">足りないもの</h2><button type="button" class="link" id="secSet">目標数を設定</button></div>
     <div id="shortList"></div>
+    <section class="sum" style="margin-top:12px" aria-label="集計">
+      <div><span>所持</span><strong id="sCount">0点</strong></div>
+      <div><span>購入額</span><strong id="sPrice">¥0</strong></div>
+    </section>
     <button type="button" class="planrow" id="planRow"><span>購入予定</span><span class="pill" id="sPlan">0点</span></button>
   </div>
 
   <div id="pgList" hidden>
-  <div class="tabs" id="tabs" role="tablist" aria-label="区分"></div>
+  <div class="tabs" id="tabs" role="group" aria-label="区分"></div>
 
   <div class="tools">
-    <input id="q" type="search" placeholder="名前・商品番号・色・サイズで検索" aria-label="検索">
+    <input id="q" type="search" placeholder="名前・色・サイズで検索" aria-label="検索">
     <select id="sort" aria-label="並び替え">
       <option value="dateDesc">購入日 新しい順</option>
       <option value="dateAsc">購入日 古い順</option>
@@ -226,7 +235,7 @@
       <option value="all">すべて</option>
     </select>
   </div>
-  <div class="filterbar" id="filterbar" hidden><span id="filterText"></span><button type="button" id="filterClear" style="min-height:32px">解除</button></div>
+  <div class="filterbar" id="filterbar" hidden><span id="filterText"></span><button type="button" id="filterClear">解除</button></div>
 
   <div id="list"></div>
   </div>
@@ -249,7 +258,7 @@
 <!-- 衣服の入力 -->
 <dialog id="dlg" aria-labelledby="dlgTitle">
   <form id="form" novalidate>
-    <h2 id="dlgTitle">衣服を追加</h2>
+    <h2 id="dlgTitle" tabindex="-1">衣服を追加</h2>
     <div class="dbody">
       <label class="f">名前（必須）<input id="fName" maxlength="100" autocomplete="off"></label>
       <div class="row2">
@@ -259,22 +268,27 @@
       <label class="f">品目（目標数を決めるまとまり。例: ポロシャツ）<input id="fCat" maxlength="50" list="catList" autocomplete="off"></label>
       <datalist id="catList"></datalist>
       <div class="row2">
-        <label class="f">サイズ<input id="fSize" maxlength="20" autocomplete="off"></label>
-        <label class="f">カラー<input id="fColor" maxlength="30" autocomplete="off"></label>
-      </div>
-      <div class="row2">
         <label class="f">価格（1枚あたり・円）<input id="fPrice" inputmode="numeric" autocomplete="off"></label>
-        <label class="f">数量<input id="fQty" inputmode="numeric" autocomplete="off"></label>
+        <div class="f"><label for="fQty">数量</label>
+          <span class="step"><button type="button" id="qMinus" aria-label="数量を減らす">−</button><input id="fQty" inputmode="numeric" autocomplete="off"><button type="button" id="qPlus" aria-label="数量を増やす">＋</button></span>
+        </div>
       </div>
-      <div class="row2">
-        <label class="f">購入日<input id="fDate" type="date"></label>
-        <label class="f">購入店<input id="fShop" maxlength="50" autocomplete="off"></label>
-      </div>
-      <label class="f">商品番号<input id="fNo" maxlength="30" autocomplete="off"></label>
-      <label class="f">使用感<input id="fFeel" maxlength="200" autocomplete="off"></label>
-      <label class="f">メモ<textarea id="fNote" maxlength="500"></textarea></label>
-      <p class="err" id="fErr" role="alert"></p>
+      <details class="more" id="fMore">
+        <summary>くわしく（サイズ・カラー・購入日など）</summary>
+        <div class="row2">
+          <label class="f">サイズ<input id="fSize" maxlength="20" autocomplete="off"></label>
+          <label class="f">カラー<input id="fColor" maxlength="30" autocomplete="off"></label>
+        </div>
+        <div class="row2">
+          <label class="f">購入日<input id="fDate" type="date"></label>
+          <label class="f">購入店<input id="fShop" maxlength="50" autocomplete="off"></label>
+        </div>
+        <label class="f">商品番号<input id="fNo" maxlength="30" autocomplete="off"></label>
+        <label class="f">使用感<input id="fFeel" maxlength="200" autocomplete="off"></label>
+        <label class="f">メモ<textarea id="fNote" maxlength="500"></textarea></label>
+      </details>
     </div>
+    <p class="err" id="fErr" role="alert" style="padding:0 16px"></p>
     <div class="dfoot">
       <button type="button" class="danger left" id="fDel">削除</button>
       <button type="button" id="fCancel">キャンセル</button>
@@ -292,7 +306,7 @@
       <div class="trow h"><span>品目</span><span>目標</span><span>予備</span></div>
       <div id="trows"></div>
       <div class="row2" style="grid-template-columns:1fr auto;margin-top:8px">
-        <input id="tNew" maxlength="50" placeholder="品目を追加（例: ロンT）" aria-label="追加する品目" style="min-height:44px;padding:4px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)">
+        <input id="tNew" maxlength="50" placeholder="品目を追加（例: ロンT）" aria-label="追加する品目" style="min-height:44px;padding:4px 10px;border:1px solid var(--field-line);border-radius:10px;background:var(--bg)">
         <button type="button" id="tAdd">追加</button>
       </div>
     </div>
@@ -304,7 +318,7 @@
 </dialog>
 
 <!-- クラウド同期（右下の☁ボタンは、このスクリプトが作る）。読み込めなくても端末内だけで動く -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
 <script src="cloud-sync.js"></script>
 <script>
 (function(){
@@ -335,6 +349,10 @@
   let cloud = null;
   let editingId = null;
   let undoFn = null;
+  let loadFailed = false; // 端末のデータが壊れていて読めなかったか（その間は空をクラウドへ送らない）
+  let saveFailed = false; // 直前の端末への保存に失敗したか
+  const BACKUP_KEY = 'clothes-manager-data-v1-backup'; // 読み込みで置き換える直前の退避（1世代）
+  const BROKEN_KEY = 'clothes-manager-data-v1-broken'; // 壊れていた元の文字列の退避
 
   // ---------- 検証（端末・クラウド・ファイルに共通。壊れた値を取り除く） ----------
   const str = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
@@ -368,6 +386,12 @@
     });
     return out;
   }
+  // 同じIDの項目が混ざったら、後のものに新しいIDを振る（編集・削除が効かなくなるのを防ぐ）
+  function uniqueIds(list){
+    const seen = new Set();
+    list.forEach((it) => { if(seen.has(it.id)) it.id = newId(); seen.add(it.id); });
+    return list;
+  }
   function newId(){
     return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
   }
@@ -376,9 +400,13 @@
   function load(){
     try{
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      items = Array.isArray(raw.items) ? raw.items.map(sanitizeItem).filter(Boolean) : [];
+      items = Array.isArray(raw.items) ? uniqueIds(raw.items.map(sanitizeItem).filter(Boolean)) : [];
       targets = sanitizeTargets(raw.targets);
-    }catch(e){ items = []; targets = {}; }
+    }catch(e){
+      items = []; targets = {}; loadFailed = true;
+      // 壊れた元の文字列を、消えないように退避しておく
+      try{ if(!localStorage.getItem(BROKEN_KEY)) localStorage.setItem(BROKEN_KEY, localStorage.getItem(STORAGE_KEY) || ''); }catch(e2){ /* 退避できなくても続ける */ }
+    }
     try{
       const v = JSON.parse(localStorage.getItem(VIEW_KEY) || '{}');
       if(v.tab === 'all' || SECTIONS.includes(v.tab)) view.tab = v.tab;
@@ -388,8 +416,9 @@
     }catch(e){ /* 保存した表示設定が壊れていたら既定のまま */ }
   }
   function save(){
+    saveFailed = false;
     try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets })); }
-    catch(e){ toast('端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
+    catch(e){ saveFailed = true; toast('端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
     if(cloud) cloud.notifyChanged(); // 端末へ保存した直後に必ず呼ぶ
   }
   function saveView(){ try{ localStorage.setItem(VIEW_KEY, JSON.stringify(view)); }catch(e){ /* 保存できなくても表示は続ける */ } }
@@ -407,7 +436,7 @@
   }
   // 品目ごとの所持数（状態が「所持」のものだけ。区分・絞り込みに関係なく全体で数える）
   function ownedByCat(){
-    const m = {};
+    const m = Object.create(null);
     items.forEach((it) => { if(it.status === '所持') m[it.category] = (m[it.category] || 0) + it.qty; });
     return m;
   }
@@ -418,7 +447,7 @@
     $('#sCount').textContent = own.reduce((a, it) => a + it.qty, 0) + '点';
     $('#sPrice').textContent = yen(own.reduce((a, it) => a + it.price * it.qty, 0));
     const plan = items.filter((it) => it.status === '購入予定');
-    $('#sPlan').textContent = plan.reduce((a, it) => a + it.qty, 0) + '点・' + yen(plan.reduce((a, it) => a + it.price * it.qty, 0));
+    $('#sPlan').textContent = plan.length + '件・' + yen(plan.reduce((a, it) => a + it.price * it.qty, 0));
     $('#navCnt').hidden = plan.length === 0;
     $('#navCnt').textContent = plan.length;
   }
@@ -435,12 +464,13 @@
     $('#ring').setAttribute('aria-label', goal ? '充足率 ' + pct + '%' : '目標数が未設定です');
     $('#heroSub').textContent = goal ? '目標 ' + goal + ' 点のうち ' + have + ' 点そろっています' : '品目ごとの目標数を決めると、足りないものが分かります。';
     $('#heroSet').hidden = !!goal;
+    $('#secSet').hidden = !goal;
     const lack = cats.filter((c) => targets[c].target > (owned[c] || 0))
       .sort((a, b) => (targets[b].target - (owned[b] || 0)) - (targets[a].target - (owned[a] || 0)));
     $('#shortList').innerHTML = lack.length
       ? lack.map((c) => {
           const o = owned[c] || 0, t = targets[c].target;
-          return '<button type="button" class="sl" data-cat="' + esc(c) + '"><div class="r"><span>' + esc(c) + '　' + o + '/' + t + '</span><span class="pill">あと' + (t - o) + '</span></div><div class="bar"><i style="width:' + Math.round(o / t * 100) + '%"></i></div></button>';
+          return '<button type="button" class="sl" data-cat="' + esc(c) + '"><div class="r"><span>' + esc(c) + '　' + o + '/' + t + '</span><span class="pill">あと' + (t - o) + '点</span></div><div class="bar"><i style="width:' + Math.round(o / t * 100) + '%"></i></div></button>';
         }).join('')
       : (cats.length ? '<p class="okmsg">不足はありません。目標数がそろっています。</p>' : '<p class="empty">目標数を設定すると、ここに足りない品目が出ます。</p>');
   }
@@ -463,13 +493,13 @@
     });
   }
   function go(page){
-    const run = () => { view.page = page; saveView(); showPage(); window.scrollTo(0, 0); };
+    const run = () => { view.page = page; saveView(); showPage(); window.scrollTo(0, 0); $('#pageTitle').focus({ preventScroll: true }); };
     if(document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(run); else run();
   }
   function renderTabs(){
     const all = [['all', 'すべて']].concat(SECTIONS.map((s) => [s, s]));
     $('#tabs').innerHTML = all.map((p) =>
-      '<button type="button" class="tab" role="tab" data-tab="' + p[0] + '" aria-selected="' + (view.tab === p[0]) + '">' + p[1] + '</button>').join('');
+      '<button type="button" class="tab" data-tab="' + p[0] + '" aria-pressed="' + (view.tab === p[0]) + '">' + p[1] + '</button>').join('');
   }
   function visibleItems(){
     const q = $('#q').value.trim().toLowerCase();
@@ -491,12 +521,12 @@
   }
   function cardHtml(it){
     const sub = [it.size, it.color, ymd(it.boughtAt), it.price ? yen(it.price) : '', it.productNo ? '#' + it.productNo : ''].filter(Boolean).join('・');
-    return '<div class="card' + (it.status === '処分済み' ? ' gone' : '') + '" tabindex="0" role="button" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + 'を編集">' +
+    return '<div class="cw"><div class="card' + (it.status === '処分済み' ? ' gone' : '') + '" tabindex="0" role="button" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + 'を編集">' +
       '<span class="dot" style="background:' + dotColor(it) + '"></span>' +
       '<div class="body"><div class="t">' + (it.status === '購入予定' ? '<span class="badge">購入予定</span>' : it.status === '処分済み' ? '<span class="badge">処分済み</span>' : '') + esc(it.name) + '</div>' +
-      '<div class="s">' + esc(sub || '詳細なし') + '</div>' +
-      (it.status === '購入予定' ? '<button type="button" class="buy" data-buy="' + esc(it.id) + '">購入済みにする</button>' : '') + '</div>' +
-      '<div class="qty">数量<b>' + it.qty + '</b></div></div>';
+      '<div class="s">' + esc(sub || '詳細なし') + '</div></div>' +
+      '<div class="qty"><b>×' + it.qty + '</b></div></div>' +
+      (it.status === '購入予定' ? '<button type="button" class="buy" data-buy="' + esc(it.id) + '">購入済みにする</button>' : '') + '</div>';
   }
   function renderList(){
     const list = visibleItems();
@@ -504,24 +534,24 @@
     $('#filterbar').hidden = !catFilter;
     $('#filterText').textContent = '品目: ' + catFilter;
     if(!list.length){
-      $('#list').innerHTML = '<p class="empty">' + (items.length ? '条件に合う衣服がありません。' : 'まだ登録がありません。右下の＋から追加します。') + '</p>';
+      $('#list').innerHTML = '<p class="empty">' + (items.length ? '条件に合う衣服がありません。' : 'まだ登録がありません。') + '</p>' + (items.length ? '' : '<p style="text-align:center"><button type="button" class="primary" data-add>衣服を追加</button></p>');
       return;
     }
     // 並び替えの順に、品目ごとにまとめる
-    const groups = [], idx = {};
+    const groups = [], idx = Object.create(null);
     list.forEach((it) => {
       const c = catName(it);
       if(!(c in idx)){ idx[c] = groups.length; groups.push({ cat: c, items: [] }); }
       groups[idx[c]].items.push(it);
     });
     $('#list').innerHTML = groups.map((g) => {
-      const t = targets[g.cat === '未分類' ? '' : g.cat];
+      const t = Object.prototype.hasOwnProperty.call(targets, g.cat === '未分類' ? '' : g.cat) ? targets[g.cat === '未分類' ? '' : g.cat] : null;
       let st = '';
       const real = g.cat !== '未分類';
       if(t){
         const own = owned[g.cat === '未分類' ? '' : g.cat] || 0;
-        if(own < t.target) st = '<span class="ng">' + own + '/' + t.target + '　あと' + (t.target - own) + '枚</span>';
-        else if(t.spare && own < t.target + t.spare) st = '<span class="ok">' + own + '/' + t.target + '　予備あと' + (t.target + t.spare - own) + '</span>';
+        if(own < t.target) st = '<span class="ng">' + own + '/' + t.target + '　あと' + (t.target - own) + '点</span>';
+        else if(t.spare && own < t.target + t.spare) st = '<span class="ok">' + own + '/' + t.target + '　予備あと' + (t.target + t.spare - own) + '点</span>';
         else st = '<span class="ok">' + own + '/' + t.target + '　そろっています</span>';
       }
       if(real) st = '<button type="button" class="link" data-targets="' + esc(g.cat) + '">' + (st || '目標を設定') + '</button>';
@@ -543,7 +573,7 @@
     const b = e.target.closest('[data-cat]');
     if(!b) return;
     catFilter = b.dataset.cat;
-    view.tab = 'all'; view.status = 'active'; $('#status').value = 'active';
+    view.tab = 'all'; view.status = 'active'; $('#status').value = 'active'; $('#q').value = '';
     render(); go('list');
   });
   $('#nav').addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if(b) go(b.dataset.go); });
@@ -553,6 +583,7 @@
   $('#filterClear').addEventListener('click', () => { catFilter = ''; renderList(); });
 
   function onListClick(e){
+    if(e.target.closest('[data-add]')){ openEdit(null); return; }
     const tg = e.target.closest('[data-targets]');
     if(tg){ openTargets(tg.dataset.targets); return; }
     const buy = e.target.closest('[data-buy]');
@@ -588,24 +619,37 @@
     fillCatList();
     $('#dlgTitle').textContent = it ? '衣服を編集' : '衣服を追加';
     $('#fDel').hidden = !it;
-    const d = it || { name: '', section: SECTIONS.includes(view.tab) ? view.tab : '冬', status: view.page === 'plan' ? '購入予定' : '所持', category: catFilter, size: '', color: '', price: '', qty: 1, boughtAt: todayStr(), shop: '', productNo: '', feel: '', note: '' };
+    const d = it || { name: '', section: SECTIONS.includes(view.tab) ? view.tab : '冬', status: view.page === 'plan' ? '購入予定' : '所持', category: catFilter, size: '', color: '', price: '', qty: 1, boughtAt: view.page === 'plan' ? '' : todayStr(), shop: '', productNo: '', feel: '', note: '' };
     $('#fName').value = d.name; $('#fSection').value = d.section; $('#fStatus').value = d.status;
     $('#fCat').value = d.category; $('#fSize').value = d.size; $('#fColor').value = d.color;
     $('#fPrice').value = d.price === 0 ? '' : d.price; $('#fQty').value = d.qty; $('#fDate').value = d.boughtAt;
     $('#fShop').value = d.shop; $('#fNo').value = d.productNo; $('#fFeel').value = d.feel; $('#fNote').value = d.note;
     $('#fErr').textContent = '';
+    ['#fName', '#fPrice', '#fQty'].forEach((q) => $(q).removeAttribute('aria-invalid'));
+    // くわしくの欄に入力済みの項目があれば、開いておく
+    $('#fMore').open = !!(it && (it.size || it.color || it.shop || it.productNo || it.feel || it.note));
     dlg.showModal();
-    $('#fName').focus();
+    if(it) $('#dlgTitle').focus(); else $('#fName').focus(); // 編集のときはキーボードを出さない
   }
   $('#addBtn').addEventListener('click', () => openEdit(null));
+  // 数量の＋／−
+  const stepQty = (d) => { const n = Number($('#fQty').value); $('#fQty').value = Math.max(0, Math.min(9999, (Number.isFinite(n) ? Math.floor(n) : 0) + d)); };
+  $('#qMinus').addEventListener('click', () => stepQty(-1));
+  $('#qPlus').addEventListener('click', () => stepQty(1));
+  // 状態を切り替えたとき、購入日を合わせる（購入予定は空、所持は今日）
+  $('#fStatus').addEventListener('change', () => {
+    if(editingId) return;
+    if($('#fStatus').value === '購入予定' && $('#fDate').value === todayStr()) $('#fDate').value = '';
+    else if($('#fStatus').value === '所持' && !$('#fDate').value) $('#fDate').value = todayStr();
+  });
   $('#fCancel').addEventListener('click', () => dlg.close());
-  $('#fName').addEventListener('input', () => { $('#fErr').textContent = ''; });
+  $('#fName').addEventListener('input', () => { $('#fErr').textContent = ''; $('#fName').removeAttribute('aria-invalid'); });
   $('#form').addEventListener('submit', (e) => {
     e.preventDefault();
     const name = $('#fName').value.trim();
-    if(!name){ $('#fErr').textContent = '名前を入力してください'; $('#fName').focus(); return; }
+    if(!name){ $('#fErr').textContent = '名前を入力してください'; $('#fName').setAttribute('aria-invalid', 'true'); $('#fName').focus(); return; }
     const price = $('#fPrice').value.trim(), qty = $('#fQty').value.trim();
-    if((price && !/^\d+$/.test(price)) || (qty && !/^\d+$/.test(qty))){ $('#fErr').textContent = '価格と数量は、半角の数字で入力してください'; return; }
+    if((price && !/^\d+$/.test(price)) || (qty && !/^\d+$/.test(qty))){ $('#fErr').textContent = '価格と数量は、半角の数字で入力してください'; const bad = (price && !/^\d+$/.test(price)) ? $('#fPrice') : $('#fQty'); bad.setAttribute('aria-invalid', 'true'); bad.focus(); return; }
     const rec = sanitizeItem({
       id: editingId || newId(), name, section: $('#fSection').value, status: $('#fStatus').value,
       category: $('#fCat').value, size: $('#fSize').value, color: $('#fColor').value,
@@ -622,7 +666,7 @@
     const removed = items[i];
     items.splice(i, 1);
     save(); dlg.close(); render();
-    toast('削除しました', () => { items.splice(i, 0, removed); save(); render(); });
+    toast('削除しました', () => { if(items.some((x) => x.id === removed.id)) return; items.splice(Math.min(i, items.length), 0, removed); save(); render(); });
   });
 
   // ---------- 品目の目標数 ----------
@@ -674,6 +718,7 @@
   // ---------- 元に戻す（トースト） ----------
   let toastTimer = null;
   function toast(msg, undo){
+    if(saveFailed && msg.indexOf('保存できません') < 0) msg += '（端末に保存できていません）';
     $('#toastMsg').textContent = msg;
     undoFn = undo || null;
     $('#toastUndo').style.display = undo ? '' : 'none';
@@ -712,9 +757,11 @@
     try{
       const d = JSON.parse(await file.text());
       if(!d || !Array.isArray(d.items)) throw new Error('形式が違います');
-      const next = d.items.map(sanitizeItem).filter(Boolean);
+      if(d.app && d.app !== APP_NAME) throw new Error('他のアプリのファイルです');
+      const next = uniqueIds(d.items.slice(0, 5000).map(sanitizeItem).filter(Boolean));
       if(!confirm('現在のデータを、読み込んだ ' + next.length + ' 件に置き換えます。よろしいですか？')) return;
       const before = { items, targets };
+      try{ localStorage.setItem(BACKUP_KEY, JSON.stringify({ at: new Date().toLocaleString('ja-JP'), items, targets })); }catch(e2){ /* 退避できなくても続ける */ }
       items = next; targets = sanitizeTargets(d.targets);
       save(); render();
       toast('読み込みました', () => { items = before.items; targets = before.targets; save(); render(); });
@@ -755,6 +802,7 @@
   $('#sort').value = view.sort;
   $('#status').value = view.status;
   render();
+  if(loadFailed) toast('端末のデータが読めませんでした。壊れたデータは退避しました。ログイン済みなら、☁の同期でクラウドから戻せます。');
 
   // ---------- クラウド同期（cloud-sync.js） ----------
   if(window.CloudSync){
@@ -762,11 +810,17 @@
       appName: APP_NAME,
       key: SYNC_KEY,
       getData: function(){ return { items: items, targets: targets }; },
-      hasData: function(){ return items.length > 0 || Object.keys(targets).length > 0; },
+      hasData: function(){ return !loadFailed && (items.length > 0 || Object.keys(targets).length > 0); },
+      trustEmpty: function(){ return !loadFailed; },
       applyData: function(d){
         if(!d || !Array.isArray(d.items)) throw new Error('衣服管理のデータ形式が違います');
-        items = d.items.map(sanitizeItem).filter(Boolean);
+        items = uniqueIds(d.items.map(sanitizeItem).filter(Boolean));
         targets = sanitizeTargets(d.targets);
+        loadFailed = false;
+        // 開いている入力画面は、古い内容で保存してしまわないよう閉じる。元に戻すも無効にする
+        if(dlg.open) dlg.close();
+        if(tdlg.open) tdlg.close();
+        undoFn = null; $('#toast').classList.remove('show');
         try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets })); }
         catch(e){ toast('クラウドのデータを端末に保存できませんでした。'); }
         render();
