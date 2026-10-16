@@ -395,9 +395,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     <div class="btn-row">
       <button type="button" class="btn" id="dataExportBtn">エクスポート</button>
       <button type="button" class="btn" id="dataImportBtn">インポート</button>
+      <button type="button" class="btn" id="calExportBtn">予定ファイルを書き出し</button>
     </div>
     <input type="file" id="dataImportFile" accept=".json,application/json" style="display:none;">
-    <div class="hint">タスクと状態をまとめて書き出せます。インポートすると、いまのデータはすべて置き換わります（置き換え前のデータは1世代だけ退避します）。</div>
+    <div class="hint">「予定ファイルを書き出し」は、日付のある未完了のタスクだけを、メール自動保存アプリ用に書き出します。<br>タスクと状態をまとめて書き出せます。インポートすると、いまのデータはすべて置き換わります（置き換え前のデータは1世代だけ退避します）。</div>
     <div class="status-msg" id="dataStatus"></div>
   </div>
   <div class="row"><button type="button" class="btn primary" data-close>閉じる</button></div>
@@ -1791,6 +1792,21 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     try{ localStorage.setItem(BACKUP_KEY, todayISO()); }catch(e){}
     updateBackupInfo();
     const st = $id('dataStatus'); st.classList.remove('error'); st.textContent = 'JSONを書き出しました。';
+  });
+  // 日付のある未完了タスクだけを、メール自動保存アプリ（Outlook／Googleカレンダー）へ渡す用に書き出す
+  $id('calExportBtn').addEventListener('click', function(){
+    const list = items.filter(it=>!it.deleted && !it.archived && it.date && !isDone(it)).map(it=>{
+      const g = groupById(it.group);
+      return { id:it.id, text:it.text, date:it.date, time:it.time||'', group:g ? g.name : '' };
+    });
+    const st = $id('dataStatus'); st.classList.remove('error');
+    if(!list.length){ st.textContent = '書き出せる予定がありません（日付のある未完了のタスクが対象です）。'; return; }
+    const blob = new Blob([JSON.stringify({ app:'todo-app-events', version:1, exportedAt:todayISO(), events:list }, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'ToDo予定_'+todayISO()+'.json';
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    st.textContent = list.length+'件の予定を書き出しました。';
   });
   $id('dataImportBtn').addEventListener('click', ()=>$id('dataImportFile').click());
   $id('dataImportFile').addEventListener('change', async function(e){
