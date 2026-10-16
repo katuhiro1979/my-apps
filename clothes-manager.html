@@ -85,7 +85,9 @@
   .ring text{ fill:var(--ink); font-size:20px; font-weight:600; }
   .hero p{ margin:0; }
   .hero .sub{ font-size:.8rem; color:var(--ink-soft); }
-  .sec{ font-size:.95rem; margin:16px 4px 8px; }
+  .sec{ font-size:.95rem; margin:0; }
+  .sech{ display:flex; justify-content:space-between; align-items:center; margin:12px 4px 4px; }
+  .link{ min-height:36px; padding:0 10px; border:0; background:none; color:var(--ink-soft); font-size:.8rem; text-decoration:underline; }
   .sl{ display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:8px; border-radius:var(--radius); }
   .sl .r{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
   .sl .pill{ font-size:.75rem; padding:0 10px; border-radius:999px; background:var(--warn-bg); color:var(--warn); font-weight:600; }
@@ -199,7 +201,7 @@
       <div><span>所持</span><strong id="sCount">0点</strong></div>
       <div><span>購入額</span><strong id="sPrice">¥0</strong></div>
     </section>
-    <h2 class="sec">足りないもの</h2>
+    <div class="sech"><h2 class="sec">足りないもの</h2><button type="button" class="link" id="secSet">目標数を設定</button></div>
     <div id="shortList"></div>
     <button type="button" class="planrow" id="planRow"><span>購入予定</span><span class="pill" id="sPlan">0点</span></button>
   </div>
@@ -515,12 +517,14 @@
     $('#list').innerHTML = groups.map((g) => {
       const t = targets[g.cat === '未分類' ? '' : g.cat];
       let st = '';
+      const real = g.cat !== '未分類';
       if(t){
         const own = owned[g.cat === '未分類' ? '' : g.cat] || 0;
         if(own < t.target) st = '<span class="ng">' + own + '/' + t.target + '　あと' + (t.target - own) + '枚</span>';
         else if(t.spare && own < t.target + t.spare) st = '<span class="ok">' + own + '/' + t.target + '　予備あと' + (t.target + t.spare - own) + '</span>';
         else st = '<span class="ok">' + own + '/' + t.target + '　そろっています</span>';
       }
+      if(real) st = '<button type="button" class="link" data-targets="' + esc(g.cat) + '">' + (st || '目標を設定') + '</button>';
       return '<div class="gh"><b>' + esc(g.cat) + '</b>' + st + '</div>' + g.items.map(cardHtml).join('');
     }).join('');
   }
@@ -545,9 +549,12 @@
   $('#nav').addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if(b) go(b.dataset.go); });
   $('#planRow').addEventListener('click', () => go('plan'));
   $('#heroSet').addEventListener('click', () => openTargets());
+  $('#secSet').addEventListener('click', () => openTargets());
   $('#filterClear').addEventListener('click', () => { catFilter = ''; renderList(); });
 
   function onListClick(e){
+    const tg = e.target.closest('[data-targets]');
+    if(tg){ openTargets(tg.dataset.targets); return; }
     const buy = e.target.closest('[data-buy]');
     if(buy){
       const it = items.find((x) => x.id === buy.dataset.buy);
@@ -625,12 +632,18 @@
       '<input inputmode="numeric" aria-label="' + esc(name) + 'の目標" value="' + (t ? t.target : '') + '">' +
       '<input inputmode="numeric" aria-label="' + esc(name) + 'の予備" value="' + (t ? t.spare : '') + '"></div>';
   }
-  function openTargets(){
+  function openTargets(focusCat){
     const names = new Set(Object.keys(targets));
     items.forEach((it) => { if(it.category) names.add(it.category); });
     $('#trows').innerHTML = Array.from(names).map((n) => trowHtml(n, targets[n])).join('') || '<p class="hint">まだ品目がありません。下で追加します。</p>';
     $('#tNew').value = '';
     tdlg.showModal();
+    // 品目から開いたときは、その品目の目標欄に合わせる（まだ無ければ行を足す）
+    if(typeof focusCat === 'string' && focusCat){
+      if(!$('#trows').querySelector('[data-name="' + CSS.escape(focusCat) + '"]')){ $('#tNew').value = focusCat; $('#tAdd').click(); }
+      const inp = $('#trows').querySelector('[data-name="' + CSS.escape(focusCat) + '"] input');
+      if(inp) inp.focus();
+    }
   }
   $('#tAdd').addEventListener('click', () => {
     const name = $('#tNew').value.trim().slice(0, 50);
