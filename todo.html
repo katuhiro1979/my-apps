@@ -27,7 +27,7 @@
     --c-pink-bg:#f9e0ec;--c-pink-fg:#a02b63;
     --c-teal-bg:#d6eeee;--c-teal-fg:#1b6567;
     --c-gray-bg:#e6e8e4;--c-gray-fg:#4b554f;
-    --shadow:0 1px 2px rgba(20,30,25,.06),0 4px 14px rgba(20,30,25,.06);
+    --shadow:0 1px 2px rgba(20,30,25,.08),0 4px 14px rgba(20,30,25,.09);
     --shadow-pop:0 10px 30px rgba(20,30,25,.22);
     --r:14px;
     --r-sm:10px;
@@ -158,9 +158,9 @@
   /* 週・月の区切り線（日付順のときだけ） */
   .mo-line,.wk-line{display:flex;align-items:center;gap:8px;color:var(--ink-soft);}
   .mo-line:before,.mo-line:after,.wk-line:after{content:"";height:1px;flex:1;background:var(--line);}
-  .mo-line{margin:22px 4px 0;font-size:14px;font-weight:700;color:var(--ink);}
+  .mo-line{margin:28px 4px 0;font-size:16px;font-weight:800;color:var(--ink);}
   .mo-line:before,.mo-line:after{background:var(--ink-soft);opacity:.5;}
-  .wk-line{margin:14px 4px 0;font-size:12px;font-weight:600;}
+  .wk-line{margin:16px 4px 0;font-size:12px;font-weight:600;}
   .wk-line:after{height:1px;opacity:.8;}
   .wk-line.is-now{color:var(--accent);}
   .grp:first-child{margin-top:2px;}
@@ -217,7 +217,7 @@
   .task-main{min-width:0;padding:6px 0;}
   .task-text{appearance:none;display:block;width:100%;text-align:left;border:none;background:none;padding:0;cursor:pointer;font-size:16px;line-height:1.45;color:var(--ink);}
   .task-text .tt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;}
-  .task-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+  .task-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
   .task-side{display:flex;align-items:center;gap:4px;}
   .task-time{font-size:12px;color:var(--ink-soft);}
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
@@ -226,7 +226,7 @@
   .gtag::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--gc,var(--ink-soft));flex:none;}
   .chip{position:relative;appearance:none;display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:0 10px;border:none;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;}
   .chip::after{content:"";position:absolute;inset:-9px -3px;}
-  .chip.date{background:var(--surface-2);color:var(--ink-soft);}
+  .chip.date{background:var(--surface-2);color:var(--ink-soft);box-shadow:inset 0 0 0 1px var(--line);}
   .chip.date.over{background:var(--danger-bg);color:var(--danger);}
   .chip.date.today{background:var(--warn-bg);color:var(--warn);}
   .chip.static{cursor:default;}
@@ -591,8 +591,11 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const o = sheetOpener; sheetOpener = null;
     if(o && document.contains(o) && typeof o.focus === 'function') o.focus();
   }
+  let downOnBackdrop = false; // 入力欄の中から押し始めて背景で離したときに閉じないための目印
+  document.addEventListener('pointerdown', function(e){ downOnBackdrop = e.target.tagName === 'DIALOG'; }, true);
   document.addEventListener('click', function(e){
     if(e.target.tagName === 'DIALOG' && e.target.classList.contains('sheet') && e.target.id !== 'confirmDlg'){
+      if(!downOnBackdrop) return;
       // シートの外側（暗い背景）をタップしたときだけ閉じる
       const r = e.target.getBoundingClientRect();
       if(e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeDlg(e.target);
@@ -610,7 +613,12 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   // 同期・他タブの更新で内容が入れ替わるとき、古い表示のシートとメニューを閉じる
   function closeOpenSheets(){
     closeMenu(false);
-    document.querySelectorAll('dialog.sheet[open]').forEach(d=>{ if(d.id!=='confirmDlg') d.close(); });
+    document.querySelectorAll('dialog.sheet[open]').forEach(d=>{
+      if(d.id==='confirmDlg') return;
+      // 編集中の文字が変わっているときは、入力を失わないよう閉じずに残す
+      if(d.id==='editDlg' && editingId && $id('editText').value !== editOrig)return;
+      d.close();
+    });
   }
 
   // ---- 「⋯」メニュー（画面に1つだけ）----
@@ -765,9 +773,11 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   // ---- 保存・読み込み ----
   // 保存できたら true。失敗時は上部に警告を出して false を返す（成功表示を出さないため）
+  let lastRaw = null; // 最後に保存・読み込みした保存データ（古い画面の検出用）
   function save(){
     try{
-      localStorage.setItem(STORE_KEY, JSON.stringify({ items, statuses, groups }));
+      const s = JSON.stringify({ items, statuses, groups });
+      localStorage.setItem(STORE_KEY, s); lastRaw = s;
       if(items.length) localStorage.setItem(EVER_KEY, '1');
       cloudNotify();
       return true;
@@ -780,7 +790,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   function load(){
     let raw = null;
     try{
-      raw = localStorage.getItem(STORE_KEY);
+      raw = localStorage.getItem(STORE_KEY); lastRaw = raw;
       const d = raw ? JSON.parse(raw) : { items:[], statuses:defaultStatuses() };
       if(!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('形式が正しくありません');
       statuses = normalizeStatuses(d.statuses);
@@ -790,8 +800,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       // 壊れたデータを別キーへ退避してから空で開始する（上書きによる消失を防ぐ）
       if(raw){
         try{
-          const k = STORE_KEY+'-corrupt-'+Date.now();
-          localStorage.setItem(k, raw);
+          const k = STORE_KEY+'-corrupt'; // 毎回増えないよう1つだけ（同じ内容なら書き直さない）
+          if(localStorage.getItem(k) !== raw) localStorage.setItem(k, raw);
           showNotice('保存データを読み込めませんでした。元データは「'+k+'」に退避しました。', true, true);
         }catch(e2){
           showNotice('保存データを読み込めず、退避もできませんでした。ブラウザのデータを消さずに管理者へご相談ください。', true, true);
@@ -1036,10 +1046,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   }
 
   // ---- 編集シート ----
-  let editingId = null, editDp = null;
+  let editingId = null, editDp = null, editOrig = '';
   function openEdit(id){
     const it = items.find(i=>i.id===id && !i.deleted); if(!it) return;
-    editingId = id;
+    editingId = id; editOrig = it.text;
     $id('editText').value = it.text;
     editDp = mountDatePicker($id('editDp'), { date: it.date, time: it.time });
     const sel = $id('editStatus');
@@ -1067,7 +1077,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   $id('editDlg').addEventListener('close', function(){ editingId = null; });
   $id('editForm').addEventListener('submit', function(e){
     e.preventDefault();
-    const it = items.find(i=>i.id===editingId); if(!it){ closeDlg($id('editDlg')); return; }
+    const it = items.find(i=>i.id===editingId); if(!it){ closeDlg($id('editDlg')); showNotice('このタスクは他の端末で削除されたため、保存できませんでした。'); return; }
     const text = $id('editText').value.trim();
     if(!text){ $id('editText').focus(); return; }
     const dp = editDp.get();
@@ -1591,7 +1601,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const time = (!c.showDate && it.time) ? '<span class="task-time">'+escapeHtml(it.time)+'</span>' : '';
     const chip = '<button type="button" class="chip c-'+st.color+'" data-act="status" aria-haspopup="menu" aria-label="状態：'+escapeHtml(st.name)+'、変更">'+escapeHtml(st.name)+'</button>';
     return '<li class="task'+(done?' done':'')+(over?' over':'')+(c.fId===it.id?' flash':'')+'" data-id="'+id+'">'+
-      '<div class="sw sw-l" aria-hidden="true">'+(done ? '未完了に戻す' : '完了にする')+'</div><div class="sw sw-r" aria-hidden="true">ごみ箱へ</div>'+
+      '<div class="sw sw-l" aria-hidden="true">'+(done ? '↩ 未完了に戻す' : '✓ 完了にする')+'</div><div class="sw sw-r" aria-hidden="true">ごみ箱へ 🗑</div>'+
       '<div class="task-in">'+
         '<button type="button" class="chk'+(c.pId===it.id?' pop':'')+'" role="checkbox" aria-checked="'+done+'" aria-label="'+(done?'未完了に戻す：':'完了にする：')+escapeHtml(it.text)+'" data-act="toggle"><span class="box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>'+
         '<div class="task-main">'+text+meta+'</div>'+
@@ -1725,7 +1735,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   });
 
   // 行を右へスワイプ＝完了／未完了、左へスワイプ＝ごみ箱（タッチ操作のみ）
-  const SW_MAX = 130, SW_GO = 76, SW_GO_TRASH = 110; // ごみ箱へ行く左スワイプは、誤操作を避けるため深めにする
+  const SW_MAX = 130, SW_GO = 76, SW_GO_TRASH = 96; // ごみ箱へ行く左スワイプは、誤操作を避けるため深めにする
   let sw = null;
   $id('taskArea').addEventListener('pointerdown', function(e){
     if(e.pointerType!=='touch') return;
@@ -1785,7 +1795,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const sec = todayTarget();
     if(!sec){ b.hidden = true; return; }
     const r = sec.getBoundingClientRect();
-    b.hidden = !(r.bottom < 80 || r.top > window.innerHeight);
+    // 固定バー（上部バー＋タブ＋グループ行）の下に隠れているときも「見えていない」とみなす
+    const bars = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-h'))||56) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tabs-h'))||0);
+    const kb = window.visualViewport && window.visualViewport.height < window.innerHeight * 0.75; // ソフトキーボード表示中
+    b.hidden = kb || !(r.bottom < bars + 24 || r.top > window.innerHeight);
   }
   $id('jumpToday').addEventListener('click', function(){
     const sec = todayTarget();
@@ -1968,34 +1981,66 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.items)){
       st.classList.add('error'); st.textContent = 'タスクデータの形式が正しくありません。'; return;
     }
-    if(!(await askConfirm('インポートすると、現在のタスク（'+items.length+'件）はすべて置き換わります。ログイン中は、クラウドにも反映されます。', 'インポートする'))){
+    // 他のアプリのバックアップや、別形式のファイルを取り込まない
+    if(parsed.app !== undefined && parsed.app !== 'todo-app'){
+      st.classList.add('error'); st.textContent = 'ToDoのバックアップではありません（'+String(parsed.app).slice(0,30)+'）。'; return;
+    }
+    if(parsed.items.length && !parsed.items.some(i=>i && typeof i.text==='string')){
+      st.classList.add('error'); st.textContent = 'タスクデータの形式が正しくありません。'; return;
+    }
+    const inN = parsed.items.length;
+    let msg = 'インポートすると、現在のタスク（'+items.length+'件）が、ファイルの内容（'+inN+'件）に置き換わります。ログイン中は、クラウドにも反映されます。';
+    if(inN===0 && items.length) msg = '【注意】ファイルのタスクは0件です。取り込むと、現在の'+items.length+'件がすべて消えます。 ' + msg;
+    else if(items.length>=5 && inN < items.length/2) msg = '【注意】ファイルの件数が現在の半分未満です。 ' + msg;
+    if(!(await askConfirm(msg, 'インポートする'))){
       st.classList.remove('error'); st.textContent = 'インポートを取り消しました。'; return;
     }
-    // 置換前のデータを1世代だけ退避する
+    // 置換前のデータを退避する（日時つきで3世代まで）。あわせてJSONも自動で保存する
     let prevSaved = true;
-    try{ const cur = localStorage.getItem(STORE_KEY); if(cur) localStorage.setItem(STORE_KEY+'-prev', cur); }catch(err){ prevSaved = false; }
+    try{
+      const cur = localStorage.getItem(STORE_KEY);
+      if(cur){
+        localStorage.setItem(STORE_KEY+'-prev-'+Date.now(), cur);
+        Object.keys(localStorage).filter(k=>k.startsWith(STORE_KEY+'-prev-')).sort().slice(0,-3).forEach(k=>localStorage.removeItem(k));
+      }
+    }catch(err){ prevSaved = false; }
+    try{
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify({ app:'todo-app', version:1, exportedAt: todayISO(), items, statuses, groups }, null, 2)], { type:'application/json' }));
+      a.download = 'ToDo_取り込み前_'+todayISO()+'.json';
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    }catch(err){ /* 自動保存できなくても、取り込みは続ける */ }
     const newSt = normalizeStatuses(parsed.statuses);
     statuses = newSt;
     groups = normalizeGroups(parsed.groups);
     items = normalizeItems(parsed.items, newSt, groups);
     save(); render();
     st.classList.remove('error');
-    st.textContent = items.length+'件のタスクを読み込みました。'+(prevSaved ? '' : '（取り込み前のデータは退避できませんでした）');
+    st.textContent = items.length+'件のタスクを読み込みました。取り込み前のデータはJSONでも保存しました（戻すときは、そのファイルをインポート）。'+(prevSaved ? '' : '（端末内への退避はできませんでした）');
   });
 
   // 別のタブで保存されたら最新の内容に更新する（古い画面のまま上書きして消すのを防ぐ）
-  window.addEventListener('storage', function(e){
-    if(e.key!==STORE_KEY) return;
+  function adoptStored(raw){
     try{
-      const d = JSON.parse(e.newValue || '{}');
+      const d = JSON.parse(raw || '{}');
       if(!d || !Array.isArray(d.items)) return;
+      lastRaw = raw;
       statuses = normalizeStatuses(d.statuses);
       groups = normalizeGroups(d.groups); items = normalizeItems(d.items, statuses, groups);
       closeOpenSheets();
       render();
       showNotice('別のタブでデータが更新されたため、最新の内容に更新しました。');
     }catch(err){ /* 壊れた値は無視 */ }
-  });
+  }
+  window.addEventListener('storage', function(e){ if(e.key===STORE_KEY) adoptStored(e.newValue); });
+  // 凍結・キャッシュ復帰したタブは storage イベントを受け取れないため、戻ったときに保存データと見比べる
+  function checkStale(){
+    let cur = null;
+    try{ cur = localStorage.getItem(STORE_KEY); }catch(e){ return; }
+    if(cur && lastRaw !== null && cur !== lastRaw) adoptStored(cur);
+  }
+  window.addEventListener('pageshow', function(e){ if(e.persisted) checkStale(); });
 
   // 日付をまたいで戻ってきたら、今日・期限切れの判定を更新する
   function refreshDay(){
@@ -2005,7 +2050,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(cur.date === old) addDp = mountDatePicker($id('addDp'), { date: todayISO(), time: cur.time });
     render();
   }
-  document.addEventListener('visibilitychange', function(){ if(!document.hidden) refreshDay(); });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden){ checkStale(); refreshDay(); } });
   setInterval(function(){ if(!document.hidden) refreshDay(); }, 60000);
 
   load();
@@ -2036,12 +2081,17 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       },
       applyData: function(d){
         if(!d || !Array.isArray(d.items)) throw new Error('ToDoのデータ形式が違います');
-        statuses = normalizeStatuses(d.statuses);
-        groups = normalizeGroups(d.groups); items = normalizeItems(d.items, statuses, groups);
+        const nst = normalizeStatuses(d.statuses), ngr = normalizeGroups(d.groups), nit = normalizeItems(d.items, nst, ngr);
         try{
-          localStorage.setItem(STORE_KEY, JSON.stringify({ items, statuses, groups }));
-          if(items.length) localStorage.setItem(EVER_KEY, '1');
-        }catch(e){ showNotice('クラウドのデータを端末に保存できませんでした（容量不足の可能性があります）。', true, true); }
+          const s = JSON.stringify({ items:nit, statuses:nst, groups:ngr });
+          localStorage.setItem(STORE_KEY, s); lastRaw = s;
+          if(nit.length) localStorage.setItem(EVER_KEY, '1');
+        }catch(e){
+          // 保存できないまま「同期済み」にしない。画面も古いままにして、次回の同期でやり直す
+          showNotice('クラウドのデータを端末に保存できませんでした（容量不足の可能性があります）。', true, true);
+          throw e;
+        }
+        statuses = nst; groups = ngr; items = nit;
         closeOpenSheets();
         render();
         showNotice('クラウドの最新データに更新しました。');
