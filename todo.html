@@ -1287,6 +1287,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   $id('groupFilterChips').addEventListener('click', function(e){
     const b = e.target.closest('[data-gf]'); if(!b) return;
     setGroupFilter(b.dataset.gf);
+    const nb = $id('groupFilterChips').querySelector('[data-gf="'+CSS.escape(b.dataset.gf)+'"]'); if(nb) nb.focus({ preventScroll:true }); // 作り直したあとも、押したチップにフォーカスを戻す
   });
 
   // ---- 表示（並び替え・絞り込み）----
@@ -1393,7 +1394,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     });
 
     // 「並び替え・表示」ボタンに、有効な条件の数を出す
-    const activeFilters = (sortMode!=='dateDesc' ? 1 : 0) + (statusFilter ? 1 : 0) + (groupFilter ? 1 : 0) + (!showDone ? 1 : 0);
+    const activeFilters = ((sortMode==='group' ? allGroups().length>0 : sortMode!=='dateDesc') ? 1 : 0) + (statusFilter ? 1 : 0) + (groupFilter ? 1 : 0) + (!showDone ? 1 : 0);
     const bd = $id('viewBadge');
     bd.hidden = !activeFilters; bd.textContent = activeFilters;
     $id('viewBtn').setAttribute('aria-label', activeFilters ? '並び替え・表示（'+activeFilters+'件の条件）' : '並び替え・表示');
@@ -1431,6 +1432,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       let title = EMPTY_TEXT[currentTab] || '', sub = '', addLabel = 'タスクを追加', act = (currentTab==='all' || currentTab==='open' || currentTab==='today') ? 'add' : '';
       if(groupFilter && groupFilter!=='__none' && !query && !statusFilter && (currentTab==='all' || currentTab==='open')){
         title = 'このグループにはタスクがありません。'; sub = '「'+groupById(groupFilter).name+'」にタスクを追加できます。'; act = 'add'; addLabel = 'このグループに追加';
+        if(!showDone && currentTab==='all' && live.some(i=>i.group===groupFilter && isDone(i))){ title = '表示するタスクはありません。'; sub = '「'+groupById(groupFilter).name+'」の完了したタスクは非表示にしています。'; }
       }
       else if(query || statusFilter || groupFilter){
         title = '条件に合うタスクはありません。'; act = 'clear';
@@ -1798,6 +1800,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       key: 'data-v1',
       getData: function(){ return { items, statuses, groups }; },
       // 空の端末でも「以前タスクを保存したことがある」なら、データありとして扱う（全削除がクラウドから復活しないように）
+      trustEmpty: function(){ return !loadFailed; }, // 破損で空になっただけなら、空をクラウドへ送らない
       hasData: function(){
         if(items.length > 0) return true;
         if(loadFailed) return false; // 破損で空になった端末は、クラウドの内容を取り込む側に倒す

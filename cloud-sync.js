@@ -8,6 +8,7 @@
 //     getData: () => ({ ... }),         // 同期したいデータ(JSON化できるオブジェクト)を返す
 //     applyData: (obj) => { ... },      // クラウドのデータを画面と端末内の保存先へ反映する
 //     hasData: () => true/false,        // 端末に記録があるか(空の端末でクラウドを上書きしないため)
+//     trustEmpty: () => true/false,     // (任意)今の空の状態が、読み込み失敗ではなく本当に空か。false なら空をクラウドへ送らない
 //   });
 //   // 端末内へ保存した直後に sync.notifyChanged() を呼ぶ
 // supabase-js を読み込めない場合(オフライン等)は何もせず、アプリは従来どおり端末内だけで動く。
@@ -44,6 +45,7 @@
 
     let user = null, status = "", conflict = null, msg = "", open = false;
     let busy = false, again = false, timer = null;
+    let edited = false; // この画面を開いてから、端末内への保存があったか(読み込み時の一時的な空を、全件削除と取り違えないため)
 
     // ever: この端末が、記録のある状態で同期したことがある印（全部消した操作と、空の新しい端末を見分ける）
     const saveMeta = (h, at, nonEmpty) => { meta = { hash: h, at, ever: !!(meta.ever || nonEmpty) }; lsSet(META_KEY, JSON.stringify(meta)); };
@@ -98,7 +100,7 @@
         } else if (hash(remote.value) === lh) {
           saveMeta(lh, remote.updated_at, has);
         } else if (!has) {
-          if (meta.ever && lh !== meta.hash && remote.updated_at === meta.at) {
+          if (meta.ever && edited && (!opts.trustEmpty || opts.trustEmpty()) && lh !== meta.hash && remote.updated_at === meta.at) {
             // 同期済みの端末で全件を消した場合は、クラウドから復活させず、空の状態を送る
             backup("空にする前のクラウドデータ", remote.value);
             await pushLocal(remote.updated_at);
@@ -222,6 +224,7 @@
     return {
       // 端末内へ保存した直後に呼ぶ。編集が落ち着いてからクラウドへ送る。
       notifyChanged() {
+        edited = true;
         if (!user) return;
         clearTimeout(timer);
         timer = setTimeout(() => sync(), DELAY_MS);
