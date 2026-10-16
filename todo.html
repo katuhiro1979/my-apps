@@ -174,6 +174,8 @@
   .task-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
   .task-side{display:flex;align-items:center;gap:4px;}
   .task-time{font-size:12px;color:var(--ink-soft);}
+  .gtag{display:inline-flex;align-items:center;gap:5px;min-height:20px;font-size:12px;font-weight:600;color:var(--gc,var(--ink-soft));}
+  .gtag::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--gc,var(--ink-soft));flex:none;}
   .chip{position:relative;appearance:none;display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:0 10px;border:none;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;}
   .chip::after{content:"";position:absolute;inset:-9px -3px;}
   .chip.date{background:var(--surface-2);color:var(--ink-soft);}
@@ -283,6 +285,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     <div class="addopts">
       <div id="addDp" class="dp"></div>
       <button type="button" class="chip" id="addStatusBtn" aria-haspopup="menu" aria-label="状態を選ぶ"></button>
+      <button type="button" class="chip c-gray" id="addGroupBtn" aria-haspopup="menu" aria-label="グループを選ぶ" hidden></button>
     </div>
   </form>
 
@@ -310,6 +313,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     <label class="fld">内容<textarea id="editText" rows="3" maxlength="500" required></textarea></label>
     <div class="fld" id="editDpWrap">日付・時刻<div id="editDp" class="dp"></div></div>
     <label class="fld">状態<select id="editStatus"></select></label>
+    <label class="fld" id="editGroupWrap">グループ<select id="editGroup"></select></label>
     <div class="row">
       <button type="button" class="btn danger-text" id="editDelete">ごみ箱へ</button>
       <span class="grow"></span>
@@ -331,7 +335,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   </label>
   <div class="fld">状態で絞り込む<div class="chips" id="statusFilterChips"></div></div>
   <label class="fld check"><input type="checkbox" id="showDoneChk"> 完了したタスクを「すべて」に表示する</label>
-  <div class="fld"><div><button type="button" class="btn" id="openStatusMgr">状態を管理する</button></div></div>
+  <div class="fld" id="groupFilterWrap" hidden>グループで絞り込む<div class="chips" id="groupFilterChips"></div></div>
+  <div class="fld"><div class="btn-row"><button type="button" class="btn" id="openStatusMgr">状態を管理する</button><button type="button" class="btn" id="openGroupMgr">グループを管理する</button></div></div>
   <div class="row"><button type="button" class="btn primary" data-close>閉じる</button></div>
 </dialog>
 
@@ -364,6 +369,19 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   <div class="row"><button type="button" class="btn primary" data-close>閉じる</button></div>
 </dialog>
 
+<!-- グループの管理 -->
+<dialog class="sheet" id="groupDlg" aria-labelledby="groupTitle">
+  <h3 id="groupTitle" tabindex="-1" autofocus>グループの管理</h3>
+  <div class="hint">「仕事」「家」など、タスクをまとめる名前です（最大12個）。タスクの編集画面や追加欄で選べます。グループを削除しても、タスクは消えず「グループなし」になります。</div>
+  <ul class="st-list" id="groupList"></ul>
+  <div class="status-msg error" id="groupErr" role="alert"></div>
+  <div class="row">
+    <button type="button" class="btn" id="groupAddBtn">＋ グループを追加</button>
+    <span class="grow"></span>
+    <button type="button" class="btn primary" data-close>閉じる</button>
+  </div>
+</dialog>
+
 <!-- 確認 -->
 <dialog class="sheet" id="confirmDlg" aria-labelledby="confirmMsg">
   <p id="confirmMsg" style="font-size:15px;line-height:1.6;"></p>
@@ -394,12 +412,15 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   let items = [];
   let statuses = defaultStatuses();
+  let groups = [];                    // グループ（リスト）: { id, name, color }
   let currentTab = 'all';
   let statusFilter = null;
+  let groupFilter = null;             // null=すべて、'__none'=グループなし、それ以外=グループID
   let sortMode = 'dateDesc';
   let showDone = true;
   let lastRenderDay = '';
   let addStatusId = null;
+  let addGroupId = '';
   let loadFailed = false;             // 保存データが壊れて読み込めなかった印（空の状態でクラウドを上書きしないため）
   let flashId = null, popId = null;   // 追加直後の強調・完了チェックの動き用（描画のたびに消す）
   const expandedFolds = new Set();    // 開いている「完了N件」の折りたたみ
@@ -600,6 +621,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const archivable = items.filter(i=>!i.deleted && !i.archived && isDone(i)).length;
     openMenu($id('topMenuBtn'), [
       { label:'状態の管理', run:()=>openStatusMgr() },
+      { label:'グループの管理', run:()=>openGroupMgr() },
       { label:'完了をすべてアーカイブ（'+archivable+'件）', run:()=>archiveAllDone() },
       { label:'データ（バックアップ）', run:()=>openDlg($id('dataDlg')) },
       { label:'テーマを切替（現在：'+THEME_LABEL[cur]+'）', run:()=>setTheme(next) }
@@ -629,9 +651,21 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(!out.some(s=>s.done)) out.push(def[1]);
     return out;
   }
-  function normalizeItems(list, stList){
+  function normalizeGroups(list){
+    const seen = new Set(), out = [];
+    (Array.isArray(list) ? list : []).slice(0,12).forEach(g=>{
+      if(!g || typeof g !== 'object') return;
+      const id = (typeof g.id==='string' && SAFE_ID.test(g.id) && !seen.has(g.id)) ? g.id : 'gr_'+Math.random().toString(36).slice(2,10);
+      seen.add(id);
+      const name = String(g.name==null ? '' : g.name).trim().slice(0,12) || 'グループ';
+      out.push({ id, name, color: Object.prototype.hasOwnProperty.call(COLORS, g.color) ? g.color : 'gray' });
+    });
+    return out;
+  }
+  function normalizeItems(list, stList, grList){
     const seen = new Set(), out = [];
     const ids = new Set(stList.map(s=>s.id));
+    const gset = new Set((grList || []).map(g=>g.id));
     const open = (stList.find(s=>!s.done) || stList[0]).id;
     (Array.isArray(list) ? list : []).forEach(it=>{
       if(!it || typeof it !== 'object' || Array.isArray(it)) return;
@@ -647,6 +681,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         doneAt: isDate(it.doneAt) ? it.doneAt : ''
       };
       if(rec.date && isTime(it.time)) rec.time = it.time;
+      if(typeof it.group==='string' && gset.has(it.group)) rec.group = it.group;
       if(typeof it.prev==='string' && ids.has(it.prev)) rec.prev = it.prev;
       if(it.archived) rec.archived = true;
       if(it.deleted){ rec.deleted = true; rec.deletedAt = isDate(it.deletedAt) ? it.deletedAt : ''; }
@@ -659,7 +694,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   // 保存できたら true。失敗時は上部に警告を出して false を返す（成功表示を出さないため）
   function save(){
     try{
-      localStorage.setItem(STORE_KEY, JSON.stringify({ items, statuses }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({ items, statuses, groups }));
       if(items.length) localStorage.setItem(EVER_KEY, '1');
       cloudNotify();
       return true;
@@ -676,9 +711,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       const d = raw ? JSON.parse(raw) : { items:[], statuses:defaultStatuses() };
       if(!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('形式が正しくありません');
       statuses = normalizeStatuses(d.statuses);
-      items = normalizeItems(d.items, statuses);
+      groups = normalizeGroups(d.groups); items = normalizeItems(d.items, statuses, groups);
     }catch(e){
-      statuses = defaultStatuses(); items = []; loadFailed = true;
+      statuses = defaultStatuses(); items = []; groups = []; loadFailed = true;
       // 壊れたデータを別キーへ退避してから空で開始する（上書きによる消失を防ぐ）
       if(raw){
         try{
@@ -755,6 +790,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     b.className = 'chip c-'+s.color;
     b.textContent = s.name+' ▾';
     b.setAttribute('aria-label', '状態：'+s.name+'（タップで変更）');
+    renderAddGroup();
   }
   $id('addStatusBtn').addEventListener('click', function(){
     openMenu($id('addStatusBtn'), statuses.map(s=>({
@@ -823,6 +859,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const time = date ? (q.time || (q.date ? '' : dp.time)) : '';
     const st = statusById(addStatusId) || statuses[0];
     const it = { id:newId(), text:q.text, date, time, status:st.id, createdAt:new Date().toISOString(), doneAt: st.done ? todayISO() : '' };
+    if(groupById(addGroupId)) it.group = addGroupId;
     items.push(it);
     flashId = it.id;
     $id('addText').value = '';
@@ -929,6 +966,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const sel = $id('editStatus');
     sel.innerHTML = statuses.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+(s.done ? '（完了扱い）' : '')+'</option>').join('');
     sel.value = statusOf(it).id;
+    $id('editGroupWrap').hidden = groups.length===0;
+    $id('editGroup').innerHTML = '<option value="">グループなし</option>'+groups.map(g=>'<option value="'+escapeHtml(g.id)+'">'+escapeHtml(g.name)+'</option>').join('');
+    $id('editGroup').value = groupById(it.group) ? it.group : '';
     openDlg($id('editDlg'));
     if(finePointer()) $id('editText').focus();
   }
@@ -940,6 +980,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(!text){ $id('editText').focus(); return; }
     const dp = editDp.get();
     it.text = text; it.date = dp.date; it.time = dp.time;
+    const gv = $id('editGroup').value;
+    if(groupById(gv)) it.group = gv; else delete it.group;
     const st = statusById($id('editStatus').value);
     if(st && st.id !== it.status){
       if(st.done && !isDone(it)){ it.prev = it.status; it.doneAt = todayISO(); }
@@ -1034,9 +1076,97 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     openStatusMgr();
   });
 
+  // ---- グループ（リスト）----
+  const groupById = id=>groups.find(g=>g.id===id);
+  const groupTag = it=>{ const g = groupById(it.group); return g ? '<span class="gtag" style="--gc:var(--c-'+g.color+'-fg)">'+escapeHtml(g.name)+'</span>' : ''; };
+  function groupErr(m){ $id('groupErr').textContent = m || ''; }
+  function openGroupMgr(){ groupErr(''); renderGroupMgr(); openDlg($id('groupDlg')); }
+  function renderGroupMgr(){
+    $id('groupList').innerHTML = groups.length ? groups.map((g,i)=>
+      '<li class="st-row" data-id="'+escapeHtml(g.id)+'">'+
+        '<div class="st-top"><span class="gtag" style="--gc:var(--c-'+g.color+'-fg)" aria-hidden="true"></span>'+
+          '<input type="text" class="gr-name" value="'+escapeHtml(g.name)+'" maxlength="12" aria-label="グループの名前"></div>'+
+        '<div class="st-bot">'+
+          '<select class="gr-color" aria-label="色">'+Object.keys(COLORS).map(c=>'<option value="'+c+'"'+(c===g.color?' selected':'')+'>'+COLORS[c]+'</option>').join('')+'</select>'+
+          '<div class="st-ops">'+
+            '<button type="button" class="icon-btn" data-op="up" aria-label="上へ"'+(i===0?' disabled':'')+'>↑</button>'+
+            '<button type="button" class="icon-btn" data-op="down" aria-label="下へ"'+(i===groups.length-1?' disabled':'')+'>↓</button>'+
+            '<button type="button" class="icon-btn" data-op="del" aria-label="削除">×</button>'+
+          '</div>'+
+        '</div></li>'
+    ).join('') : '<li class="hint">グループはまだありません。</li>';
+  }
+  $id('groupList').addEventListener('change', function(e){
+    const row = e.target.closest('.st-row'); if(!row) return;
+    const g = groupById(row.dataset.id); if(!g) return;
+    groupErr('');
+    if(e.target.classList.contains('gr-name')){
+      const v = e.target.value.trim();
+      if(!v){ e.target.value = g.name; groupErr('名前を入力してください。'); return; }
+      g.name = v.slice(0,12);
+    } else if(e.target.classList.contains('gr-color')){
+      if(Object.prototype.hasOwnProperty.call(COLORS, e.target.value)) g.color = e.target.value;
+      row.querySelector('.gtag').style.setProperty('--gc', 'var(--c-'+g.color+'-fg)');
+    }
+    save(); render(); // 入力中の一覧は作り直さない（次の入力欄へ移れるように）
+  });
+  $id('groupList').addEventListener('click', async function(e){
+    const b = e.target.closest('[data-op]'); if(!b) return;
+    const row = b.closest('.st-row'); const i = groups.findIndex(g=>g.id===row.dataset.id); if(i<0) return;
+    groupErr('');
+    if(b.dataset.op==='up' && i>0){ [groups[i-1], groups[i]] = [groups[i], groups[i-1]]; }
+    else if(b.dataset.op==='down' && i<groups.length-1){ [groups[i+1], groups[i]] = [groups[i], groups[i+1]]; }
+    else if(b.dataset.op==='del'){
+      const g = groups[i];
+      const n = items.filter(it=>it.group===g.id).length;
+      if(!(await askConfirm('グループ「'+g.name+'」を削除します。'+(n ? 'このグループの '+n+' 件は「グループなし」になります。' : ''), '削除する'))) return;
+      const k = groups.findIndex(x=>x.id===g.id); if(k<0) return; // 確認中に変わっていないか再確認
+      groups.splice(k,1);
+      items.forEach(it=>{ if(it.group===g.id) delete it.group; });
+    } else return;
+    save(); renderGroupMgr(); render();
+  });
+  $id('groupAddBtn').addEventListener('click', function(){
+    if(groups.length>=12){ groupErr('グループは12個までです。'); return; }
+    groupErr('');
+    const used = new Set(groups.map(g=>g.color));
+    const color = Object.keys(COLORS).find(c=>!used.has(c)) || 'gray';
+    groups.push({ id:'gr_'+Math.random().toString(36).slice(2,10), name:'新しいグループ', color });
+    save(); renderGroupMgr(); render();
+    const inputs = $id('groupList').querySelectorAll('.gr-name');
+    const last = inputs[inputs.length-1]; if(last){ last.focus(); last.select(); }
+  });
+  $id('openGroupMgr').addEventListener('click', function(){ closeDlg($id('viewDlg')); openGroupMgr(); });
+  function renderAddGroup(){
+    if(!groupById(addGroupId)) addGroupId = '';
+    const g = groupById(addGroupId), b = $id('addGroupBtn');
+    b.hidden = groups.length===0;
+    b.className = 'chip c-'+(g ? g.color : 'gray');
+    b.textContent = (g ? g.name : 'グループなし')+' ▾';
+    b.setAttribute('aria-label', 'グループ：'+(g ? g.name : 'なし')+'（タップで変更）');
+  }
+  $id('addGroupBtn').addEventListener('click', function(){
+    openMenu($id('addGroupBtn'), [{ id:'', name:'グループなし' }].concat(groups).map(g=>({
+      label:(g.id===addGroupId ? '✓ ' : '　')+g.name, run:()=>{ addGroupId = g.id; renderAddGroup(); }
+    })));
+  });
+  function renderGroupFilter(){
+    $id('groupFilterWrap').hidden = groups.length===0;
+    const chips = [{ id:'', name:'すべて' }].concat(groups, [{ id:'__none', name:'グループなし' }]);
+    $id('groupFilterChips').innerHTML = chips.map(g=>
+      '<button type="button" class="chip-btn" data-gf="'+escapeHtml(g.id)+'" aria-pressed="'+((groupFilter||'')===g.id)+'">'+escapeHtml(g.name)+'</button>'
+    ).join('');
+  }
+  $id('groupFilterChips').addEventListener('click', function(e){
+    const b = e.target.closest('[data-gf]'); if(!b) return;
+    groupFilter = b.dataset.gf || null;
+    renderGroupFilter(); render();
+  });
+
   // ---- 表示（並び替え・絞り込み）----
   function renderViewDlg(){
     $id('sortSelect').value = sortMode;
+    renderGroupFilter();
     $id('showDoneChk').checked = showDone;
     const chips = [{ id:'', name:'すべて' }].concat(statuses);
     $id('statusFilterChips').innerHTML = chips.map(s=>
@@ -1071,6 +1201,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const today = lastRenderDay;
     const fId = flashId, pId = popId; flashId = popId = null;
     if(statusFilter && !statusById(statusFilter)) statusFilter = null;
+    if(groupFilter && groupFilter!=='__none' && !groupById(groupFilter)) groupFilter = null;
     renderAddStatus();
 
     const live = items.filter(i=>!i.deleted && !i.archived);
@@ -1112,12 +1243,16 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         if(currentTab==='all' && !showDone && isDone(it)) return false;
       }
       if(statusFilter && it.status!==statusFilter) return false;
+      if(groupFilter){
+        if(groupFilter==='__none'){ if(groupById(it.group)) return false; }
+        else if(it.group!==groupFilter) return false;
+      }
       if(query && !it.text.toLowerCase().includes(query)) return false;
       return true;
     });
 
     // 「並び替え・表示」ボタンに、有効な条件の数を出す
-    const activeFilters = (sortMode!=='dateDesc' ? 1 : 0) + (statusFilter ? 1 : 0) + (!showDone ? 1 : 0);
+    const activeFilters = (sortMode!=='dateDesc' ? 1 : 0) + (statusFilter ? 1 : 0) + (groupFilter ? 1 : 0) + (!showDone ? 1 : 0);
     const bd = $id('viewBadge');
     bd.hidden = !activeFilters; bd.textContent = activeFilters;
     $id('viewBtn').setAttribute('aria-label', activeFilters ? '並び替え・表示（'+activeFilters+'件の条件）' : '並び替え・表示');
@@ -1144,7 +1279,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(filtered.length===0){
       empty.style.display = 'block';
       let title = EMPTY_TEXT[currentTab] || '', sub = '', act = (currentTab==='all' || currentTab==='open' || currentTab==='today') ? 'add' : '';
-      if(query || statusFilter){ title = '条件に合うタスクはありません。'; act = 'clear'; }
+      if(query || statusFilter || groupFilter){ title = '条件に合うタスクはありません。'; act = 'clear'; }
       else if(currentTab==='all' && live.length===0){ title = 'まだタスクがありません。'; sub = '「明日 16時 会議」のように書くと、日付と時刻も自動で入ります。'; }
       else if(currentTab==='all' && !showDone){ title = '表示するタスクはありません。'; sub = '完了したタスクは非表示にしています。'; act = ''; }
       else if(currentTab==='today') sub = '予定があれば追加しましょう。';
@@ -1208,7 +1343,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       const dateTxt = it.date ? fmtMD(it.date)+(it.time ? ' '+it.time : '') : '日付なし';
       const label = currentTab==='trash' ? '元に戻す' : 'アーカイブから戻す';
       return '<li class="task plain'+(done?' done':'')+'" data-id="'+id+'"><div class="task-in"><div class="task-main">'+text+
-        '<div class="task-meta"><span class="chip static c-gray">'+escapeHtml(dateTxt)+'</span><span class="chip static c-'+st.color+'">'+escapeHtml(st.name)+'</span></div></div>'+
+        '<div class="task-meta"><span class="chip static c-gray">'+escapeHtml(dateTxt)+'</span><span class="chip static c-'+st.color+'">'+escapeHtml(st.name)+'</span>'+groupTag(it)+'</div></div>'+
         '<div class="task-act"><button type="button" class="btn" data-act="restore">'+label+'</button>'+menuBtn+'</div></div></li>';
     }
     let meta = '';
@@ -1220,6 +1355,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         meta = '<div class="task-meta"><button type="button" class="chip date'+cls+'" data-act="edit" aria-label="日付を変更">'+escapeHtml((rel || fmtMD(it.date))+(it.time ? ' '+it.time : ''))+'</button></div>';
       } else meta = '<div class="task-meta"><button type="button" class="chip date" data-act="edit" aria-label="日付を設定">日付なし</button></div>';
     }
+    const gt = groupTag(it);
+    if(gt) meta = meta ? meta.replace('</div>', gt+'</div>') : '<div class="task-meta">'+gt+'</div>';
     const time = (!c.showDate && it.time) ? '<span class="task-time">'+escapeHtml(it.time)+'</span>' : '';
     const chip = '<button type="button" class="chip c-'+st.color+'" data-act="status" aria-haspopup="menu" aria-label="状態：'+escapeHtml(st.name)+'（'+(statuses.length>2 ? 'タップで一覧から選択' : 'タップで切り替え、長押しで一覧')+'）">'+escapeHtml(st.name)+'</button>';
     return '<li class="task'+(done?' done':'')+(over?' over':'')+(c.fId===it.id?' flash':'')+'" data-id="'+id+'">'+
@@ -1343,7 +1480,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   $id('emptyState').addEventListener('click', function(e){
     const b = e.target.closest('[data-em]'); if(!b) return;
     if(b.dataset.em==='add'){ expandAdd(true); $id('addText').focus(); }
-    else { $id('searchBox').value = ''; statusFilter = null; render(); }
+    else { $id('searchBox').value = ''; statusFilter = null; groupFilter = null; render(); }
   });
 
   // 「今日へ移動」: 今日の見出しが画面の外にあるときだけ出す
@@ -1401,7 +1538,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   // ---- バックアップ（JSON）----
   $id('dataExportBtn').addEventListener('click', function(){
-    const payload = { app:'todo-app', version:1, exportedAt: todayISO(), items, statuses };
+    const payload = { app:'todo-app', version:1, exportedAt: todayISO(), items, statuses, groups };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = 'ToDo_'+todayISO()+'.json';
@@ -1431,7 +1568,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     try{ const cur = localStorage.getItem(STORE_KEY); if(cur) localStorage.setItem(STORE_KEY+'-prev', cur); }catch(err){ prevSaved = false; }
     const newSt = normalizeStatuses(parsed.statuses);
     statuses = newSt;
-    items = normalizeItems(parsed.items, newSt);
+    groups = normalizeGroups(parsed.groups);
+    items = normalizeItems(parsed.items, newSt, groups);
     save(); render();
     st.classList.remove('error');
     st.textContent = items.length+'件のタスクを読み込みました。'+(prevSaved ? '' : '（取り込み前のデータは退避できませんでした）');
@@ -1444,7 +1582,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       const d = JSON.parse(e.newValue || '{}');
       if(!d || !Array.isArray(d.items)) return;
       statuses = normalizeStatuses(d.statuses);
-      items = normalizeItems(d.items, statuses);
+      groups = normalizeGroups(d.groups); items = normalizeItems(d.items, statuses, groups);
       render();
       showNotice('別のタブでデータが更新されたため、最新の内容に更新しました。');
     }catch(err){ /* 壊れた値は無視 */ }
@@ -1472,7 +1610,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     cloud = CloudSync.init({
       appName: 'ToDo',
       key: 'data-v1',
-      getData: function(){ return { items, statuses }; },
+      getData: function(){ return { items, statuses, groups }; },
       // 空の端末でも「以前タスクを保存したことがある」なら、データありとして扱う（全削除がクラウドから復活しないように）
       hasData: function(){
         if(items.length > 0) return true;
@@ -1482,9 +1620,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       applyData: function(d){
         if(!d || !Array.isArray(d.items)) throw new Error('ToDoのデータ形式が違います');
         statuses = normalizeStatuses(d.statuses);
-        items = normalizeItems(d.items, statuses);
+        groups = normalizeGroups(d.groups); items = normalizeItems(d.items, statuses, groups);
         try{
-          localStorage.setItem(STORE_KEY, JSON.stringify({ items, statuses }));
+          localStorage.setItem(STORE_KEY, JSON.stringify({ items, statuses, groups }));
           if(items.length) localStorage.setItem(EVER_KEY, '1');
         }catch(e){ showNotice('クラウドのデータを端末に保存できませんでした（容量不足の可能性があります）。', true, true); }
         render();
