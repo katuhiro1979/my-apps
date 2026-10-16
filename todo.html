@@ -127,7 +127,7 @@
   .chip-btn[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
 
   /* ===== タブ・絞り込み ===== */
-  .tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .tabs{position:sticky;top:var(--top-h,56px);z-index:6;background:var(--paper);display:flex;gap:6px;overflow-x:auto;padding:6px 0 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
   .tabs::-webkit-scrollbar{display:none;}
   .tabs button{flex:none;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;cursor:pointer;white-space:nowrap;}
   .tabs button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
@@ -148,7 +148,7 @@
   .addgrp{flex:none;max-width:9em;min-width:44px;min-height:44px;padding:0 8px;border:none;background:none;display:inline-flex;align-items:center;gap:6px;cursor:pointer;border-radius:var(--r-sm);font-size:12.5px;font-weight:600;color:var(--gc,var(--ink-soft));}
   .agd{width:12px;height:12px;border-radius:50%;background:var(--gc,transparent);border:2px solid var(--gc,var(--ink-soft));box-sizing:border-box;flex:none;}
   .agn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  #tabs{scroll-margin-top:calc(var(--top-h,56px) + 8px);}
+  #tabs{scroll-margin-top:var(--top-h,56px);}
 
   /* ===== 一覧 ===== */
   .grp{margin-top:14px;scroll-margin-top:var(--top-h,56px);}
@@ -161,7 +161,13 @@
   .wk-line:after{height:1px;opacity:.8;}
   .wk-line.is-now{color:var(--accent);}
   .grp:first-child{margin-top:2px;}
-  .grp-h{position:sticky;top:var(--top-h,56px);z-index:5;display:flex;align-items:baseline;gap:8px;padding:6px 4px;margin:0 0 4px;
+  .grp{scroll-margin-top:calc(var(--top-h,56px) + var(--tabs-h,0px) + 4px);}
+  /* 「今日へ移動」で着いたとき、今日の見出しと一覧を一瞬ハイライト */
+  .grp.jumped .grp-h{animation:jumpHl 1.8s ease-out;}
+  .grp.jumped ul.task-list{animation:jumpRing 1.8s ease-out;}
+  @keyframes jumpHl{0%,35%{background:color-mix(in srgb,var(--accent) 28%,var(--paper));}100%{background:color-mix(in srgb,var(--paper) 94%,transparent);}}
+  @keyframes jumpRing{0%,35%{box-shadow:0 0 0 3px var(--accent);}100%{box-shadow:var(--shadow);}}
+  .grp-h{position:sticky;top:calc(var(--top-h,56px) + var(--tabs-h,0px));z-index:5;display:flex;align-items:baseline;gap:8px;padding:6px 4px;margin:0 0 4px;
     background:var(--paper);background:color-mix(in srgb,var(--paper) 94%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
   .grp-d{font-size:16px;font-weight:700;}
   .grp-sub{font-size:12px;color:var(--ink-soft);}
@@ -186,7 +192,7 @@
   .gr-n{font-size:12px;color:var(--ink-soft);white-space:nowrap;}
   ul.task-list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
   ul.task-list > li + li{border-top:1px solid var(--line);}
-  li.task{position:relative;scroll-margin-top:calc(var(--top-h,56px) + 56px);scroll-margin-bottom:96px;}
+  li.task{position:relative;scroll-margin-top:calc(var(--top-h,56px) + var(--tabs-h,0px) + 56px);scroll-margin-bottom:96px;}
   .task-in{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:0 4px;align-items:center;min-height:52px;padding:2px;background:var(--surface);touch-action:pan-y;}
   .task-in.back{transition:transform .2s ease;}
   li.task.over .task-in{box-shadow:inset 4px 0 0 var(--danger);}
@@ -1778,7 +1784,13 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   }
   $id('jumpToday').addEventListener('click', function(){
     const sec = todayTarget();
-    if(sec) sec.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block:'start' });
+    if(!sec) return;
+    sec.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block:'start' });
+    // 着いた場所が分かるようにハイライト
+    document.querySelectorAll('.grp.jumped').forEach(x=>x.classList.remove('jumped'));
+    void sec.offsetWidth;
+    sec.classList.add('jumped');
+    setTimeout(()=>sec.classList.remove('jumped'), 2000);
   });
 
   function setTab(tab){ currentTab = tab; render(); }
@@ -1792,7 +1804,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   }));
   // 上部バーの高さ（固定見出しの位置合わせ用）とスクロール時の縮小
   const topBar = $id('topBar');
-  function updateTopH(){ document.documentElement.style.setProperty('--top-h', topBar.offsetHeight+'px'); }
+  function updateTopH(){ document.documentElement.style.setProperty('--top-h', topBar.offsetHeight+'px'); document.documentElement.style.setProperty('--tabs-h', $id('tabs').offsetHeight+'px'); }
   function onScroll(){ topBar.classList.toggle('scrolled', window.scrollY>8); updateJump(); }
   window.addEventListener('scroll', onScroll, { passive:true });
   window.addEventListener('resize', function(){ updateTopH(); updateJump(); });
