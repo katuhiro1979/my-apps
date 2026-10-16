@@ -1351,7 +1351,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         } else {
           const rel = relLabel(g.key);
           const over = g.key<today && g.items.some(i=>!isDone(i));
-          if(g.key===today){ cls += ' is-today'; dayAttr = ' data-day="today"'; }
+          dayAttr = ' data-date="'+g.key+'"';
+          if(g.key===today){ cls += ' is-today'; dayAttr += ' data-day="today"'; }
           else if(over) cls += ' is-over';
           const wd = WEEK[new Date(g.key+'T00:00:00').getDay()];
           head = '<h2 class="grp-h"><span class="grp-d">'+(rel || (g.key.slice(0,4)!==today.slice(0,4) ? g.key.slice(0,4)+'年' : '')+fmtMD(g.key))+'</span><span class="grp-sub">'+(rel ? fmtFull(g.key) : '（'+wd+'）')+'</span>'+
@@ -1534,15 +1535,23 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   // 「今日へ移動」: 今日の見出しが画面の外にあるときだけ出す
   const reduceMotion = ()=>!!(window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches);
+  // 今日の見出し。今日のタスクがないときは、今日にいちばん近い日付の見出しへ飛ぶ
+  function todayTarget(){
+    const area = $id('taskArea');
+    const t = area.querySelector('[data-day="today"]'); if(t) return t;
+    let best = null, bd = Infinity;
+    area.querySelectorAll('[data-date]').forEach(sec=>{ const d = Math.abs(daysUntil(sec.dataset.date)); if(d<bd){ bd = d; best = sec; } });
+    return best;
+  }
   function updateJump(){
     const b = $id('jumpToday');
-    const sec = document.querySelector('#taskArea [data-day="today"]');
+    const sec = todayTarget();
     if(!sec){ b.hidden = true; return; }
     const r = sec.getBoundingClientRect();
     b.hidden = !(r.bottom < 80 || r.top > window.innerHeight);
   }
   $id('jumpToday').addEventListener('click', function(){
-    const sec = document.querySelector('#taskArea [data-day="today"]');
+    const sec = todayTarget();
     if(sec) sec.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block:'start' });
   });
 
