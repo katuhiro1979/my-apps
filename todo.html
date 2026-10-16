@@ -160,6 +160,18 @@
   .grp.is-over .grp-d{color:var(--danger);}
   .grp.is-over .grp-rel{background:var(--danger-bg);color:var(--danger);}
   .grp.is-memo .grp-d{color:var(--ink-soft);}
+  .grp.is-grp .grp-d{color:var(--gc);}
+  .grp-h .gd{align-self:center;width:10px;height:10px;}
+  /* グループを切り替えたとき、一覧を軽くフェードさせる */
+  .fade{animation:fadeIn .18s ease-out;}
+  @keyframes fadeIn{from{opacity:.4;}to{opacity:1;}}
+  @media (prefers-reduced-motion:reduce){.fade{animation:none;}}
+  /* グループ管理の色見本 */
+  .swatches{display:flex;flex-wrap:wrap;gap:2px;}
+  .swc{width:36px;height:36px;border:none;background:none;padding:0;cursor:pointer;display:grid;place-items:center;border-radius:50%;}
+  .swc::before{content:"";width:24px;height:24px;border-radius:50%;background:var(--gc);box-sizing:border-box;border:2px solid transparent;}
+  .swc[aria-pressed="true"]::before{border-color:var(--surface);box-shadow:0 0 0 2px var(--ink);}
+  .gr-n{font-size:12px;color:var(--ink-soft);white-space:nowrap;}
   ul.task-list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
   ul.task-list > li + li{border-top:1px solid var(--line);}
   li.task{position:relative;scroll-margin-top:calc(var(--top-h,56px) + 56px);scroll-margin-bottom:96px;}
@@ -349,6 +361,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       <option value="dateDesc">日付が新しい順</option>
       <option value="dateAsc">期限が近い順（日付の古い順）</option>
       <option value="created">登録順</option>
+      <option value="group">グループ別</option>
     </select>
   </label>
   <div class="fld">状態で絞り込む<div class="chips" id="statusFilterChips"></div></div>
@@ -444,7 +457,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   const expandedFolds = new Set();    // 開いている「完了N件」の折りたたみ
   let swipedAt = 0, lpFired = 0, suppressChip = false;      // スワイプ直後・長押し直後のクリックを無視するための時刻
   try{
-    const s = localStorage.getItem(SORT_KEY); if(['dateDesc','dateAsc','created'].includes(s)) sortMode = s;
+    const s = localStorage.getItem(SORT_KEY); if(['dateDesc','dateAsc','created','group'].includes(s)) sortMode = s;
     if(localStorage.getItem(SHOWDONE_KEY) === '0') showDone = false;
   }catch(e){}
 
@@ -1138,13 +1151,15 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   const groupTag = it=>{ const g = groupById(it.group); return g ? '<span class="gtag" style="--gc:var(--c-'+g.color+'-fg)">'+escapeHtml(g.name)+'</span>' : ''; };
   function groupErr(m){ $id('groupErr').textContent = m || ''; }
   function openGroupMgr(){ groupErr(''); renderGroupMgr(); openDlg($id('groupDlg')); }
+  const allGroups = ()=>groups; // render() の中で groups が別の意味になるため、外から取る
   function renderGroupMgr(){
     $id('groupList').innerHTML = groups.length ? groups.map((g,i)=>
       '<li class="st-row" data-id="'+escapeHtml(g.id)+'">'+
         '<div class="st-top"><span class="gtag" style="--gc:var(--c-'+g.color+'-fg)" aria-hidden="true"></span>'+
           '<input type="text" class="gr-name" value="'+escapeHtml(g.name)+'" maxlength="12" aria-label="グループの名前"></div>'+
         '<div class="st-bot">'+
-          '<select class="gr-color" aria-label="色">'+Object.keys(COLORS).map(c=>'<option value="'+c+'"'+(c===g.color?' selected':'')+'>'+COLORS[c]+'</option>').join('')+'</select>'+
+          '<div class="swatches" role="group" aria-label="色">'+Object.keys(COLORS).map(c=>'<button type="button" class="swc" data-color="'+c+'" style="--gc:var(--c-'+c+'-fg)" aria-pressed="'+(c===g.color)+'" aria-label="'+COLORS[c]+'"></button>').join('')+'</div>'+
+          '<span class="gr-n">未完了 '+items.filter(it=>it.group===g.id && !it.deleted && !it.archived && !isDone(it)).length+'件</span>'+
           '<div class="st-ops">'+
             '<button type="button" class="icon-btn" data-op="up" aria-label="上へ"'+(i===0?' disabled':'')+'>↑</button>'+
             '<button type="button" class="icon-btn" data-op="down" aria-label="下へ"'+(i===groups.length-1?' disabled':'')+'>↓</button>'+
@@ -1161,13 +1176,20 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       const v = e.target.value.trim();
       if(!v){ e.target.value = g.name; groupErr('名前を入力してください。'); return; }
       g.name = v.slice(0,12);
-    } else if(e.target.classList.contains('gr-color')){
-      if(Object.prototype.hasOwnProperty.call(COLORS, e.target.value)) g.color = e.target.value;
-      row.querySelector('.gtag').style.setProperty('--gc', 'var(--c-'+g.color+'-fg)');
     }
     save(); render(); // 入力中の一覧は作り直さない（次の入力欄へ移れるように）
   });
   $id('groupList').addEventListener('click', async function(e){
+    const sc = e.target.closest('[data-color]');
+    if(sc){
+      const r = sc.closest('.st-row'), g = r && groupById(r.dataset.id);
+      if(!g || !Object.prototype.hasOwnProperty.call(COLORS, sc.dataset.color)) return;
+      g.color = sc.dataset.color;
+      r.querySelector('.gtag').style.setProperty('--gc', 'var(--c-'+g.color+'-fg)');
+      r.querySelectorAll('.swc').forEach(x=>x.setAttribute('aria-pressed', String(x===sc)));
+      save(); render();
+      return;
+    }
     const b = e.target.closest('[data-op]'); if(!b) return;
     const row = b.closest('.st-row'); const i = groups.findIndex(g=>g.id===row.dataset.id); if(i<0) return;
     groupErr('');
@@ -1220,6 +1242,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     groupFilter = v || null;
     if(groupFilter && groupFilter!=='__none') addGroupId = groupFilter;
     renderGroupFilter(); render();
+    const ta = $id('taskArea'); ta.classList.remove('fade'); void ta.offsetWidth; ta.classList.add('fade');
   }
   // 一覧の上のグループ帯（グループがないときは出さない）
   function renderGroupBar(live){
@@ -1268,7 +1291,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   // ---- 表示（並び替え・絞り込み）----
   function renderViewDlg(){
-    $id('sortSelect').value = sortMode;
+    const og = $id('sortSelect').querySelector('[value="group"]'); og.hidden = og.disabled = groups.length===0;
+    $id('sortSelect').value = (sortMode==='group' && !groups.length) ? 'dateDesc' : sortMode;
     renderGroupFilter();
     $id('showDoneChk').checked = showDone;
     const chips = [{ id:'', name:'すべて' }].concat(statuses);
@@ -1378,14 +1402,23 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     // グループ分け（同じ日の中は、未完了→完了、時刻の順）
     const byTime = (a,b)=>(Number(isDone(a))-Number(isDone(b))) || (a.time||'').localeCompare(b.time||'') || (a.createdAt||'').localeCompare(b.createdAt||'');
     let groups;
-    if(sortMode==='created'){
+    const mode = (sortMode==='group' && !allGroups().length) ? 'dateDesc' : sortMode;
+    if(mode==='group'){
+      // グループ別: グループの並び順で区切り、中は完了を後ろにして日付の近い順
+      const map = new Map();
+      filtered.forEach(it=>{ const k = groupById(it.group) ? it.group : ''; if(!map.has(k)) map.set(k, []); map.get(k).push(it); });
+      const dd = (a,b)=>a.date ? (b.date ? a.date.localeCompare(b.date) : -1) : (b.date ? 1 : 0);
+      const order = allGroups().map(x=>x.id).filter(id=>map.has(id));
+      if(map.has('')) order.push('');
+      groups = order.map(k=>({ key:null, gid:k, items:map.get(k).sort((a,b)=>(Number(isDone(a))-Number(isDone(b))) || dd(a,b) || (a.time||'').localeCompare(b.time||'') || (a.createdAt||'').localeCompare(b.createdAt||'')) }));
+    } else if(mode==='created'){
       filtered.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
       groups = [{ key:null, items:filtered }];
     } else {
       const map = new Map();
       filtered.forEach(it=>{ const k = it.date || ''; if(!map.has(k)) map.set(k, []); map.get(k).push(it); });
       const keys = Array.from(map.keys()).filter(k=>k).sort();
-      if(sortMode==='dateDesc') keys.reverse();
+      if(mode==='dateDesc') keys.reverse();
       if(map.has('')) keys.push('');
       groups = keys.map(k=>({ key:k, items:map.get(k).sort(byTime) }));
     }
@@ -1395,8 +1428,11 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     area.innerHTML = '';
     if(filtered.length===0){
       empty.style.display = 'block';
-      let title = EMPTY_TEXT[currentTab] || '', sub = '', act = (currentTab==='all' || currentTab==='open' || currentTab==='today') ? 'add' : '';
-      if(query || statusFilter || groupFilter){
+      let title = EMPTY_TEXT[currentTab] || '', sub = '', addLabel = 'タスクを追加', act = (currentTab==='all' || currentTab==='open' || currentTab==='today') ? 'add' : '';
+      if(groupFilter && groupFilter!=='__none' && !query && !statusFilter && (currentTab==='all' || currentTab==='open')){
+        title = 'このグループにはタスクがありません。'; sub = '「'+groupById(groupFilter).name+'」にタスクを追加できます。'; act = 'add'; addLabel = 'このグループに追加';
+      }
+      else if(query || statusFilter || groupFilter){
         title = '条件に合うタスクはありません。'; act = 'clear';
         const cs = [];
         if(query) cs.push('検索「'+$id('searchBox').value.trim()+'」');
@@ -1409,7 +1445,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       else if(currentTab==='today') sub = '予定があれば追加しましょう。';
       empty.innerHTML = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg>'+
         '<div class="em-t">'+escapeHtml(title)+'</div>'+(sub ? '<div>'+escapeHtml(sub)+'</div>' : '')+
-        (act ? '<button type="button" class="btn primary" data-em="'+act+'">'+(act==='add' ? 'タスクを追加' : '条件をクリア')+'</button>' : '');
+        (act ? '<button type="button" class="btn primary" data-em="'+act+'">'+(act==='add' ? addLabel : '条件をクリア')+'</button>' : '');
       updateJump();
       return;
     }
@@ -1420,6 +1456,12 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     area.innerHTML = groups.map(g=>{
       let head = '';
       let cls = 'grp', dayAttr = '';
+      if(g.gid!==undefined){
+        const gg = groupById(g.gid);
+        cls += ' is-grp';
+        dayAttr = ' style="--gc:'+(gg ? 'var(--c-'+gg.color+'-fg)' : 'var(--ink-soft)')+'"';
+        head = '<h2 class="grp-h">'+(gg ? '<span class="gd"></span>' : '')+'<span class="grp-d">'+escapeHtml(gg ? gg.name : 'グループなし')+'</span><span class="grp-n">'+g.items.length+'件</span></h2>';
+      }
       if(g.key!==null){
         if(g.key===''){
           cls += ' is-memo';
@@ -1435,13 +1477,13 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
             (over ? '<span class="grp-rel">期限切れ</span>' : '')+'<span class="grp-n">'+g.items.length+'件</span></h2>';
         }
       }
-      const ctx = { today, showDate: g.key===null, fId, pId };
+      const ctx = { today, showDate: g.key===null, fId, pId, hideGroup: g.gid!==undefined || (!!groupFilter && groupFilter!=='__none') };
       const row = it=>taskHtml(it, plain, ctx);
       const doneIt = noFold ? [] : g.items.filter(isDone);
       let rows;
       if(doneIt.length>=3){
         // 完了が3件以上続くときは折りたたむ
-        const fk = g.key===null ? '_all' : g.key;
+        const fk = g.gid!==undefined ? 'g:'+g.gid : (g.key===null ? '_all' : g.key);
         const opened = expandedFolds.has(fk) || doneIt.some(i=>i.id===fId);
         rows = g.items.filter(i=>!isDone(i)).map(row).join('')+
           '<li class="fold"><button type="button" data-fold="'+escapeHtml(fk)+'" aria-expanded="'+opened+'">'+(opened ? '完了を隠す' : '完了 '+doneIt.length+'件を表示')+'</button></li>'+
@@ -1481,7 +1523,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         meta = '<div class="task-meta"><button type="button" class="chip date'+cls+'" data-act="edit" aria-label="日付を変更">'+escapeHtml((over ? '期限切れ・' : '')+(rel || fmtMD(it.date))+(it.time ? ' '+it.time : ''))+'</button></div>';
       } else meta = '<div class="task-meta"><button type="button" class="chip date" data-act="edit" aria-label="日付を設定">日付なし</button></div>';
     }
-    const gt = groupTag(it);
+    const gt = c.hideGroup ? '' : groupTag(it);
     if(gt) meta = meta ? meta.replace('</div>', gt+'</div>') : '<div class="task-meta">'+gt+'</div>';
     const time = (!c.showDate && it.time) ? '<span class="task-time">'+escapeHtml(it.time)+'</span>' : '';
     const chip = '<button type="button" class="chip c-'+st.color+'" data-act="status" aria-haspopup="menu" aria-label="状態：'+escapeHtml(st.name)+'、変更">'+escapeHtml(st.name)+'</button>';
