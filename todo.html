@@ -127,7 +127,10 @@
   .chip-btn[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
 
   /* ===== タブ・絞り込み ===== */
-  .tabs{position:sticky;top:var(--top-h,56px);z-index:6;background:var(--paper);display:flex;gap:6px;overflow-x:auto;padding:6px 0 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .fbar{position:sticky;top:var(--top-h,56px);z-index:6;background:var(--paper);padding-top:6px;}
+  .fbar .tabs{padding:0 0 8px;}
+  .fbar .gbar{padding-bottom:8px;}
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
   .tabs::-webkit-scrollbar{display:none;}
   .tabs button{flex:none;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;cursor:pointer;white-space:nowrap;}
   .tabs button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
@@ -334,6 +337,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     </div>
   </form>
 
+  <div class="fbar" id="fbar">
   <div class="tabs" id="tabs">
     <button type="button" data-tab="all">すべて</button>
     <button type="button" data-tab="open">未完了</button>
@@ -345,6 +349,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   </div>
 
   <div class="gbar" id="groupBar" role="group" aria-label="グループで絞り込む" hidden></div>
+  </div>
 
   <div id="taskArea"></div>
   <div class="empty" id="emptyState" style="display:none;"></div>
@@ -1804,10 +1809,12 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   }));
   // 上部バーの高さ（固定見出しの位置合わせ用）とスクロール時の縮小
   const topBar = $id('topBar');
-  function updateTopH(){ document.documentElement.style.setProperty('--top-h', topBar.offsetHeight+'px'); document.documentElement.style.setProperty('--tabs-h', $id('tabs').offsetHeight+'px'); }
+  function updateTopH(){ document.documentElement.style.setProperty('--top-h', topBar.offsetHeight+'px'); document.documentElement.style.setProperty('--tabs-h', $id('fbar').offsetHeight+'px'); }
   function onScroll(){ topBar.classList.toggle('scrolled', window.scrollY>8); updateJump(); }
   window.addEventListener('scroll', onScroll, { passive:true });
   window.addEventListener('resize', function(){ updateTopH(); updateJump(); });
+  // グループ行の出し入れで高さが変わるので、固定バーの高さを追従させる
+  if(window.ResizeObserver) new ResizeObserver(updateTopH).observe($id('fbar'));
   updateTopH(); onScroll();
 
   // 検索は虫眼鏡で開く。入力が落ち着いてから再描画する
