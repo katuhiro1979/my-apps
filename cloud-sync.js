@@ -39,13 +39,14 @@
     const { appName, key, getData, applyData, hasData } = opts;
     const META_KEY = "cloudsync-meta::" + appName + "::" + key;
     const BACKUP_KEY = "cloudsync-backup::" + appName + "::" + key;
-    let meta = { hash: null, at: null };
+    let meta = { hash: null, at: null, ever: false };
     try { meta = Object.assign(meta, JSON.parse(lsGet(META_KEY) || "{}")); } catch (e) { /* 壊れていたら未同期扱い */ }
 
     let user = null, status = "", conflict = null, msg = "", open = false;
     let busy = false, again = false, timer = null;
 
-    const saveMeta = (h, at) => { meta = { hash: h, at }; lsSet(META_KEY, JSON.stringify(meta)); };
+    // ever: この端末が、記録のある状態で同期したことがある印（全部消した操作と、空の新しい端末を見分ける）
+    const saveMeta = (h, at, nonEmpty) => { meta = { hash: h, at, ever: !!(meta.ever || nonEmpty) }; lsSet(META_KEY, JSON.stringify(meta)); };
     // 上書きされる側のデータを1世代だけ端末内に退避する
     const backup = (reason, data) => lsSet(BACKUP_KEY, JSON.stringify({ at: new Date().toLocaleString("ja-JP"), reason, data }));
 
@@ -70,7 +71,7 @@
       if (hasData()) backup("同期前の端末データ", localJson);
       applyData(parsed);
       // 反映後の実際の状態を「同期済み」として記録する(往復で更新し合わないため)
-      saveMeta(hash(JSON.stringify(getData())), remote.updated_at);
+      saveMeta(hash(JSON.stringify(getData())), remote.updated_at, hasData());
     }
 
     async function sync(attempt) {
@@ -90,14 +91,18 @@
           const r = await push(localJson, expectedAt);
           if (r.error) throw r.error;
           if (r.conflict) { retry = true; return; }
-          saveMeta(lh, r.updatedAt);
+          saveMeta(lh, r.updatedAt, has);
         };
         if (!remote) {
           if (has) await pushLocal(null); // クラウドが空のときだけ初回アップロード
         } else if (hash(remote.value) === lh) {
-          saveMeta(lh, remote.updated_at);
+          saveMeta(lh, remote.updated_at, has);
         } else if (!has) {
-          await applyRemote(remote, localJson); // この端末が空なら、クラウドを取り込む
+          if (meta.ever && lh !== meta.hash && remote.updated_at === meta.at) {
+            // 同期済みの端末で全件を消した場合は、クラウドから復活させず、空の状態を送る
+            backup("空にする前のクラウドデータ", remote.value);
+            await pushLocal(remote.updated_at);
+          } else await applyRemote(remote, localJson); // この端末が空なら、クラウドを取り込む
         } else {
           const localChanged = lh !== meta.hash;
           const remoteChanged = remote.updated_at !== meta.at;
@@ -132,7 +137,7 @@
       backup("同期前のクラウドデータ", remote.value);
       const json = JSON.stringify(getData());
       const r = await push(json, remote.updated_at);
-      if (r.updatedAt) { saveMeta(hash(json), r.updatedAt); setStatus("この端末の内容を送信しました " + hm()); }
+      if (r.updatedAt) { saveMeta(hash(json), r.updatedAt, hasData()); setStatus("この端末の内容を送信しました " + hm()); }
       else sync();
       render();
     }
