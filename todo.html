@@ -397,8 +397,13 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       <button type="button" class="btn" id="dataImportBtn">インポート</button>
       <button type="button" class="btn" id="calExportBtn">予定ファイルを書き出し</button>
     </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button type="button" class="btn" id="autoBtn">自動書き出しを設定</button>
+      <button type="button" class="btn" id="autoStopBtn" hidden>解除</button>
+    </div>
+    <div class="status-msg" id="autoStatus"></div>
     <input type="file" id="dataImportFile" accept=".json,application/json" style="display:none;">
-    <div class="hint">「予定ファイルを書き出し」は、日付のある未完了のタスクだけを、メール自動保存アプリ用に書き出します。<br>タスクと状態をまとめて書き出せます。インポートすると、いまのデータはすべて置き換わります（置き換え前のデータは1世代だけ退避します）。</div>
+    <div class="hint">「予定ファイルを書き出し」は、日付のある未完了のタスクだけを、メール自動保存アプリ用に書き出します。<br>「自動書き出し」は、フォルダを1回選ぶと、タスクを変えるたびに、そのフォルダの「ToDo予定.json」を自動で更新します（パソコンの Chrome／Edge で、このページを開いている間）。<br>タスクと状態をまとめて書き出せます。インポートすると、いまのデータはすべて置き換わります（置き換え前のデータは1世代だけ退避します）。</div>
     <div class="status-msg" id="dataStatus"></div>
   </div>
   <div class="row"><button type="button" class="btn primary" data-close>閉じる</button></div>
@@ -1347,6 +1352,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(el) el.focus({ preventScroll:true });
   }
   function render(){
+    autoExportSoon();
     closeMenu(false);
     const fk = focusKey();
     lastRenderDay = todayISO();
@@ -1793,12 +1799,101 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     updateBackupInfo();
     const st = $id('dataStatus'); st.classList.remove('error'); st.textContent = 'JSONを書き出しました。';
   });
-  // 日付のある未完了タスクだけを、メール自動保存アプリ（Outlook／Googleカレンダー）へ渡す用に書き出す
-  $id('calExportBtn').addEventListener('click', function(){
-    const list = items.filter(it=>!it.deleted && !it.archived && it.date && !isDone(it)).map(it=>{
+  // 日付のある未完了タスクを、メール自動保存アプリ（Outlook／Googleカレンダー）へ渡す形にする
+  function calEvents(){
+    return items.filter(it=>!it.deleted && !it.archived && it.date && !isDone(it)).map(it=>{
       const g = groupById(it.group);
       return { id:it.id, text:it.text, date:it.date, time:it.time||'', group:g ? g.name : '' };
     });
+  }
+  // ---- 予定ファイルの自動書き出し（Chrome／Edge）：選んだフォルダに、変更のたびに ToDo予定.json を上書きする ----
+  var autoPending = null, autoDir = null, autoLast = null, autoTimer = null, autoNeed = false;
+  const AUTO_FILE = 'ToDo予定.json';
+  function autoDb(){
+    return new Promise((res, rej)=>{
+      const r = indexedDB.open('todo-auto', 1);
+      r.onupgradeneeded = ()=>r.result.createObjectStore('h');
+      r.onsuccess = ()=>res(r.result); r.onerror = ()=>rej(r.error);
+    });
+  }
+  async function autoIdb(op, v){
+    const db = await autoDb();
+    return new Promise((res, rej)=>{
+      const tx = db.transaction('h', 'readwrite'), s = tx.objectStore('h');
+      const q = op==='get' ? s.get('dir') : op==='set' ? s.put(v, 'dir') : s.delete('dir');
+      q.onsuccess = ()=>res(q.result); q.onerror = ()=>rej(q.error);
+    });
+  }
+  function autoStatus(text, isErr){
+    const el = $id('autoStatus'); el.textContent = text; el.classList.toggle('error', !!isErr);
+    const b = $id('autoBtn');
+    b.textContent = autoNeed ? '自動書き出しを再開' : (autoDir ? 'フォルダを変える' : '自動書き出しを設定');
+    $id('autoStopBtn').hidden = !(autoDir || autoNeed);
+  }
+  async function autoInit(){
+    if(!window.showDirectoryPicker){
+      $id('autoBtn').disabled = true;
+      autoStatus('自動書き出しは、パソコンの Chrome／Edge で使えます。');
+      return;
+    }
+    try{
+      const h = await autoIdb('get');
+      if(h){
+        if(await h.queryPermission({ mode:'readwrite' })==='granted'){ autoDir = h; autoStatus('自動書き出し：オン（フォルダ「'+h.name+'」）'); autoWrite(); }
+        else{ autoPending = h; autoNeed = true; autoStatus('自動書き出しを再開するには、ボタンを押して許可してください。'); }
+      } else autoStatus('');
+    }catch(e){ autoStatus(''); }
+  }
+  $id('autoBtn').addEventListener('click', async function(){
+    try{
+      let h = null;
+      if(autoNeed && autoPending){
+        h = autoPending;
+        if(await h.requestPermission({ mode:'readwrite' })!=='granted'){ autoStatus('許可されませんでした。もう一度ボタンを押してください。', true); return; }
+      } else {
+        h = await window.showDirectoryPicker({ id:'todo-auto', mode:'readwrite' });
+        try{ await autoIdb('set', h); }catch(e){} // 覚えられなくても、今回は使える
+      }
+      autoDir = h; autoNeed = false; autoPending = null; autoLast = null;
+      autoStatus('自動書き出し：オン（フォルダ「'+h.name+'」）');
+      autoWrite();
+    }catch(e){
+      if(e && e.name==='AbortError') return; // 選ばずに閉じた
+      autoStatus('フォルダを設定できませんでした。', true);
+    }
+  });
+  $id('autoStopBtn').addEventListener('click', async function(){
+    try{ await autoIdb('del'); }catch(e){}
+    autoDir = autoPending = null; autoNeed = false; autoLast = null;
+    autoStatus('自動書き出しを解除しました。');
+  });
+  function autoExportSoon(){
+    if(!autoDir) return;
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(autoWrite, 1000);
+  }
+  async function autoWrite(){
+    if(!autoDir) return;
+    const list = calEvents(), json = JSON.stringify(list);
+    if(json===autoLast) return;
+    try{
+      const fh = await autoDir.getFileHandle(AUTO_FILE, { create:true });
+      const w = await fh.createWritable();
+      await w.write(JSON.stringify({ app:'todo-app-events', version:1, exportedAt:todayISO(), events:list }, null, 2));
+      await w.close();
+      autoLast = json;
+      const n = new Date(), p = x=>String(x).padStart(2,'0');
+      autoStatus('自動書き出し：オン（フォルダ「'+autoDir.name+'」）最終 '+p(n.getHours())+':'+p(n.getMinutes())+'・'+list.length+'件');
+    }catch(e){
+      autoPending = autoDir; autoDir = null; autoNeed = true;
+      autoStatus('書き出せませんでした。ボタンを押して、許可し直してください。', true);
+    }
+  }
+  autoInit();
+
+  // 手動で書き出す
+  $id('calExportBtn').addEventListener('click', function(){
+    const list = calEvents();
     const st = $id('dataStatus'); st.classList.remove('error');
     if(!list.length){ st.textContent = '書き出せる予定がありません（日付のある未完了のタスクが対象です）。'; return; }
     const blob = new Blob([JSON.stringify({ app:'todo-app-events', version:1, exportedAt:todayISO(), events:list }, null, 2)], { type:'application/json' });
