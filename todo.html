@@ -63,7 +63,7 @@
     padding:0 0 calc(96px + env(safe-area-inset-bottom,0px));font-variant-numeric:tabular-nums;}
   h1,h2,h3,p{margin:0;}
   button,input,select,textarea{font:inherit;color:inherit;}
-  .wrap{max-width:760px;margin:0 auto;padding:24px 20px;}
+  .wrap{max-width:760px;margin:0 auto;padding:14px 20px 24px;}
 
   /* ===== 共通部品 ===== */
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 18px;border-radius:999px;
@@ -89,13 +89,21 @@
   .status-msg.error{color:var(--danger);}
 
   /* ===== ヘッダー・数字 ===== */
-  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;}
-  .top h1{font-family:var(--font-serif);font-size:26px;font-weight:600;letter-spacing:.04em;line-height:1.3;}
-  .top .sub{font-size:12.5px;color:var(--ink-soft);}
-  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:16px;}
-  .stat{appearance:none;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:10px 12px;cursor:pointer;min-height:64px;}
-  .stat .num{display:block;font-size:22px;font-weight:700;line-height:1.2;}
-  .stat .label{display:block;font-size:12px;color:var(--ink-soft);}
+  .top{position:sticky;top:0;z-index:40;padding-top:env(safe-area-inset-top,0px);background:color-mix(in srgb,var(--paper) 94%,transparent);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid transparent;transition:border-color .2s;}
+  .top.scrolled{border-bottom-color:var(--line);}
+  .top-in{max-width:760px;margin:0 auto;padding:0 8px 0 20px;min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .top h1{font-family:var(--font-serif);font-size:24px;font-weight:600;letter-spacing:.04em;line-height:1.3;transition:font-size .2s;}
+  .top.scrolled h1{font-size:18px;}
+  .top-act{display:flex;align-items:center;gap:2px;}
+  .top .icon-btn{position:relative;}
+  .top .icon-btn.on{color:var(--accent);}
+  .icon-btn .badge{position:absolute;top:3px;right:1px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:11px;font-weight:700;line-height:18px;text-align:center;}
+  .searchbar{max-width:760px;margin:0 auto;padding:0 20px 10px;}
+  .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px;}
+  .stat{appearance:none;display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:0 14px;cursor:pointer;min-height:44px;}
+  .stat .num{order:2;font-size:18px;font-weight:700;line-height:1;}
+  .stat .label{order:1;font-size:12px;color:var(--ink-soft);}
   .stat.on{outline:2px solid var(--accent);outline-offset:-1px;background:var(--surface-2);}
   .stat.over.hot{border-color:var(--danger);background:var(--danger-bg);}
   .stat.over.hot .num{color:var(--danger);}
@@ -103,10 +111,13 @@
   .stat.today.hot .num{color:var(--warn);}
 
   /* ===== 追加ボックス ===== */
-  .addbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:16px;box-shadow:var(--shadow);}
+  .addbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px;margin-bottom:12px;box-shadow:var(--shadow);scroll-margin-top:calc(var(--top-h,56px) + 8px);transition:border-color .15s;}
+  .addbox:focus-within,.addbox.open{border-color:var(--accent);}
   .addrow{display:flex;gap:8px;}
-  .addrow .field{flex:1;min-width:0;}
-  .addopts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;}
+  .addrow .field{flex:1;min-width:0;border:none;background:none;padding-left:8px;}
+  .addrow .field:focus-visible{outline:none;}
+  .addopts{display:none;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px;padding:10px 4px 4px;border-top:1px dashed var(--line);}
+  .addbox.open .addopts{display:flex;}
   .dp{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
   .dp-quick{display:flex;flex-wrap:wrap;gap:6px;}
   .dp-inputs{display:flex;gap:6px;}
@@ -120,51 +131,73 @@
   .tabs::-webkit-scrollbar{display:none;}
   .tabs button{flex:none;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;cursor:pointer;white-space:nowrap;}
   .tabs button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
-  .filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
-  .filters .field{flex:1 1 220px;min-width:0;}
-  .filters .btn{flex:none;}
+  #tabs{scroll-margin-top:calc(var(--top-h,56px) + 8px);}
 
   /* ===== 一覧 ===== */
-  .grp{margin-top:18px;}
-  .grp:first-child{margin-top:4px;}
-  .grp-h{display:flex;align-items:baseline;gap:8px;font-size:14px;font-weight:700;padding:0 4px 6px;}
+  .grp{margin-top:14px;scroll-margin-top:var(--top-h,56px);}
+  .grp:first-child{margin-top:2px;}
+  .grp-h{position:sticky;top:var(--top-h,56px);z-index:5;display:flex;align-items:baseline;gap:8px;padding:6px 4px;margin:0 0 4px;
+    background:color-mix(in srgb,var(--paper) 94%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
+  .grp-d{font-size:16px;font-weight:700;}
+  .grp-sub{font-size:12px;color:var(--ink-soft);}
   .grp-h .grp-rel{font-size:11.5px;font-weight:700;padding:1px 9px;border-radius:999px;background:var(--surface-2);color:var(--ink-soft);}
   .grp-h .grp-n{margin-left:auto;font-size:12px;font-weight:400;color:var(--ink-soft);}
-  .grp.is-today .grp-rel{background:var(--warn-bg);color:var(--warn);}
+  .grp.is-today .grp-d{color:var(--accent);}
+  .grp.is-today .grp-h::before{content:"";align-self:center;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:-2px;}
   .grp.is-over .grp-d{color:var(--danger);}
   .grp.is-over .grp-rel{background:var(--danger-bg);color:var(--danger);}
-  ul.task-list{list-style:none;margin:0;padding:0;display:grid;gap:8px;}
-  li.task{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:2px 6px;align-items:start;padding:8px 6px 8px 4px;background:var(--surface);
-    border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);}
-  li.task.over{border-left:4px solid var(--danger);}
-  li.task.done .task-text{color:var(--ink-soft);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--ink-soft) 60%,transparent);}
-  li.task.plain{grid-template-columns:minmax(0,1fr) auto;padding:10px 6px 10px 14px;}
+  .grp.is-memo .grp-d{color:var(--ink-soft);}
+  ul.task-list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
+  ul.task-list > li + li{border-top:1px solid var(--line);}
+  li.task{position:relative;scroll-margin-top:calc(var(--top-h,56px) + 56px);scroll-margin-bottom:96px;}
+  .task-in{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:0 4px;align-items:center;min-height:52px;padding:2px;background:var(--surface);touch-action:pan-y;}
+  .task-in.back{transition:transform .2s ease;}
+  li.task.over .task-in{box-shadow:inset 4px 0 0 var(--danger);}
+  li.task.done .task-text .tt{color:var(--ink-soft);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--ink-soft) 60%,transparent);}
+  li.task.plain .task-in{grid-template-columns:minmax(0,1fr) auto;padding:8px 6px 8px 14px;}
+  li.task.flash .task-in{animation:flash 1.4s ease-out;}
+  @keyframes flash{from{background:color-mix(in srgb,var(--accent) 22%,var(--surface));}to{background:var(--surface);}}
+  /* スワイプ時に背面に出る操作表示 */
+  .sw{position:absolute;inset:0;display:none;align-items:center;padding:0 20px;font-size:14px;font-weight:700;color:#fff;}
+  .sw-l{background:#2e7d4f;}
+  .sw-r{background:var(--danger-solid);justify-content:flex-end;}
+  li.task[data-dir="r"] .sw-l,li.task[data-dir="l"] .sw-r{display:flex;}
   .chk{appearance:none;width:44px;height:44px;border:none;background:none;cursor:pointer;display:grid;place-items:center;padding:0;}
-  .chk .box{width:24px;height:24px;border-radius:7px;border:2px solid var(--ink-soft);display:grid;place-items:center;background:var(--surface);color:transparent;}
+  .chk .box{width:24px;height:24px;border-radius:7px;border:2px solid var(--ink-soft);display:grid;place-items:center;background:var(--surface);color:transparent;transition:background .15s,border-color .15s;}
   .chk[aria-checked="true"] .box{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
-  .task-main{min-width:0;padding-top:6px;}
-  .task-text{appearance:none;display:block;width:100%;text-align:left;border:none;background:none;padding:0;cursor:pointer;font-size:16px;line-height:1.5;
-    white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);}
-  .task-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
-  .chip{position:relative;appearance:none;display:inline-flex;align-items:center;gap:4px;min-height:28px;padding:0 10px;border:none;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;}
-  .chip::after{content:"";position:absolute;inset:-8px -2px;}
+  .chk.pop .box{animation:pop .3s ease;}
+  @keyframes pop{0%{transform:scale(1);}40%{transform:scale(.76);}100%{transform:scale(1);}}
+  .task-main{min-width:0;padding:6px 0;}
+  .task-text{appearance:none;display:block;width:100%;text-align:left;border:none;background:none;padding:0;cursor:pointer;font-size:16px;line-height:1.45;color:var(--ink);}
+  .task-text .tt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;}
+  .task-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+  .task-side{display:flex;align-items:center;gap:4px;}
+  .task-time{font-size:12px;color:var(--ink-soft);}
+  .chip{position:relative;appearance:none;display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:0 10px;border:none;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;}
+  .chip::after{content:"";position:absolute;inset:-9px -3px;}
   .chip.date{background:var(--surface-2);color:var(--ink-soft);}
   .chip.date.over{background:var(--danger-bg);color:var(--danger);}
   .chip.date.today{background:var(--warn-bg);color:var(--warn);}
   .chip.static{cursor:default;}
-  .chip.c-amber{background:var(--c-amber-bg);color:var(--c-amber-fg);}
-  .chip.c-green{background:var(--c-green-bg);color:var(--c-green-fg);}
-  .chip.c-blue{background:var(--c-blue-bg);color:var(--c-blue-fg);}
-  .chip.c-red{background:var(--c-red-bg);color:var(--c-red-fg);}
-  .chip.c-purple{background:var(--c-purple-bg);color:var(--c-purple-fg);}
-  .chip.c-pink{background:var(--c-pink-bg);color:var(--c-pink-fg);}
-  .chip.c-teal{background:var(--c-teal-bg);color:var(--c-teal-fg);}
-  .chip.c-gray{background:var(--c-gray-bg);color:var(--c-gray-fg);}
+  .chip.c-amber{background:color-mix(in srgb,var(--c-amber-bg) 78%,transparent);color:var(--c-amber-fg);}
+  .chip.c-green{background:color-mix(in srgb,var(--c-green-bg) 78%,transparent);color:var(--c-green-fg);}
+  .chip.c-blue{background:color-mix(in srgb,var(--c-blue-bg) 78%,transparent);color:var(--c-blue-fg);}
+  .chip.c-red{background:color-mix(in srgb,var(--c-red-bg) 78%,transparent);color:var(--c-red-fg);}
+  .chip.c-purple{background:color-mix(in srgb,var(--c-purple-bg) 78%,transparent);color:var(--c-purple-fg);}
+  .chip.c-pink{background:color-mix(in srgb,var(--c-pink-bg) 78%,transparent);color:var(--c-pink-fg);}
+  .chip.c-teal{background:color-mix(in srgb,var(--c-teal-bg) 78%,transparent);color:var(--c-teal-fg);}
+  .chip.c-gray{background:color-mix(in srgb,var(--c-gray-bg) 78%,transparent);color:var(--c-gray-fg);}
   .task-act{display:flex;gap:6px;align-items:center;}
-  .empty{padding:36px 12px;text-align:center;color:var(--ink-soft);font-size:14px;}
+  li.fold button{appearance:none;width:100%;min-height:44px;border:none;background:var(--surface-2);color:var(--ink-soft);font-size:13px;font-weight:600;cursor:pointer;}
+  .jump{position:fixed;left:16px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:30;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;box-shadow:var(--shadow-pop);cursor:pointer;}
+  .empty{padding:40px 12px;text-align:center;color:var(--ink-soft);font-size:14px;}
+  .empty .ic{display:block;width:56px;height:56px;margin:0 auto 10px;opacity:.55;}
+  .empty .em-t{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:4px;}
+  .empty .btn{margin-top:16px;}
 
   /* ===== 通知 ===== */
-  .notice{position:sticky;top:8px;z-index:50;display:none;align-items:flex-start;gap:10px;padding:10px 14px;margin-bottom:14px;border:1px solid var(--warn);border-radius:var(--r-sm);background:var(--warn-bg);color:var(--ink);font-size:13.5px;}
+  .notice{position:sticky;top:calc(var(--top-h,56px) + 8px);z-index:50;display:none;align-items:flex-start;gap:10px;padding:10px 14px;margin-bottom:14px;border:1px solid var(--warn);border-radius:var(--r-sm);background:var(--warn-bg);color:var(--ink);font-size:13.5px;}
   .notice.error{border-color:var(--danger);background:var(--danger-bg);}
   .notice span{flex:1;}
   .notice button{appearance:none;border:none;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--ink-soft);min-width:44px;min-height:44px;margin:-12px -10px -12px 0;}
@@ -202,10 +235,9 @@
   footer{text-align:center;font-size:12px;color:var(--ink-soft);margin-top:24px;}
 
   @media (max-width:640px){
-    .wrap{padding:18px 14px;}
-    .top h1{font-size:22px;}
-    .filters .field{flex:1 1 100%;}
-    .filters .btn{flex:1;}
+    .wrap{padding:12px 14px 24px;}
+    .top-in{padding-left:14px;}
+    .searchbar{padding:0 14px 10px;}
     dialog.sheet{width:100%;max-width:none;margin:auto 0 0;border-radius:22px 22px 0 0;border-bottom:none;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));animation:sheet-in .25s ease both;}
     dialog.sheet .row .btn{flex:1;}
     dialog.sheet .row .btn.danger-text{flex:none;}
@@ -218,15 +250,21 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 </script>
 </head>
 <body>
-<div class="wrap">
-
-  <header class="top">
-    <div>
-      <h1>ToDo</h1>
-      <div class="sub">やることを日付と状態で管理します</div>
+<header class="top" id="topBar">
+  <div class="top-in">
+    <h1>ToDo</h1>
+    <div class="top-act">
+      <button type="button" class="icon-btn plain" id="searchToggle" aria-label="検索" aria-expanded="false" aria-controls="searchBar"></button>
+      <button type="button" class="icon-btn plain" id="viewBtn" aria-label="並び替え・表示"></button>
+      <button type="button" class="icon-btn plain" id="topMenuBtn" aria-label="メニュー" aria-haspopup="menu" aria-expanded="false"></button>
     </div>
-    <button type="button" class="icon-btn" id="topMenuBtn" aria-label="メニュー" aria-haspopup="menu" aria-expanded="false"></button>
-  </header>
+  </div>
+  <div class="searchbar" id="searchBar" hidden>
+    <input type="search" class="field" id="searchBox" placeholder="内容で検索" aria-label="検索" autocomplete="off">
+  </div>
+</header>
+
+<div class="wrap">
 
   <div class="notice" id="notice" role="alert"><span id="noticeText"></span><button type="button" id="noticeClose" aria-label="閉じる">×</button></div>
 
@@ -238,7 +276,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   <form class="addbox" id="addForm" autocomplete="off">
     <div class="addrow">
-      <input type="text" class="field" id="addText" placeholder="やることを入力して Enter" aria-label="やること" maxlength="500">
+      <input type="text" class="field" id="addText" placeholder="やることを追加（例：明日 会議）" aria-label="やること" maxlength="500">
       <button type="submit" class="btn primary" id="addBtn">追加</button>
     </div>
     <div class="addopts">
@@ -257,13 +295,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     <button type="button" data-tab="trash">ごみ箱</button>
   </div>
 
-  <div class="filters">
-    <input type="search" class="field" id="searchBox" placeholder="内容で検索" aria-label="検索" autocomplete="off">
-    <button type="button" class="btn" id="viewBtn">並び替え・表示</button>
-  </div>
-
   <div id="taskArea"></div>
   <div class="empty" id="emptyState" style="display:none;"></div>
+  <button type="button" class="jump" id="jumpToday" hidden>今日へ移動</button>
 
   <footer><div id="backupInfo"></div>データはこのブラウザに保存されます。右下の☁でログインすると、端末間で同期できます。</footer>
 </div>
@@ -367,6 +401,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   let showDone = true;
   let lastRenderDay = '';
   let addStatusId = null;
+  let flashId = null, popId = null;   // 追加直後の強調・完了チェックの動き用（描画のたびに消す）
+  const expandedFolds = new Set();    // 開いている「完了N件」の折りたたみ
+  let swipedAt = 0, lpFired = 0;      // スワイプ直後・長押し直後のクリックを無視するための時刻
   try{
     const s = localStorage.getItem(SORT_KEY); if(['dateDesc','dateAsc','created'].includes(s)) sortMode = s;
     if(localStorage.getItem(SHOWDONE_KEY) === '0') showDone = false;
@@ -554,6 +591,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   }
   const DOTS = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
   $id('topMenuBtn').innerHTML = DOTS;
+  const SVG_ATTR = 'width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+  $id('searchToggle').innerHTML = '<svg '+SVG_ATTR+'><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>';
+  $id('viewBtn').innerHTML = '<svg '+SVG_ATTR+'><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.5"/><circle cx="10" cy="17" r="2.5"/></svg><span class="badge" id="viewBadge" hidden></span>';
   $id('topMenuBtn').addEventListener('click', function(){
     const cur = getTheme();
     const next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
@@ -721,17 +761,76 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       label:(s.id===addStatusId ? '✓ ' : '　')+s.name, run:()=>{ addStatusId = s.id; renderAddStatus(); }
     })));
   });
+  // 入力欄の「明日 16:00 会議」のような書き方から、日付と時刻を拾う（先頭か末尾にあるものだけ）
+  const Q_DATE = '(今日|明日|明後日|あさって|来週|\\d{1,2}月\\d{1,2}日|\\d{1,2}/\\d{1,2})';
+  const Q_TIME = '(\\d{1,2}:\\d{2}|\\d{1,2}時(?:半|\\d{1,2}分)?)';
+  function quickDate(w){
+    const fix = {'今日':0,'明日':1,'明後日':2,'あさって':2,'来週':7};
+    if(Object.prototype.hasOwnProperty.call(fix, w)) return addDaysISO(fix[w]);
+    const m = w.match(/^(\d{1,2})(?:月|\/)(\d{1,2})/); if(!m) return '';
+    const mo = +m[1], da = +m[2], t = todayISO();
+    let y = new Date().getFullYear();
+    const mk = yy=>{ const d = new Date(yy, mo-1, da); return (d.getMonth()===mo-1 && d.getDate()===da) ? localISO(d) : ''; };
+    let iso = mk(y); if(iso && iso < t) iso = mk(y+1);
+    return iso;
+  }
+  function quickTime(w){
+    let h, mi = 0, m;
+    if((m = w.match(/^(\d{1,2}):(\d{2})$/))){ h = +m[1]; mi = +m[2]; }
+    else if((m = w.match(/^(\d{1,2})時(半|(\d{1,2})分)?$/))){ h = +m[1]; mi = m[2]==='半' ? 30 : (m[3] ? +m[3] : 0); }
+    else return '';
+    if(h>23 || mi>59) return '';
+    return String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0');
+  }
+  function parseQuick(text){
+    let s = text.trim(), date = '', time = '';
+    for(let n=0; n<4; n++){
+      let hit = false;
+      for(const kind of ['d','t']){
+        if((kind==='d' && date) || (kind==='t' && time)) continue;
+        const re = kind==='d' ? Q_DATE : Q_TIME;
+        const m = s.match(new RegExp('^'+re+'(?:\\s+|$)')) || s.match(new RegExp('(?:^|\\s+)'+re+'$'));
+        if(!m) continue;
+        const v = kind==='d' ? quickDate(m[1]) : quickTime(m[1]);
+        if(!v) continue;
+        if(kind==='d') date = v; else time = v;
+        s = (s.slice(0, m.index) + ' ' + s.slice(m.index + m[0].length)).trim();
+        hit = true; break;
+      }
+      if(!hit) break;
+    }
+    if(!s) return { text, date:'', time:'' }; // 日付の言葉だけなら、そのまま本文にする
+    return { text:s, date, time };
+  }
+
+  // 追加欄は、入力するまでは1行だけにする（日付・状態は入力中だけ開く）
+  const addForm = $id('addForm');
+  function expandAdd(on){ addForm.classList.toggle('open', on); }
+  addForm.addEventListener('focusin', ()=>expandAdd(true));
+  document.addEventListener('pointerdown', function(e){
+    if(!addForm.classList.contains('open')) return;
+    if(addForm.contains(e.target) || (menuEl && menuEl.contains(e.target))) return;
+    if(!$id('addText').value.trim()) expandAdd(false);
+  });
+
   $id('addForm').addEventListener('submit', function(e){
     e.preventDefault();
-    const text = $id('addText').value.trim();
-    if(!text){ $id('addText').focus(); return; }
+    const raw = $id('addText').value.trim();
+    if(!raw){ $id('addText').focus(); return; }
+    const q = parseQuick(raw);
     const dp = addDp.get();
+    const date = q.date || dp.date || (q.time ? todayISO() : '');
+    const time = date ? (q.time || (q.date ? '' : dp.time)) : '';
     const st = statusById(addStatusId) || statuses[0];
-    const it = { id:newId(), text, date:dp.date, time:dp.time, status:st.id, createdAt:new Date().toISOString(), doneAt: st.done ? todayISO() : '' };
+    const it = { id:newId(), text:q.text, date, time, status:st.id, createdAt:new Date().toISOString(), doneAt: st.done ? todayISO() : '' };
     items.push(it);
+    flashId = it.id;
     $id('addText').value = '';
     const ok = save(); render();
-    if(ok) showToast('追加しました。');
+    if(ok){
+      const when = date ? (relLabel(date) || fmtMD(date)) + (time ? ' '+time : '') : '';
+      showToast((q.date || q.time) ? '追加しました（'+when+'）。' : '追加しました。');
+    }
     if(finePointer()) $id('addText').focus();
   });
 
@@ -744,17 +843,42 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       const p = it.prev && statusById(it.prev) && !statusById(it.prev).done ? it.prev : firstOpenId();
       it.status = p; it.doneAt = ''; delete it.prev;
     } else {
-      it.prev = it.status; it.status = firstDoneId(); it.doneAt = todayISO();
+      it.prev = it.status; it.status = firstDoneId(); it.doneAt = todayISO(); popId = id;
     }
     commit();
   }
   function setStatus(id, stId){
     const it = items.find(i=>i.id===id); const st = statusById(stId); if(!it || !st) return;
     if(it.status === stId) return;
-    if(st.done && !isDone(it)){ it.prev = it.status; it.doneAt = todayISO(); }
+    if(st.done && !isDone(it)){ it.prev = it.status; it.doneAt = todayISO(); popId = id; }
     if(!st.done){ it.doneAt = ''; delete it.prev; }
     it.status = stId;
     commit();
+  }
+  // 状態まわりの変更を元に戻すための控え
+  function snap(it){ return { status:it.status, prev:it.prev, doneAt:it.doneAt }; }
+  function restoreSnap(id, s){
+    const cur = items.find(i=>i.id===id); if(!cur || !statusById(s.status)) return;
+    cur.status = s.status; cur.doneAt = s.doneAt;
+    if(s.prev===undefined) delete cur.prev; else cur.prev = s.prev;
+    commit();
+  }
+  // 状態チップのタップ: 次の状態へ順に切り替える
+  function cycleStatus(id){
+    const it = items.find(i=>i.id===id); if(!it) return;
+    const before = snap(it);
+    const i = statuses.findIndex(s=>s.id===statusOf(it).id);
+    const nx = statuses[(i+1) % statuses.length];
+    if(nx.id === it.status) return;
+    setStatus(id, nx.id);
+    showToast('状態を「'+nx.name+'」にしました。', false, ()=>restoreSnap(id, before));
+  }
+  // スワイプでの完了／未完了の切替（元に戻す付き）
+  function toggleWithUndo(id){
+    const it = items.find(i=>i.id===id); if(!it) return;
+    const before = snap(it), wasDone = isDone(it);
+    toggleDone(id);
+    showToast(wasDone ? '未完了に戻しました。' : '完了にしました。', false, ()=>restoreSnap(id, before));
   }
   function trashItem(id){
     const it = items.find(i=>i.id===id); if(!it) return;
@@ -945,6 +1069,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     closeMenu(false);
     lastRenderDay = todayISO();
     const today = lastRenderDay;
+    const fId = flashId, pId = popId; flashId = popId = null;
     if(statusFilter && !statusById(statusFilter)) statusFilter = null;
     renderAddStatus();
 
@@ -993,10 +1118,13 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
     // 「並び替え・表示」ボタンに、有効な条件の数を出す
     const activeFilters = (sortMode!=='dateDesc' ? 1 : 0) + (statusFilter ? 1 : 0) + (!showDone ? 1 : 0);
-    $id('viewBtn').textContent = activeFilters ? '並び替え・表示（'+activeFilters+'）' : '並び替え・表示';
+    const bd = $id('viewBadge');
+    bd.hidden = !activeFilters; bd.textContent = activeFilters;
+    $id('viewBtn').setAttribute('aria-label', activeFilters ? '並び替え・表示（'+activeFilters+'件の条件）' : '並び替え・表示');
+    $id('searchToggle').classList.toggle('on', !$id('searchBar').hidden || !!query);
 
-    // グループ分け
-    const byTime = (a,b)=>(a.time||'').localeCompare(b.time||'') || (a.createdAt||'').localeCompare(b.createdAt||'');
+    // グループ分け（同じ日の中は、未完了→完了、時刻の順）
+    const byTime = (a,b)=>(Number(isDone(a))-Number(isDone(b))) || (a.time||'').localeCompare(b.time||'') || (a.createdAt||'').localeCompare(b.createdAt||'');
     let groups;
     if(sortMode==='created'){
       filtered.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
@@ -1015,65 +1143,109 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     area.innerHTML = '';
     if(filtered.length===0){
       empty.style.display = 'block';
-      if(query || statusFilter) empty.textContent = '条件に合うタスクはありません。';
-      else if(currentTab==='all' && live.length===0) empty.textContent = 'まだタスクがありません。上の入力欄から追加しましょう。';
-      else if(currentTab==='all' && !showDone) empty.textContent = '表示するタスクはありません（完了したタスクは非表示です）。';
-      else empty.textContent = EMPTY_TEXT[currentTab] || '';
+      let title = EMPTY_TEXT[currentTab] || '', sub = '', act = (currentTab==='all' || currentTab==='open' || currentTab==='today') ? 'add' : '';
+      if(query || statusFilter){ title = '条件に合うタスクはありません。'; act = 'clear'; }
+      else if(currentTab==='all' && live.length===0){ title = 'まだタスクがありません。'; sub = '「明日 16時 会議」のように書くと、日付と時刻も自動で入ります。'; }
+      else if(currentTab==='all' && !showDone){ title = '表示するタスクはありません。'; sub = '完了したタスクは非表示にしています。'; act = ''; }
+      else if(currentTab==='today') sub = '予定があれば追加しましょう。';
+      empty.innerHTML = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg>'+
+        '<div class="em-t">'+escapeHtml(title)+'</div>'+(sub ? '<div>'+escapeHtml(sub)+'</div>' : '')+
+        (act ? '<button type="button" class="btn primary" data-em="'+act+'">'+(act==='add' ? 'タスクを追加' : '条件をクリア')+'</button>' : '');
+      updateJump();
       return;
     }
     empty.style.display = 'none';
 
     const plain = currentTab==='trash' || currentTab==='archive';
+    const noFold = plain || currentTab==='done' || !!query;
     area.innerHTML = groups.map(g=>{
       let head = '';
-      let cls = 'grp';
+      let cls = 'grp', dayAttr = '';
       if(g.key!==null){
         if(g.key===''){
-          head = '<h2 class="grp-h"><span class="grp-d">日付なし</span><span class="grp-n">'+g.items.length+'件</span></h2>';
+          cls += ' is-memo';
+          head = '<h2 class="grp-h"><span class="grp-d">メモ</span><span class="grp-sub">日付なし</span><span class="grp-n">'+g.items.length+'件</span></h2>';
         } else {
           const rel = relLabel(g.key);
-          const hasOpen = g.items.some(i=>!isDone(i));
-          if(g.key===today) cls += ' is-today';
-          else if(g.key<today && hasOpen) cls += ' is-over';
-          head = '<h2 class="grp-h"><span class="grp-d">'+fmtFull(g.key)+'</span>'+(rel ? '<span class="grp-rel">'+rel+'</span>' : (g.key<today && hasOpen ? '<span class="grp-rel">期限切れ</span>' : ''))+'<span class="grp-n">'+g.items.length+'件</span></h2>';
+          const over = g.key<today && g.items.some(i=>!isDone(i));
+          if(g.key===today){ cls += ' is-today'; dayAttr = ' data-day="today"'; }
+          else if(over) cls += ' is-over';
+          const wd = WEEK[new Date(g.key+'T00:00:00').getDay()];
+          head = '<h2 class="grp-h"><span class="grp-d">'+(rel || fmtMD(g.key))+'</span><span class="grp-sub">'+(rel ? fmtFull(g.key) : '（'+wd+'）')+'</span>'+
+            (over ? '<span class="grp-rel">期限切れ</span>' : '')+'<span class="grp-n">'+g.items.length+'件</span></h2>';
         }
       }
-      return '<section class="'+cls+'">'+head+'<ul class="task-list">'+g.items.map(it=>taskHtml(it, plain, today)).join('')+'</ul></section>';
+      const ctx = { today, showDate: g.key===null, fId, pId };
+      const row = it=>taskHtml(it, plain, ctx);
+      const doneIt = noFold ? [] : g.items.filter(isDone);
+      let rows;
+      if(doneIt.length>=3){
+        // 完了が3件以上続くときは折りたたむ
+        const fk = g.key===null ? '_all' : g.key;
+        const opened = expandedFolds.has(fk) || doneIt.some(i=>i.id===fId);
+        rows = g.items.filter(i=>!isDone(i)).map(row).join('')+
+          '<li class="fold"><button type="button" data-fold="'+escapeHtml(fk)+'" aria-expanded="'+opened+'">'+(opened ? '完了を隠す' : '完了 '+doneIt.length+'件を表示')+'</button></li>'+
+          (opened ? doneIt.map(row).join('') : '');
+      } else rows = g.items.map(row).join('');
+      return '<section class="'+cls+'"'+dayAttr+'>'+head+'<ul class="task-list">'+rows+'</ul></section>';
     }).join('');
+
+    if(fId){
+      const li = area.querySelector('li[data-id="'+CSS.escape(fId)+'"]');
+      if(li) li.scrollIntoView({ block:'nearest' });
+    }
+    updateJump();
   }
 
-  function taskHtml(it, plain, today){
+  function taskHtml(it, plain, c){
     const st = statusOf(it);
     const done = !!st.done;
     const over = isOverdue(it);
-    let dateChip;
-    if(it.date){
-      const rel = relLabel(it.date);
-      const cls = over ? ' over' : (it.date===today && !done ? ' today' : '');
-      dateChip = '<button type="button" class="chip date'+cls+'" data-act="edit" aria-label="日付を変更">'+escapeHtml((rel || fmtMD(it.date))+(it.time ? ' '+it.time : ''))+'</button>';
-    } else {
-      dateChip = '<button type="button" class="chip date" data-act="edit" aria-label="日付を設定">日付なし</button>';
-    }
-    const statusChip = plain
-      ? '<span class="chip static c-'+st.color+'">'+escapeHtml(st.name)+'</span>'
-      : '<button type="button" class="chip c-'+st.color+'" data-act="status" aria-haspopup="menu" aria-label="状態：'+escapeHtml(st.name)+'（タップで変更）">'+escapeHtml(st.name)+' ▾</button>';
-    const main =
-      '<div class="task-main">'+
-        '<button type="button" class="task-text" data-act="'+(plain ? 'none' : 'edit')+'">'+escapeHtml(it.text)+'</button>'+
-        '<div class="task-meta">'+(plain ? '<span class="chip static c-gray">'+escapeHtml(it.date ? fmtMD(it.date)+(it.time ? ' '+it.time : '') : '日付なし')+'</span>' : dateChip)+statusChip+'</div>'+
-      '</div>';
+    const id = escapeHtml(it.id);
+    const text = '<button type="button" class="task-text" data-act="'+(plain ? 'none' : 'edit')+'"><span class="tt">'+escapeHtml(it.text)+'</span></button>';
     const menuBtn = '<button type="button" class="icon-btn plain" data-menu="1" aria-haspopup="menu" aria-expanded="false" aria-label="メニュー">'+DOTS+'</button>';
     if(plain){
+      const dateTxt = it.date ? fmtMD(it.date)+(it.time ? ' '+it.time : '') : '日付なし';
       const label = currentTab==='trash' ? '元に戻す' : 'アーカイブから戻す';
-      return '<li class="task plain'+(done?' done':'')+'" data-id="'+escapeHtml(it.id)+'">'+main+
-        '<div class="task-act"><button type="button" class="btn" data-act="restore">'+label+'</button>'+menuBtn+'</div></li>';
+      return '<li class="task plain'+(done?' done':'')+'" data-id="'+id+'"><div class="task-in"><div class="task-main">'+text+
+        '<div class="task-meta"><span class="chip static c-gray">'+escapeHtml(dateTxt)+'</span><span class="chip static c-'+st.color+'">'+escapeHtml(st.name)+'</span></div></div>'+
+        '<div class="task-act"><button type="button" class="btn" data-act="restore">'+label+'</button>'+menuBtn+'</div></div></li>';
     }
-    return '<li class="task'+(done?' done':'')+(over?' over':'')+'" data-id="'+escapeHtml(it.id)+'">'+
-      '<button type="button" class="chk" role="checkbox" aria-checked="'+done+'" aria-label="'+(done?'未完了に戻す：':'完了にする：')+escapeHtml(it.text)+'" data-act="toggle"><span class="box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>'+
-      main+'<div class="task-act">'+menuBtn+'</div></li>';
+    let meta = '';
+    if(c.showDate){
+      // 日付で区切らない並び（登録順）では、行に日付を出す
+      if(it.date){
+        const rel = relLabel(it.date);
+        const cls = over ? ' over' : (it.date===c.today && !done ? ' today' : '');
+        meta = '<div class="task-meta"><button type="button" class="chip date'+cls+'" data-act="edit" aria-label="日付を変更">'+escapeHtml((rel || fmtMD(it.date))+(it.time ? ' '+it.time : ''))+'</button></div>';
+      } else meta = '<div class="task-meta"><button type="button" class="chip date" data-act="edit" aria-label="日付を設定">日付なし</button></div>';
+    }
+    const time = (!c.showDate && it.time) ? '<span class="task-time">'+escapeHtml(it.time)+'</span>' : '';
+    const chip = '<button type="button" class="chip c-'+st.color+'" data-act="status" aria-haspopup="menu" aria-label="状態：'+escapeHtml(st.name)+'（タップで次の状態へ、長押しで一覧から選択）">'+escapeHtml(st.name)+'</button>';
+    return '<li class="task'+(done?' done':'')+(over?' over':'')+(c.fId===it.id?' flash':'')+'" data-id="'+id+'">'+
+      '<div class="sw sw-l" aria-hidden="true">'+(done ? '未完了に戻す' : '完了にする')+'</div><div class="sw sw-r" aria-hidden="true">ごみ箱へ</div>'+
+      '<div class="task-in">'+
+        '<button type="button" class="chk'+(c.pId===it.id?' pop':'')+'" role="checkbox" aria-checked="'+done+'" aria-label="'+(done?'未完了に戻す：':'完了にする：')+escapeHtml(it.text)+'" data-act="toggle"><span class="box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>'+
+        '<div class="task-main">'+text+meta+'</div>'+
+        '<div class="task-side">'+time+chip+menuBtn+'</div>'+
+      '</div></li>';
+  }
+
+  function openStatusMenu(btn, id){
+    const it = items.find(i=>i.id===id); if(!it) return;
+    const cur = statusOf(it).id;
+    openMenu(btn, statuses.map(s=>({ label:(s.id===cur ? '✓ ' : '　')+s.name, run:()=>setStatus(id, s.id) })));
   }
 
   $id('taskArea').addEventListener('click', function(e){
+    if(Date.now() - swipedAt < 350) return;
+    const fold = e.target.closest('[data-fold]');
+    if(fold){
+      const k = fold.dataset.fold;
+      if(expandedFolds.has(k)) expandedFolds.delete(k); else expandedFolds.add(k);
+      render();
+      return;
+    }
     const li = e.target.closest('li.task'); if(!li) return;
     const id = li.dataset.id;
     const a = e.target.closest('[data-act]');
@@ -1083,9 +1255,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       else if(act==='edit') openEdit(id);
       else if(act==='restore') restoreItem(id);
       else if(act==='status'){
-        const it = items.find(i=>i.id===id); if(!it) return;
-        const cur = statusOf(it).id;
-        openMenu(a, statuses.map(s=>({ label:(s.id===cur ? '✓ ' : '　')+s.name, run:()=>setStatus(id, s.id) })));
+        if(Date.now() - lpFired < 800) return; // 長押しでメニューを開いた直後は切り替えない
+        cycleStatus(id);
       }
       return;
     }
@@ -1096,12 +1267,93 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       if(it.deleted) list = [ { label:'完全に削除', danger:true, run:()=>purgeItem(id) } ];
       else if(it.archived) list = [ { label:'ごみ箱へ移動', danger:true, run:()=>trashItem(id) } ];
       else {
-        list = [ { label:'編集', run:()=>openEdit(id) } ];
+        list = [ { label:'編集', run:()=>openEdit(id) }, { label:'状態を選ぶ', run:()=>openStatusMenu(m, id) } ];
         if(isDone(it)) list.push({ label:'アーカイブ', run:()=>archiveItems([id]) });
         list.push({ label:'ごみ箱へ移動', danger:true, run:()=>trashItem(id) });
       }
       openMenu(m, list);
     }
+  });
+
+  // 状態チップの長押し（右クリック）で、状態を一覧から選ぶ
+  let lpTimer = null, lpPos = null;
+  const lpStop = ()=>{ clearTimeout(lpTimer); lpTimer = null; };
+  $id('taskArea').addEventListener('pointerdown', function(e){
+    if(e.button!==0) return;
+    const chip = e.target.closest('[data-act="status"]'); if(!chip) return;
+    lpStop(); lpPos = { x:e.clientX, y:e.clientY };
+    lpTimer = setTimeout(function(){
+      lpTimer = null; lpFired = Date.now();
+      openStatusMenu(chip, chip.closest('li.task').dataset.id);
+    }, 450);
+  });
+  $id('taskArea').addEventListener('pointermove', function(e){
+    if(lpTimer && lpPos && Math.hypot(e.clientX-lpPos.x, e.clientY-lpPos.y) > 8) lpStop();
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(n=>$id('taskArea').addEventListener(n, lpStop));
+  $id('taskArea').addEventListener('contextmenu', function(e){
+    const chip = e.target.closest('[data-act="status"]'); if(!chip) return;
+    e.preventDefault();
+    if(Date.now() - lpFired < 800) return;
+    openStatusMenu(chip, chip.closest('li.task').dataset.id);
+  });
+
+  // 行を右へスワイプ＝完了／未完了、左へスワイプ＝ごみ箱（タッチ操作のみ）
+  const SW_MAX = 120, SW_GO = 76;
+  let sw = null;
+  $id('taskArea').addEventListener('pointerdown', function(e){
+    if(e.pointerType!=='touch') return;
+    const inn = e.target.closest('.task-in'); if(!inn) return;
+    const li = inn.parentElement; if(li.classList.contains('plain')) return;
+    sw = { li, inn, x:e.clientX, y:e.clientY, dx:0, on:false };
+  });
+  $id('taskArea').addEventListener('pointermove', function(e){
+    if(!sw) return;
+    const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+    if(!sw.on){
+      if(Math.abs(dx)<10 && Math.abs(dy)<10) return;
+      if(Math.abs(dy)>=Math.abs(dx)){ sw = null; return; }
+      sw.on = true; sw.inn.classList.remove('back'); closeMenu(false); lpStop();
+    }
+    sw.dx = Math.max(-SW_MAX, Math.min(SW_MAX, dx));
+    sw.li.dataset.dir = sw.dx>0 ? 'r' : 'l';
+    sw.inn.style.transform = 'translateX('+sw.dx+'px)';
+  });
+  function endSwipe(cancel){
+    if(!sw) return;
+    const s = sw; sw = null;
+    if(!s.on) return;
+    swipedAt = Date.now();
+    const id = s.li.dataset.id, dx = s.dx;
+    s.inn.classList.add('back');
+    s.inn.style.transform = '';
+    setTimeout(function(){ delete s.li.dataset.dir; }, 220);
+    if(cancel) return;
+    if(dx>=SW_GO) toggleWithUndo(id);
+    else if(dx<=-SW_GO) trashItem(id);
+  }
+  $id('taskArea').addEventListener('pointerup', ()=>endSwipe(false));
+  $id('taskArea').addEventListener('pointercancel', ()=>endSwipe(true));
+
+  // 空の画面のボタン
+  $id('emptyState').addEventListener('click', function(e){
+    const b = e.target.closest('[data-em]'); if(!b) return;
+    if(b.dataset.em==='add'){ expandAdd(true); $id('addText').focus(); }
+    else { $id('searchBox').value = ''; statusFilter = null; render(); }
+  });
+
+  // 「今日へ移動」: 今日の見出しが画面の外にあるときだけ出す
+  const reduceMotion = ()=>!!(window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches);
+  function updateJump(){
+    const b = $id('jumpToday');
+    const sec = document.querySelector('#taskArea [data-day="today"]');
+    if(!sec){ b.hidden = true; return; }
+    const r = sec.getBoundingClientRect();
+    b.hidden = !(r.bottom < 80 || r.top > window.innerHeight);
+  }
+  $id('jumpToday').addEventListener('click', function(){
+    const sec = document.querySelector('#taskArea [data-day="today"]');
+    if(sec) sec.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block:'start' });
   });
 
   function setTab(tab){ currentTab = tab; render(); }
@@ -1113,7 +1365,30 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     setTab(b.dataset.go);
     $id('tabs').scrollIntoView({ block:'start' });
   }));
-  // 検索は入力が落ち着いてから再描画する
+  // 上部バーの高さ（固定見出しの位置合わせ用）とスクロール時の縮小
+  const topBar = $id('topBar');
+  function updateTopH(){ document.documentElement.style.setProperty('--top-h', topBar.offsetHeight+'px'); }
+  function onScroll(){ topBar.classList.toggle('scrolled', window.scrollY>8); updateJump(); }
+  window.addEventListener('scroll', onScroll, { passive:true });
+  window.addEventListener('resize', function(){ updateTopH(); updateJump(); });
+  updateTopH(); onScroll();
+
+  // 検索は虫眼鏡で開く。入力が落ち着いてから再描画する
+  function setSearchOpen(on){
+    $id('searchBar').hidden = !on;
+    $id('searchToggle').setAttribute('aria-expanded', String(on));
+    updateTopH();
+    if(on) $id('searchBox').focus();
+  }
+  $id('searchToggle').addEventListener('click', function(){
+    const willOpen = $id('searchBar').hidden;
+    if(!willOpen) $id('searchBox').value = '';
+    setSearchOpen(willOpen);
+    render();
+  });
+  $id('searchBox').addEventListener('keydown', function(e){
+    if(e.key==='Escape'){ $id('searchBox').value = ''; setSearchOpen(false); render(); $id('searchToggle').focus(); }
+  });
   let searchTimer = null;
   $id('searchBox').addEventListener('input', function(){
     clearTimeout(searchTimer);
