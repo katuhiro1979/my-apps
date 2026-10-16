@@ -161,6 +161,7 @@
   .sw{position:absolute;inset:0;display:none;align-items:center;padding:0 20px;font-size:14px;font-weight:700;color:#fff;}
   .sw-l{background:#2e7d4f;}
   .sw-r{background:var(--danger-solid);justify-content:flex-end;}
+  li.task.armed .sw{filter:brightness(.8);}
   li.task[data-dir="r"] .sw-l,li.task[data-dir="l"] .sw-r{display:flex;}
   .chk{appearance:none;width:44px;height:44px;border:none;background:none;cursor:pointer;display:grid;place-items:center;padding:0;}
   .chk .box{width:24px;height:24px;border-radius:7px;border:2px solid var(--ink-soft);display:grid;place-items:center;background:var(--surface);color:transparent;transition:background .15s,border-color .15s;}
@@ -197,8 +198,8 @@
   .empty .btn{margin-top:16px;}
 
   /* ===== 通知 ===== */
-  .notice{position:sticky;top:calc(var(--top-h,56px) + 8px);z-index:50;display:none;align-items:flex-start;gap:10px;padding:10px 14px;margin-bottom:14px;border:1px solid var(--warn);border-radius:var(--r-sm);background:var(--warn-bg);color:var(--ink);font-size:13.5px;}
-  .notice.error{border-color:var(--danger);background:var(--danger-bg);}
+  .notice{position:static;z-index:50;display:none;align-items:flex-start;gap:10px;padding:10px 14px;margin-bottom:14px;border:1px solid var(--warn);border-radius:var(--r-sm);background:var(--warn-bg);color:var(--ink);font-size:13.5px;}
+  .notice.error{border-color:var(--danger);background:var(--danger-bg);position:sticky;top:calc(var(--top-h,56px) + 8px);}
   .notice span{flex:1;}
   .notice button{appearance:none;border:none;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--ink-soft);min-width:44px;min-height:44px;margin:-12px -10px -12px 0;}
   .toast{position:fixed;inset:auto auto calc(76px + env(safe-area-inset-bottom,0px)) 50%;margin:0;transform:translateX(-50%);z-index:100000;
@@ -374,8 +375,6 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
 <div id="toast" class="toast off" popover="manual" role="status" aria-live="polite"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="cloud-sync.js"></script>
 <script>
 (function(){
 
@@ -401,9 +400,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   let showDone = true;
   let lastRenderDay = '';
   let addStatusId = null;
+  let loadFailed = false;             // 保存データが壊れて読み込めなかった印（空の状態でクラウドを上書きしないため）
   let flashId = null, popId = null;   // 追加直後の強調・完了チェックの動き用（描画のたびに消す）
   const expandedFolds = new Set();    // 開いている「完了N件」の折りたたみ
-  let swipedAt = 0, lpFired = 0;      // スワイプ直後・長押し直後のクリックを無視するための時刻
+  let swipedAt = 0, lpFired = 0, suppressChip = false;      // スワイプ直後・長押し直後のクリックを無視するための時刻
   try{
     const s = localStorage.getItem(SORT_KEY); if(['dateDesc','dateAsc','created'].includes(s)) sortMode = s;
     if(localStorage.getItem(SHOWDONE_KEY) === '0') showDone = false;
@@ -678,7 +678,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       statuses = normalizeStatuses(d.statuses);
       items = normalizeItems(d.items, statuses);
     }catch(e){
-      statuses = defaultStatuses(); items = [];
+      statuses = defaultStatuses(); items = []; loadFailed = true;
       // 壊れたデータを別キーへ退避してから空で開始する（上書きによる消失を防ぐ）
       if(raw){
         try{
@@ -1221,7 +1221,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       } else meta = '<div class="task-meta"><button type="button" class="chip date" data-act="edit" aria-label="日付を設定">日付なし</button></div>';
     }
     const time = (!c.showDate && it.time) ? '<span class="task-time">'+escapeHtml(it.time)+'</span>' : '';
-    const chip = '<button type="button" class="chip c-'+st.color+'" data-act="status" aria-haspopup="menu" aria-label="状態：'+escapeHtml(st.name)+'（タップで次の状態へ、長押しで一覧から選択）">'+escapeHtml(st.name)+'</button>';
+    const chip = '<button type="button" class="chip c-'+st.color+'" data-act="status" aria-haspopup="menu" aria-label="状態：'+escapeHtml(st.name)+'（'+(statuses.length>2 ? 'タップで一覧から選択' : 'タップで切り替え、長押しで一覧')+'）">'+escapeHtml(st.name)+'</button>';
     return '<li class="task'+(done?' done':'')+(over?' over':'')+(c.fId===it.id?' flash':'')+'" data-id="'+id+'">'+
       '<div class="sw sw-l" aria-hidden="true">'+(done ? '未完了に戻す' : '完了にする')+'</div><div class="sw sw-r" aria-hidden="true">ごみ箱へ</div>'+
       '<div class="task-in">'+
@@ -1255,8 +1255,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       else if(act==='edit') openEdit(id);
       else if(act==='restore') restoreItem(id);
       else if(act==='status'){
-        if(Date.now() - lpFired < 800) return; // 長押しでメニューを開いた直後は切り替えない
-        cycleStatus(id);
+        if(suppressChip){ suppressChip = false; return; } // 長押しでメニューを開いた直後のクリックは無視する
+        // 状態が3つ以上のときは誤操作を避けるため一覧を開き、2つのときだけ順に切り替える
+        if(statuses.length>2) openStatusMenu(a, id); else cycleStatus(id);
       }
       return;
     }
@@ -1279,11 +1280,12 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   let lpTimer = null, lpPos = null;
   const lpStop = ()=>{ clearTimeout(lpTimer); lpTimer = null; };
   $id('taskArea').addEventListener('pointerdown', function(e){
+    suppressChip = false;
     if(e.button!==0) return;
     const chip = e.target.closest('[data-act="status"]'); if(!chip) return;
     lpStop(); lpPos = { x:e.clientX, y:e.clientY };
     lpTimer = setTimeout(function(){
-      lpTimer = null; lpFired = Date.now();
+      lpTimer = null; lpFired = Date.now(); suppressChip = true;
       openStatusMenu(chip, chip.closest('li.task').dataset.id);
     }, 450);
   });
@@ -1299,7 +1301,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   });
 
   // 行を右へスワイプ＝完了／未完了、左へスワイプ＝ごみ箱（タッチ操作のみ）
-  const SW_MAX = 120, SW_GO = 76;
+  const SW_MAX = 130, SW_GO = 76, SW_GO_TRASH = 110; // ごみ箱へ行く左スワイプは、誤操作を避けるため深めにする
   let sw = null;
   $id('taskArea').addEventListener('pointerdown', function(e){
     if(e.pointerType!=='touch') return;
@@ -1317,6 +1319,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     }
     sw.dx = Math.max(-SW_MAX, Math.min(SW_MAX, dx));
     sw.li.dataset.dir = sw.dx>0 ? 'r' : 'l';
+    sw.li.classList.toggle('armed', sw.dx>=SW_GO || sw.dx<=-SW_GO_TRASH); // 離すと実行される位置で色を濃くする
     sw.inn.style.transform = 'translateX('+sw.dx+'px)';
   });
   function endSwipe(cancel){
@@ -1327,10 +1330,11 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const id = s.li.dataset.id, dx = s.dx;
     s.inn.classList.add('back');
     s.inn.style.transform = '';
+    s.li.classList.remove('armed');
     setTimeout(function(){ delete s.li.dataset.dir; }, 220);
     if(cancel) return;
     if(dx>=SW_GO) toggleWithUndo(id);
-    else if(dx<=-SW_GO) trashItem(id);
+    else if(dx<=-SW_GO_TRASH) trashItem(id);
   }
   $id('taskArea').addEventListener('pointerup', ()=>endSwipe(false));
   $id('taskArea').addEventListener('pointercancel', ()=>endSwipe(true));
@@ -1453,8 +1457,18 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   load();
 
+  // スワイプ操作のヒントを、タッチ端末で一度だけ出す
+  try{
+    if(items.length && window.matchMedia && window.matchMedia('(pointer:coarse)').matches && !localStorage.getItem('todo-hint-swipe')){
+      localStorage.setItem('todo-hint-swipe', '1');
+      showToast('ヒント：行を右にスワイプで完了、左に大きくスワイプでごみ箱');
+    }
+  }catch(e){}
+
   // クラウド同期: タスクと状態をまとめて同期する（cloud-sync.js）
-  if(window.CloudSync){
+  // 本体の表示を先に済ませ、同期用の外部ファイルは後から読み込む（読み込めなくてもToDo自体は使える）
+  function startCloud(){
+    if(!window.CloudSync) return;
     cloud = CloudSync.init({
       appName: 'ToDo',
       key: 'data-v1',
@@ -1462,6 +1476,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       // 空の端末でも「以前タスクを保存したことがある」なら、データありとして扱う（全削除がクラウドから復活しないように）
       hasData: function(){
         if(items.length > 0) return true;
+        if(loadFailed) return false; // 破損で空になった端末は、クラウドの内容を取り込む側に倒す
         try{ return localStorage.getItem(EVER_KEY)==='1'; }catch(e){ return false; }
       },
       applyData: function(d){
@@ -1477,6 +1492,17 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       }
     });
   }
+  function loadScript(src){
+    return new Promise(function(ok, ng){
+      const el = document.createElement('script');
+      el.src = src; el.onload = ok; el.onerror = ng;
+      document.head.append(el);
+    });
+  }
+  loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4')
+    .then(()=>loadScript('cloud-sync.js'))
+    .then(startCloud)
+    .catch(()=>{ /* 同期を読み込めないときは、端末内だけで使う */ });
 })();
 </script>
 </body>
