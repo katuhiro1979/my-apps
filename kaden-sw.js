@@ -1,6 +1,6 @@
 // 家電管理のオフライン対応。このアプリのファイルだけを扱い、他のアプリには触れない
 // ネットワーク優先のため、ファイルを更新しても通常は番号の更新は不要（古いキャッシュを捨てたいときだけ上げる）。
-var CACHE='kaden-app-v1';
+var CACHE='kaden-app-v2';
 var FILES=['kaden-manager.html','cloud-sync.js','kaden-manifest.json','kaden-icon-192.png','kaden-icon-512.png'];
 
 self.addEventListener('install',function(e){

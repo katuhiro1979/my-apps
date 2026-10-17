@@ -54,6 +54,7 @@
   *{ box-sizing:border-box; }
   body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); line-height:1.6; padding:env(safe-area-inset-top) 16px calc(96px + env(safe-area-inset-bottom)); }
   main{ max-width:640px; margin:0 auto; }
+  @media (min-width:720px){ main, .dock > div{ max-width:960px !important; } } /* 広い画面ではカードを2列に */
   header{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:16px 0 8px; }
   h1{ font-size:1.25rem; margin:0; }
   button, input, select, textarea{ font:inherit; color:inherit; }
@@ -80,32 +81,65 @@
   .tabs button[aria-pressed="true"]{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
   .tabs select{ margin-left:auto; width:auto; min-height:36px; font-size:.85rem; padding:0 8px; }
 
-  /* 家電カード */
+  /* 家電カード（左端の色の帯＋右の大きな残り時間で、状態を先に伝える） */
   ul{ list-style:none; margin:0; padding:0; }
-  .card{ display:block; width:100%; text-align:left; min-height:0; padding:12px; margin-bottom:10px; background:var(--paper); border:1px solid var(--line); border-radius:12px; }
-  .card .row1{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
-  .card .name{ font-weight:700; word-break:break-word; }
-  .card .tag{ font-size:.8rem; white-space:nowrap; }
-  .card .sub{ font-size:.8rem; color:var(--ink-soft); margin:2px 0 8px; }
-  .bar{ height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
+  #list{ display:grid; gap:10px; }
+  @media (min-width:720px){ #list{ grid-template-columns:1fr 1fr; } }
+  #list li{ container-type:inline-size; }
+  .card{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 12px; align-items:center; width:100%; text-align:left; min-height:0; padding:12px 14px 12px 12px; background:var(--paper); border:1px solid var(--line); border-left:6px solid var(--line); border-radius:12px; transition:transform .12s, box-shadow .12s; }
+  .card:active{ transform:scale(.99); }
+  .card.lv-ok{ border-left-color:var(--ok); }
+  .card.lv-warn{ border-left-color:var(--warn); background:color-mix(in srgb, var(--warn) 7%, var(--paper)); }
+  .card.lv-danger{ border-left-color:var(--danger); background:color-mix(in srgb, var(--danger) 8%, var(--paper)); }
+  .card .name{ font-weight:700; font-size:1.05rem; line-height:1.4; word-break:break-word; }
+  .card .sub{ font-size:.8rem; color:var(--ink-soft); }
+  .card .sub span{ white-space:nowrap; }
+  .card .big{ text-align:right; line-height:1.2; white-space:nowrap; }
+  .card .big b{ display:block; font-size:1.3rem; font-weight:800; font-variant-numeric:tabular-nums; }
+  .card .big small{ font-size:.72rem; font-weight:700; }
+  .card .pills{ grid-column:1/-1; display:flex; flex-wrap:wrap; gap:6px; }
+  .pill{ font-size:.75rem; font-weight:600; padding:1px 8px; border-radius:999px; background:var(--surface-2); color:var(--ink-soft); }
+  .pill.c-warn{ background:var(--warn-bg); }
+  .bar{ grid-column:1/-1; height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
   .bar i{ display:block; height:100%; border-radius:4px; }
-  .card .row3{ display:flex; justify-content:space-between; gap:8px; font-size:.8rem; color:var(--ink-soft); margin-top:6px; }
+  .card .row3{ grid-column:1/-1; display:flex; justify-content:space-between; gap:8px; font-size:.8rem; color:var(--ink-soft); }
+  @container (max-width:300px){ .card .big b{ font-size:1.1rem; } }
   .c-ok{ color:var(--ok); } .c-warn{ color:var(--warn); } .c-danger{ color:var(--danger); }
   .b-ok{ background:var(--ok); } .b-warn{ background:var(--warn); } .b-danger{ background:var(--danger); }
-  .empty{ color:var(--ink-soft); text-align:center; padding:32px 0; }
+  .empty{ grid-column:1/-1; color:var(--ink-soft); text-align:center; padding:40px 0; }
+  .empty svg{ display:block; margin:0 auto 12px; width:72px; height:72px; stroke:var(--ink-soft); fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; opacity:.7; }
+
+  /* 日付・年月の入力欄（ダークでも浮かないように、左寄せ＋アイコンの色を揃える） */
+  input[type="date"], input[type="month"]{ text-align:left; min-width:0; }
+  input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-date-and-time-value{ text-align:left; }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) ::-webkit-calendar-picker-indicator{ filter:invert(.85); } }
+  :root[data-theme="dark"] ::-webkit-calendar-picker-indicator{ filter:invert(.85); }
 
   /* 画面下の操作 */
   .dock{ position:fixed; left:0; right:0; bottom:0; padding:10px 16px calc(10px + env(safe-area-inset-bottom)); background:var(--paper); border-top:1px solid var(--line); z-index:20; }
-  .dock div{ max-width:640px; margin:0 auto; display:flex; gap:8px; padding-right:64px; } /* 右端は☁ボタンの場所 */
+  .dock > div{ position:relative; max-width:640px; margin:0 auto; display:flex; gap:8px; padding-right:64px; } /* 右端は☁ボタンの場所 */
   .dock button{ white-space:nowrap; }
-  .dock button:not(.primary){ padding:0 10px; }
   .dock .primary{ flex:1; }
+  .dock #moreBtn{ width:48px; padding:0; font-size:1.2rem; }
+  .menu{ position:absolute; right:64px; bottom:calc(100% + 10px); display:flex; flex-direction:column; gap:4px; padding:6px; background:var(--paper); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow-lg); }
+  .menu[hidden]{ display:none; }
+  .menu button{ border:0; text-align:left; background:transparent; }
 
-  /* 追加・編集の画面 */
-  dialog{ width:min(560px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); padding:0; border:1px solid var(--line); border-radius:16px; background:var(--paper); color:var(--ink); box-shadow:var(--shadow-lg); }
+  /* 追加・編集の画面（下から出るシート。保存ボタンは下に固定） */
+  dialog{ width:min(560px,100%); max-width:100%; max-height:92dvh; margin:auto auto 0; padding:0; border:0; border-radius:20px 20px 0 0; background:var(--paper); color:var(--ink); box-shadow:var(--shadow-lg); overflow:hidden; }
+  @media (min-width:720px){ dialog{ margin:auto; border-radius:20px; max-height:88dvh; } }
+  dialog[open]{ animation:sheet-in .22s ease-out; }
+  @keyframes sheet-in{ from{ transform:translateY(32px); opacity:0; } }
   dialog::backdrop{ background:rgba(0,0,0,.45); }
-  .dlg{ padding:16px; }
-  .dlg h2{ font-size:1.1rem; margin:0 0 12px; }
+  .dlg{ display:flex; flex-direction:column; max-height:inherit; }
+  .dlg .head{ padding:8px 16px 0; }
+  .grab{ width:40px; height:4px; border-radius:2px; background:var(--line); margin:0 auto 10px; }
+  .dlg .body{ overflow:auto; overscroll-behavior:contain; padding:0 16px 8px; }
+  .dlg h2{ font-size:1.1rem; margin:0 0 8px; }
+  .grp{ font-size:.75rem; font-weight:700; letter-spacing:.04em; color:var(--ink-soft); margin:14px 0 6px; }
+  .more{ display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+  .more:not(:has(button:not([hidden]))){ display:none; }
+  .foot{ flex-shrink:0; padding:8px 16px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:var(--paper); }
   .fld{ margin-bottom:12px; }
   .fld label{ display:block; font-size:.8rem; color:var(--ink-soft); margin-bottom:2px; }
   .two{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -116,9 +150,9 @@
   .rep li button{ min-height:36px; padding:0 10px; }
   .rep .add{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px; }
   .rep .add .wide{ grid-column:1/-1; }
-  .acts{ display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+  .acts{ display:flex; gap:8px; }
   .acts .primary{ flex:1; }
-  .err{ color:var(--danger); font-size:.85rem; min-height:1.2em; margin-top:6px; }
+  .err{ color:var(--danger); font-size:.85rem; min-height:1.2em; margin-bottom:4px; }
 
   .toast{ position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); transform:translateX(-50%); display:none; align-items:center; gap:12px; padding:10px 14px; background:var(--ink); color:var(--bg); border-radius:12px; box-shadow:var(--shadow-lg); z-index:50; max-width:calc(100vw - 32px); }
   .toast.show{ display:flex; }
@@ -157,14 +191,19 @@
 
 <div class="dock"><div>
   <button class="primary" id="addBtn" type="button">＋ 追加</button>
-  <button id="exportBtn" type="button">書き出し</button>
-  <button id="importBtn" type="button">読み込み</button>
+  <button id="moreBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="menu" aria-label="その他の操作">⋯</button>
+  <div class="menu" id="menu" hidden>
+    <button id="exportBtn" type="button">書き出し（バックアップ）</button>
+    <button id="importBtn" type="button">読み込み</button>
+  </div>
   <input id="importFile" type="file" accept="application/json,.json" hidden>
 </div></div>
 
 <dialog id="dlg" aria-labelledby="dlgTitle">
   <form class="dlg" id="form" novalidate>
-    <h2 id="dlgTitle">家電を追加</h2>
+    <div class="head"><div class="grab" aria-hidden="true"></div><h2 id="dlgTitle">家電を追加</h2></div>
+    <div class="body">
+    <div class="grp">基本</div>
     <div class="fld"><label for="fName">名前（必須）</label><input id="fName" maxlength="60" autocomplete="off" placeholder="冷蔵庫"></div>
     <div class="two">
       <div class="fld"><label for="fPlace">置き場所</label><input id="fPlace" maxlength="30" list="placeList" autocomplete="off" placeholder="台所"><datalist id="placeList"></datalist></div>
@@ -174,6 +213,7 @@
       <div class="fld"><label for="fPrice">購入額（円）</label><input id="fPrice" type="number" inputmode="numeric" min="0" max="100000000" step="1" placeholder="120000"></div>
       <div class="fld"><label for="fLife">寿命の目安（年）</label><input id="fLife" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="10"></div>
     </div>
+    <div class="grp">保証・機種</div>
     <div class="two">
       <div class="fld"><label for="fWarranty">保証の期限</label><input id="fWarranty" type="date"></div>
       <div class="fld"><label for="fMaker">メーカー</label><input id="fMaker" maxlength="40" autocomplete="off"></div>
@@ -195,12 +235,17 @@
       </div>
     </div>
 
-    <div class="err" id="err" role="alert"></div>
-    <div class="acts">
-      <button class="primary" type="submit">保存</button>
-      <button type="button" id="cancelBtn">キャンセル</button>
+    <div class="more">
       <button type="button" id="statusBtn" hidden></button>
       <button type="button" id="delBtn" class="danger" hidden>削除</button>
+    </div>
+    </div>
+    <div class="foot">
+      <div class="err" id="err" role="alert"></div>
+      <div class="acts">
+        <button class="primary" type="submit">保存</button>
+        <button type="button" id="cancelBtn">キャンセル</button>
+      </div>
     </div>
   </form>
 </dialog>
@@ -358,8 +403,8 @@
     const wnear = cs.filter((c) => c.warn !== null && c.warn !== 'out').length;
     $('#sum').innerHTML =
       '<div><small>購入額の合計</small><b>' + yen(total) + '</b></div>' +
-      '<div class="' + (near ? 'hot' : '') + '"><small>寿命が近い・超過</small><b>' + near + '台</b></div>' +
-      '<div class="' + (wnear ? 'hot' : '') + '"><small>90日以内に保証切れ</small><b>' + wnear + '台</b></div>';
+      '<div class="' + (near ? 'hot' : '') + '"><small>' + (near ? '▲ ' : '') + '寿命が近い</small><b>' + near + '台</b></div>' +
+      '<div class="' + (wnear ? 'hot' : '') + '"><small>' + (wnear ? '▲ ' : '') + '保証切れ間近</small><b>' + wnear + '台</b></div>';
     $('#tabUse').textContent = '使用中 ' + cur.length;
     $('#tabHist').textContent = '履歴 ' + hist.length;
     $('#tabUse').setAttribute('aria-pressed', tab === 'use');
@@ -390,33 +435,50 @@
 
     const ul = $('#list');
     if(!rows.length){
-      ul.innerHTML = '<li class="empty">' + (items.length ? '該当する家電がありません' : 'まだ家電がありません。下の「家電を追加」から登録してください') + '</li>';
+      ul.innerHTML = '<li class="empty"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="13" y="5" width="22" height="38" rx="4"/><path d="M13 20h22M18 11v5M18 25v8"/></svg>' + (items.length ? '該当する家電がありません' : 'まだ家電がありません。<br>下の「＋ 追加」から登録してください') + '</li>';
       return;
     }
     ul.innerHTML = rows.map((it) => {
-      const c = info.get(it.id), lv = level(c);
-      let tag = '';
-      if(it.status === 'replaced') tag = '<span class="tag">' + (it.replacedAt ? esc(fmtYM(it.replacedAt)) + 'に買い替え' : '買い替え済み') + '</span>';
-      else if(c.remain === null) tag = '<span class="tag" style="color:var(--ink-soft)">寿命未設定</span>';
-      else if(c.remain < 0) tag = '<span class="tag c-danger">寿命を' + fmtSpan(-c.remain) + '超過</span>';
-      else tag = '<span class="tag c-' + lv + '">' + (c.remain === 0 ? '今月が寿命' : 'あと' + fmtSpan(c.remain)) + '</span>';
-      if(it.status === 'using' && c.warn === 'out') tag += ' <span class="tag" style="color:var(--ink-soft)">保証切れ</span>';
-      else if(it.status === 'using' && c.warn !== null) tag += ' <span class="tag c-warn">保証あと' + c.warn + '日</span>';
-      const sub = [it.place, it.bought ? fmtYM(it.bought) + '購入' : '', c.used !== null ? '使用' + (c.used < 1 ? '1か月未満' : fmtSpan(c.used)) : ''].filter(Boolean).map(esc).join(' ・ ');
+      const c = info.get(it.id), lv = it.status === 'using' ? level(c) : '';
+      // 右の大きな表示（色だけに頼らず、文字と記号でも状態を伝える）
+      let big;
+      if(it.status === 'replaced') big = '<b>買い替え</b><small>' + (it.replacedAt ? esc(fmtYM(it.replacedAt)) : '済み') + '</small>';
+      else if(c.remain === null) big = '<b>―</b><small>寿命未設定</small>';
+      else if(c.remain < 0) big = '<b>' + fmtSpan(-c.remain) + '</b><small>⚠ 寿命を超過</small>';
+      else if(c.remain === 0) big = '<b>今月</b><small>▲ 寿命</small>';
+      else big = '<b>' + fmtSpan(c.remain) + '</b><small>' + (lv === 'warn' ? '▲ ' : '') + '寿命まで</small>';
+      let pills = '';
+      if(it.status === 'using' && c.warn === 'out') pills = '<span class="pill">保証切れ</span>';
+      else if(it.status === 'using' && c.warn !== null) pills = '<span class="pill c-warn">▲ 保証あと' + c.warn + '日</span>';
+      const sub = [it.place, it.bought ? fmtYM(it.bought) + '購入' : '', c.used !== null ? '使用' + (c.used < 1 ? '1か月未満' : fmtSpan(c.used)) : ''].filter(Boolean).map((s) => '<span>' + esc(s) + '</span>').join(' ・ '); // 項目の途中では折り返さない
       const bar = (it.status === 'using' && c.ratio !== null) ? '<div class="bar"><i class="b-' + lv + '" style="width:' + Math.min(100, Math.round(c.ratio * 100)) + '%"></i></div>' : '';
       const cost = (it.price ? yen(it.price) : '購入額未入力') + (c.repair ? ' ＋修理' + yen(c.repair) : '');
-      return '<li><button class="card" type="button" data-id="' + esc(it.id) + '">' +
-        '<div class="row1"><span class="name">' + esc(it.name) + '</span><span>' + tag + '</span></div>' +
-        '<div class="sub">' + (sub || '&nbsp;') + '</div>' + bar +
+      return '<li style="view-transition-name:c' + esc(it.id.replace(/\W/g, '_')) + '"><button class="card' + (lv ? ' lv-' + lv : '') + '" type="button" data-id="' + esc(it.id) + '">' +
+        '<div><div class="name">' + esc(it.name) + '</div><div class="sub">' + (sub || '&nbsp;') + '</div></div>' +
+        '<div class="big' + (lv ? ' c-' + lv : '') + '">' + big + '</div>' +
+        (pills ? '<div class="pills">' + pills + '</div>' : '') + bar +
         '<div class="row3"><span>' + cost + '</span><span>' + (c.yearly !== null ? '年あたり ' + yen(c.yearly) : '') + '</span></div></button></li>';
     }).join('');
   }
 
-  $('#tabUse').addEventListener('click', () => { tab = 'use'; render(); });
-  $('#tabHist').addEventListener('click', () => { tab = 'hist'; render(); });
+  // タブ・並べ替えは、カードが動いて入れ替わる（非対応の環境や、動きを減らす設定では普通に切り替える）
+  function renderAnimated(){
+    if(document.startViewTransition && !matchMedia('(prefers-reduced-motion:reduce)').matches) document.startViewTransition(render);
+    else render();
+  }
+  $('#tabUse').addEventListener('click', () => { tab = 'use'; renderAnimated(); });
+  $('#tabHist').addEventListener('click', () => { tab = 'hist'; renderAnimated(); });
   $('#q').addEventListener('input', render);
   $('#placeSel').addEventListener('change', render);
-  $('#sortSel').addEventListener('change', (e) => { try{ localStorage.setItem(SORT_KEY, e.target.value); }catch(err){} render(); });
+  $('#sortSel').addEventListener('change', (e) => { try{ localStorage.setItem(SORT_KEY, e.target.value); }catch(err){} renderAnimated(); });
+
+  // ---------- 「⋯」メニュー（書き出し・読み込み） ----------
+  const menu = $('#menu'), moreBtn = $('#moreBtn');
+  function setMenu(open){ menu.hidden = !open; moreBtn.setAttribute('aria-expanded', open); }
+  moreBtn.addEventListener('click', (e) => { e.stopPropagation(); setMenu(menu.hidden); });
+  menu.addEventListener('click', () => setMenu(false));
+  document.addEventListener('click', () => setMenu(false));
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape') setMenu(false); });
 
   // ---------- 追加・編集の画面 ----------
   const dlg = $('#dlg');
