@@ -1,5 +1,5 @@
-// iPad管理のオフライン対応。このアプリのファイルだけを扱い、他のアプリには触れない
-var CACHE='ipad-manager-v1';
+// 端末管理（iPad・iPhone）のオフライン対応。このアプリのファイルだけを扱い、他のアプリには触れない
+var CACHE='ipad-manager-v2';
 var FILES=['ipad_manager.html','cloud-sync.js','ipad-manifest.json','ipad-icon-192.png','ipad-icon-512.png'];
 
 self.addEventListener('install',function(e){

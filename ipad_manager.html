@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>iPad管理</title>
+<title>端末管理</title>
 <meta name="theme-color" content="#3d5a73">
 <link rel="manifest" href="ipad-manifest.json">
 <link rel="icon" href="ipad-icon-192.png">
@@ -233,7 +233,7 @@
 <div class="wrap">
   <header>
     <div>
-      <h1>iPad管理</h1>
+      <h1>端末管理</h1>
       <div class="sub">端末情報と保証期限をまとめて確認</div>
     </div>
     <div style="text-align:right">
@@ -249,6 +249,7 @@
   </div>
 
   <div class="toolbar no-print">
+    <div class="seg" id="kindSeg" role="group" aria-label="種別で絞り込み"></div>
     <div class="seg" id="fltSeg" role="group" aria-label="状態で絞り込み"></div>
     <label class="search"><span aria-hidden="true">🔍</span><input id="q" type="search" placeholder="呼び名・型番・場所で検索" aria-label="検索"></label>
     <label class="sort">並び順
@@ -269,17 +270,17 @@
 </div>
 
 
-<button type="button" class="fab no-print" id="btnNew" aria-label="iPadを登録する">＋</button>
+<button type="button" class="fab no-print" id="btnNew" aria-label="端末を登録する">＋</button>
 
-<dialog class="sheet" id="detailSheet" aria-label="iPadの詳細">
-  <div class="sheet-bar"><span style="width:64px"></span><strong>iPadの詳細</strong><button type="button" class="ghost small" data-act="close">閉じる</button></div>
+<dialog class="sheet" id="detailSheet" aria-label="端末の詳細">
+  <div class="sheet-bar"><span style="width:64px"></span><strong>端末の詳細</strong><button type="button" class="ghost small" data-act="close">閉じる</button></div>
   <div class="sheet-body" id="detailBody"></div>
 </dialog>
 
-<dialog class="sheet" id="formSheet" aria-label="iPadの登録・編集">
+<dialog class="sheet" id="formSheet" aria-label="端末の登録・編集">
   <div class="sheet-bar">
     <button type="button" class="ghost small" id="btnCancel">キャンセル</button>
-    <strong id="formTitle">iPadを登録する</strong>
+    <strong id="formTitle">端末を登録する</strong>
     <button type="button" class="small" id="btnSave">登録する</button>
   </div>
   <div class="sheet-body">
@@ -291,12 +292,12 @@
 
         <div class="sec">基本</div>
         <div class="form-grid">
+          <label class="f">種別
+            <select id="fKind"><option>iPad</option><option>iPhone</option></select>
+          </label>
           <label class="f">呼び名（必須）<input id="fName" maxlength="30" placeholder="例：リビング用"></label>
           <label class="f">機種
-            <select id="fModel">
-              <option value="">選んでください</option>
-              <option>iPad</option><option>iPad Air</option><option>iPad mini</option><option>iPad Pro</option><option>その他</option>
-            </select>
+            <select id="fModel"><option value="">選んでください</option></select>
           </label>
           <label class="f">世代・サイズ<input id="fGen" maxlength="30" placeholder="例：第10世代 / 11インチ"></label>
           <label class="f">型番<input id="fModelNo" maxlength="30" placeholder="例：MPQ03J/A"></label>
@@ -319,7 +320,7 @@
         <div class="sec">識別情報</div>
         <div class="form-grid">
           <label class="f">シリアル番号<input id="fSerial" maxlength="30"></label>
-          <label class="f">iPadOSのバージョン<input id="fOs" maxlength="20" placeholder="例：18.1"></label>
+          <label class="f"><span id="osLbl">iPadOSのバージョン</span><input id="fOs" maxlength="20" placeholder="例：18.1"></label>
         </div>
 
         <div class="sec">購入・保証</div>
@@ -349,7 +350,7 @@
   var KEY='ipad-manager-data';
   // [フォームのID, データのキー, 初期値]
   var FIELDS=[
-    ['fName','name',''],['fModel','model',''],['fGen','gen',''],['fModelNo','modelNo',''],
+    ['fKind','kind','iPad'],['fName','name',''],['fModel','model',''],['fGen','gen',''],['fModelNo','modelNo',''],
     ['fCapacity','capacity',''],['fColor','color',''],['fNetwork','network','Wi-Fi'],['fStatus','status','使用中'],
     ['fPlace','place',''],['fSerial','serial',''],['fOs','os',''],
     ['fBuyDate','buyDate',''],['fShop','shop',''],['fPrice','price',''],['fWarranty','warranty',''],['fCare','care','未加入'],
@@ -372,6 +373,7 @@
       FIELDS.forEach(function(p){o[p[1]]=str(v[p[1]]);});
       if(!DATE_RE.test(o.buyDate))o.buyDate='';
       if(!DATE_RE.test(o.warranty))o.warranty='';
+      if(o.kind!=='iPhone')o.kind='iPad'; // 種別のない（以前の）データは iPad として扱う
       o.image=(typeof v.image==='string'&&/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(v.image))?v.image:'';
       var aseen={};
       o.accessories=(Array.isArray(v.accessories)?v.accessories:[]).filter(function(a){return a&&typeof a==='object';}).map(function(a){
@@ -397,14 +399,30 @@
   // 一覧の見せ方（絞り込み・並び順。この端末の表示設定のみ）
   var VIEW_KEY='ipad-manager-view';
   var view=(function(){
-    var d={filter:'all',sort:'warranty'};
-    try{var s=JSON.parse(localStorage.getItem(VIEW_KEY));if(s){d.filter=s.filter||d.filter;d.sort=s.sort||d.sort;}}catch(e){}
+    var d={filter:'all',sort:'warranty',kind:'all'};
+    try{var s=JSON.parse(localStorage.getItem(VIEW_KEY));if(s){d.filter=s.filter||d.filter;d.sort=s.sort||d.sort;d.kind=s.kind==='iPad'||s.kind==='iPhone'?s.kind:'all';}}catch(e){}
     return d;
   })();
   function saveView(){try{localStorage.setItem(VIEW_KEY,JSON.stringify(view));}catch(e){}}
   var query='';      // 検索語
   var curId=null;    // 詳細シートで開いているiPadのID
   var backTo=null;   // 編集を終えたあとに詳細へ戻るiPadのID
+  // 種別ごとの機種の選択肢
+  var MODELS={
+    iPad:['iPad','iPad Air','iPad mini','iPad Pro','その他'],
+    iPhone:['iPhone','iPhone Plus','iPhone Pro','iPhone Pro Max','iPhone SE','iPhone mini','その他']
+  };
+  var KINDS=[['all','すべて'],['iPad','iPad'],['iPhone','iPhone']];
+  // 種別に合わせて機種の選択肢とOSの名前を切り替える。keep は選んだままにしたい機種（以前の値が選択肢にないときも残す）
+  function fillModels(keep){
+    var list=MODELS[$('fKind').value]||MODELS.iPad;
+    var opts=['<option value="">選んでください</option>'].concat(list.map(function(m){return '<option>'+esc(m)+'</option>';}));
+    if(keep&&list.indexOf(keep)<0)opts.push('<option>'+esc(keep)+'</option>');
+    $('fModel').innerHTML=opts.join('');
+    $('fModel').value=keep||'';
+    $('osLbl').textContent=($('fKind').value==='iPhone'?'iOS':'iPadOS')+'のバージョン';
+  }
+  $('fKind').onchange=function(){fillModels('');};
   var FILTERS=[['all','すべて'],['使用中','使用中'],['予備','予備'],['other','その他']];
   function inFilter(v,f){
     if(f==='all')return true;
@@ -492,9 +510,10 @@
 
   function resetForm(){
     editId=null;imgData='';
+    $('fKind').value='iPad';fillModels('');
     FIELDS.forEach(function(p){$(p[0]).value=p[2];});
     $('fImage').value='';showImg();
-    $('formTitle').textContent='iPadを登録する';
+    $('formTitle').textContent='端末を登録する';
     $('btnSave').textContent='登録する';
   }
   // 登録・編集シートの開閉（閉じたら入力を空に戻し、編集だった場合は詳細へ戻る）
@@ -534,9 +553,10 @@
   function startEdit(id){
     var v=find(id);if(!v)return;
     editId=id;imgData=v.image||'';
+    $('fKind').value=v.kind==='iPhone'?'iPhone':'iPad';fillModels(v.model);
     FIELDS.forEach(function(p){$(p[0]).value=v[p[1]]!=null&&v[p[1]]!==''?v[p[1]]:p[2];});
     showImg();
-    $('formTitle').textContent='iPadを編集する';
+    $('formTitle').textContent='端末を編集する';
     $('btnSave').textContent='保存する';
     backTo=id;
     if($('detailSheet').open)$('detailSheet').close();
@@ -569,16 +589,21 @@
       var c=data.devices.filter(function(v){return inFilter(v,f[0]);}).length;
       return '<button type="button" data-flt="'+f[0]+'" aria-pressed="'+(view.filter===f[0])+'">'+f[1]+'<span class="cnt">'+c+'</span></button>';
     }).join('');
+    $('kindSeg').innerHTML=KINDS.map(function(k){
+      var c=data.devices.filter(function(v){return k[0]==='all'||v.kind===k[0];}).length;
+      return '<button type="button" data-kind="'+k[0]+'" aria-pressed="'+(view.kind===k[0])+'">'+k[1]+'<span class="cnt">'+c+'</span></button>';
+    }).join('');
     $('sortSel').value=view.sort;
 
     if(!data.devices.length){
-      $('list').innerHTML='<div class="empty"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><rect x="22" y="10" width="52" height="76" rx="8"/><circle cx="48" cy="77" r="2.5" fill="currentColor" stroke="none"/><path d="M36 34h24M36 46h24M36 58h14" opacity=".5"/></svg><div class="e-title">まだiPadが登録されていません</div>端末情報と保証期限をここにまとめられます。<br><button type="button" data-act="new">最初のiPadを登録する</button></div>';
+      $('list').innerHTML='<div class="empty"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><rect x="22" y="10" width="52" height="76" rx="8"/><circle cx="48" cy="77" r="2.5" fill="currentColor" stroke="none"/><path d="M36 34h24M36 46h24M36 58h14" opacity=".5"/></svg><div class="e-title">まだ端末が登録されていません</div>端末情報と保証期限をここにまとめられます。<br><button type="button" data-act="new">最初の端末を登録する</button></div>';
       return;
     }
     var list=data.devices.filter(function(v){
       if(!inFilter(v,view.filter))return false;
+      if(view.kind!=='all'&&v.kind!==view.kind)return false;
       if(!query)return true;
-      var s=[v.name,v.model,v.gen,v.modelNo,v.serial,v.place,v.color,v.capacity].join(' ').toLowerCase();
+      var s=[v.name,v.kind,v.model,v.gen,v.modelNo,v.serial,v.place,v.color,v.capacity].join(' ').toLowerCase();
       return s.indexOf(query.toLowerCase())>=0;
     });
     if(view.sort==='name'){
@@ -589,7 +614,7 @@
       list.sort(function(a,b){return key(a)-key(b);});
     }
     if(!list.length){
-      $('list').innerHTML='<div class="empty"><div class="e-title">条件に合うiPadがありません</div>絞り込みや検索語を変えてみてください。<br><button type="button" class="ghost small" data-act="reset">絞り込みを解除</button></div>';
+      $('list').innerHTML='<div class="empty"><div class="e-title">条件に合う端末がありません</div>絞り込みや検索語を変えてみてください。<br><button type="button" class="ghost small" data-act="reset">絞り込みを解除</button></div>';
       return;
     }
     $('list').innerHTML=list.map(deviceHtml).join('');
@@ -629,7 +654,7 @@
       +'<div class="c-groups">'
       +'<div class="group"><h3>端末</h3>'
       +row('状態',v.status)+row('回線',v.network)+row('置き場所・用途',v.place)
-      +row('型番',v.modelNo)+row('シリアル番号',v.serial)+row('iPadOS',v.os)+'</div>'
+      +row('型番',v.modelNo)+row('シリアル番号',v.serial)+row(v.kind==='iPhone'?'iOS':'iPadOS',v.os)+'</div>'
       +'<div class="group"><h3>購入・保証</h3>'
       +row('購入日',v.buyDate)+row('購入店',v.shop)+row('金額',v.price?Number(v.price).toLocaleString()+'円':'')
       +row('保証期限',v.warranty)+row('AppleCare+',v.care)+'</div></div>'
@@ -715,6 +740,10 @@
     if(c&&e.target===c){e.preventDefault();openDetail(c.dataset.open);}
   };
   // 絞り込み・検索・並び替え
+  $('kindSeg').onclick=function(e){
+    var b=e.target.closest('button[data-kind]');if(!b)return;
+    view.kind=b.dataset.kind;saveView();render();
+  };
   $('fltSeg').onclick=function(e){
     var b=e.target.closest('button[data-flt]');if(!b)return;
     view.filter=b.dataset.flt;saveView();render();
@@ -727,7 +756,7 @@
     var b=e.target.closest('button[data-act]');if(!b)return;
     var act=b.dataset.act;
     if(act==='new'){openForm();return;}
-    if(act==='reset'){view.filter='all';saveView();query='';$('q').value='';render();return;}
+    if(act==='reset'){view.filter='all';view.kind='all';saveView();query='';$('q').value='';render();return;}
     if(act==='close'){$('detailSheet').close();return;}
     var v=find(b.dataset.d);if(!v)return;
     if(act==='edit'){startEdit(v.id);return;}
@@ -846,7 +875,7 @@
       getData:function(){return {devices:data.devices};},
       hasData:function(){return data.devices.length>0;},
       applyData:function(d){
-        if(!d||!Array.isArray(d.devices))throw new Error('iPad管理のデータ形式が違います');
+        if(!d||!Array.isArray(d.devices))throw new Error('端末管理のデータ形式が違います');
         // 登録・編集シートやアクセサリーのフォームを開いている間は、入力を消さないよう保留する
         if(isEditing()){pendingRemote=d;toast('編集を終えると、他の端末の変更を反映します');return;}
         applyRemote(d);

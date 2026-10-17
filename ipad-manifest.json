@@ -1,7 +1,7 @@
 ﻿{
-  "name": "iPad管理",
-  "short_name": "iPad管理",
-  "description": "iPadの端末情報・保証期限・アクセサリーの管理",
+  "name": "端末管理",
+  "short_name": "端末管理",
+  "description": "iPad・iPhoneの端末情報・保証期限・アクセサリーの管理",
   "start_url": "ipad_manager.html",
   "scope": "./",
   "display": "standalone",
