@@ -22,7 +22,7 @@
   :root{
     color-scheme:light dark;
     --bg:#F4F5F7; --paper:#FFFFFF; --surface-2:#EEF0F4;
-    --ink:#1B2333; --ink-soft:#505A6E; --line:#D7DBE3;
+    --ink:#1B2333; --ink-soft:#505A6E; --line:#D7DBE3; --line-strong:#8A93A5;
     --accent:#1B2333; --on-accent:#FFFFFF;
     --danger:#B3281C; --warn:#854F0B; --ok:#3B6D11;
     --warn-bg:#FAEEDA; --danger-bg:#FCEBEB;
@@ -33,7 +33,7 @@
   @media (prefers-color-scheme:dark){
     :root:not([data-theme="light"]){
       --bg:#0E1116; --paper:#171B22; --surface-2:#1F242C;
-      --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440;
+      --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440; --line-strong:#6B7686;
       --accent:#E8ECF2; --on-accent:#0E1116;
       --danger:#FF8176; --warn:#EF9F27; --ok:#97C459;
       --warn-bg:#3A2A10; --danger-bg:#3A1C1A;
@@ -44,7 +44,7 @@
   :root[data-theme="dark"]{
     color-scheme:dark;
     --bg:#0E1116; --paper:#171B22; --surface-2:#1F242C;
-    --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440;
+    --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440; --line-strong:#6B7686;
     --accent:#E8ECF2; --on-accent:#0E1116;
     --danger:#FF8176; --warn:#EF9F27; --ok:#97C459;
     --warn-bg:#3A2A10; --danger-bg:#3A1C1A;
@@ -62,7 +62,7 @@
   button.primary{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   button.danger{ color:var(--danger); }
   button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{ outline:3px solid #3B82F6; outline-offset:2px; }
-  input, select, textarea{ min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:10px; background:var(--paper); width:100%; }
+  input, select, textarea{ min-height:44px; padding:0 12px; border:1px solid var(--line-strong); border-radius:10px; background:var(--paper); width:100%; }
   textarea{ padding:8px 12px; min-height:72px; resize:vertical; }
 
   /* 集計の帯 */
@@ -77,9 +77,9 @@
   .filter input{ flex:1; min-width:0; }
   .filter select{ width:42%; }
   .tabs{ display:flex; align-items:center; gap:6px; margin-bottom:10px; }
-  .tabs button{ min-height:36px; border-radius:999px; padding:0 14px; font-size:.9rem; }
+  .tabs button{ min-height:44px; border-radius:999px; padding:0 14px; font-size:.9rem; }
   .tabs button[aria-pressed="true"]{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
-  .tabs select{ margin-left:auto; width:auto; min-height:36px; font-size:.85rem; padding:0 8px; }
+  .tabs select{ margin-left:auto; width:auto; max-width:50%; min-height:44px; font-size:1rem; padding:0 8px; }
 
   /* 家電カード（左端の色の帯＋右の大きな残り時間で、状態を先に伝える） */
   ul{ list-style:none; margin:0; padding:0; }
@@ -96,11 +96,12 @@
   .card .sub span{ white-space:nowrap; }
   .card .big{ text-align:right; line-height:1.2; white-space:nowrap; }
   .card .big b{ display:block; font-size:1.3rem; font-weight:800; font-variant-numeric:tabular-nums; }
-  .card .big small{ font-size:.72rem; font-weight:700; }
+  .card .big small{ font-size:.75rem; font-weight:700; }
+  .card .big b .pre{ font-size:.7rem; font-weight:700; margin-right:4px; }
   .card .pills{ grid-column:1/-1; display:flex; flex-wrap:wrap; gap:6px; }
   .pill{ font-size:.75rem; font-weight:600; padding:1px 8px; border-radius:999px; background:var(--surface-2); color:var(--ink-soft); }
   .pill.c-warn{ background:var(--warn-bg); }
-  .bar{ grid-column:1/-1; height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
+  .bar{ grid-column:1/-1; height:8px; background:color-mix(in srgb, var(--ink) 12%, var(--paper)); box-shadow:inset 0 0 0 1px var(--line); border-radius:4px; overflow:hidden; }
   .bar i{ display:block; height:100%; border-radius:4px; }
   .card .row3{ grid-column:1/-1; display:flex; justify-content:space-between; gap:8px; font-size:.8rem; color:var(--ink-soft); }
   @container (max-width:300px){ .card .big b{ font-size:1.1rem; } }
@@ -133,7 +134,9 @@
   dialog::backdrop{ background:rgba(0,0,0,.45); }
   .dlg{ display:flex; flex-direction:column; max-height:inherit; }
   .dlg .head{ padding:8px 16px 0; }
-  .grab{ width:40px; height:4px; border-radius:2px; background:var(--line); margin:0 auto 10px; }
+  .dlg .head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .dlg h2:focus{ outline:none; }
+  #closeBtn{ width:44px; padding:0; font-size:1.3rem; border:0; background:transparent; }
   .dlg .body{ overflow:auto; overscroll-behavior:contain; padding:0 16px 8px; }
   .dlg h2{ font-size:1.1rem; margin:0 0 8px; }
   .grp{ font-size:.75rem; font-weight:700; letter-spacing:.04em; color:var(--ink-soft); margin:14px 0 6px; }
@@ -147,7 +150,7 @@
   .rep h3{ font-size:.9rem; margin:0 0 6px; }
   .rep li{ display:flex; align-items:center; gap:8px; font-size:.85rem; padding:4px 0; }
   .rep li span{ flex:1; word-break:break-word; }
-  .rep li button{ min-height:36px; padding:0 10px; }
+  .rep li button{ min-height:44px; padding:0 10px; }
   .rep .add{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px; }
   .rep .add .wide{ grid-column:1/-1; }
   .acts{ display:flex; gap:8px; }
@@ -155,8 +158,9 @@
   .err{ color:var(--danger); font-size:.85rem; min-height:1.2em; margin-bottom:4px; }
 
   .toast{ position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); transform:translateX(-50%); display:none; align-items:center; gap:12px; padding:10px 14px; background:var(--ink); color:var(--bg); border-radius:12px; box-shadow:var(--shadow-lg); z-index:50; max-width:calc(100vw - 32px); }
+  .toast{ top:auto; right:auto; margin:0; border:0; overflow:visible; } /* popover（最前面の層）の既定の見た目を打ち消す */
   .toast.show{ display:flex; }
-  .toast button{ min-height:36px; background:transparent; color:inherit; border-color:currentColor; }
+  .toast button{ min-height:44px; background:transparent; color:inherit; border-color:currentColor; }
   @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
 </style>
 </head>
@@ -164,7 +168,7 @@
 <main>
   <header>
     <h1>家電管理</h1>
-    <button id="themeBtn" type="button" aria-label="表示の切り替え"></button>
+    <button id="themeBtn" type="button" title="表示の切り替え"></button>
   </header>
 
   <div class="sum" id="sum"></div>
@@ -195,23 +199,31 @@
   <div class="menu" id="menu" hidden>
     <button id="exportBtn" type="button">書き出し（バックアップ）</button>
     <button id="importBtn" type="button">読み込み</button>
+    <button id="rescueBtn" type="button">退避データを書き出す</button>
   </div>
   <input id="importFile" type="file" accept="application/json,.json" hidden>
 </div></div>
 
 <dialog id="dlg" aria-labelledby="dlgTitle">
   <form class="dlg" id="form" novalidate>
-    <div class="head"><div class="grab" aria-hidden="true"></div><h2 id="dlgTitle">家電を追加</h2></div>
+    <div class="head"><h2 id="dlgTitle" tabindex="-1">家電を追加</h2><button type="button" id="closeBtn" aria-label="閉じる">×</button></div>
     <div class="body">
+    <div id="replBox" hidden>
+      <div class="grp">買い替え</div>
+      <div class="two">
+        <div class="fld"><label for="fReplaced">買い替えた日</label><input id="fReplaced" type="date"></div>
+        <div class="fld" style="align-self:end"><button type="button" id="statusBtn" style="width:100%"></button></div>
+      </div>
+    </div>
     <div class="grp">基本</div>
-    <div class="fld"><label for="fName">名前（必須）</label><input id="fName" maxlength="60" autocomplete="off" placeholder="冷蔵庫"></div>
+    <div class="fld"><label for="fName">名前（必須）</label><input id="fName" maxlength="60" autocomplete="off" placeholder="例: 冷蔵庫"></div>
     <div class="two">
-      <div class="fld"><label for="fPlace">置き場所</label><input id="fPlace" maxlength="30" list="placeList" autocomplete="off" placeholder="台所"><datalist id="placeList"></datalist></div>
+      <div class="fld"><label for="fPlace">置き場所</label><input id="fPlace" maxlength="30" list="placeList" autocomplete="off" placeholder="例: 台所"><datalist id="placeList"></datalist></div>
       <div class="fld"><label for="fBought">購入した年月</label><input id="fBought" type="month"></div>
     </div>
     <div class="two">
-      <div class="fld"><label for="fPrice">購入額（円）</label><input id="fPrice" type="number" inputmode="numeric" min="0" max="100000000" step="1" placeholder="120000"></div>
-      <div class="fld"><label for="fLife">寿命の目安（年）</label><input id="fLife" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="10"></div>
+      <div class="fld"><label for="fPrice">購入額（円）</label><input id="fPrice" type="number" inputmode="numeric" min="0" max="100000000" step="1" placeholder="例: 120000"></div>
+      <div class="fld"><label for="fLife">寿命の目安（年）</label><input id="fLife" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="例: 10"></div>
     </div>
     <div class="grp">保証・機種</div>
     <div class="two">
@@ -220,7 +232,7 @@
     </div>
     <div class="two">
       <div class="fld"><label for="fModel">型番</label><input id="fModel" maxlength="40" autocomplete="off"></div>
-      <div class="fld"><label for="fUrl">説明書のURL</label><input id="fUrl" type="url" maxlength="300" placeholder="https://" autocomplete="off"></div>
+      <div class="fld"><label for="fUrl">説明書のURL</label><input id="fUrl" type="url" maxlength="300" placeholder="https://" autocomplete="off"><a id="urlLink" href="#" target="_blank" rel="noopener noreferrer" hidden style="font-size:.8rem">説明書を開く</a></div>
     </div>
     <div class="fld"><label for="fMemo">メモ</label><textarea id="fMemo" maxlength="500"></textarea></div>
 
@@ -236,7 +248,6 @@
     </div>
 
     <div class="more">
-      <button type="button" id="statusBtn" hidden></button>
       <button type="button" id="delBtn" class="danger" hidden>削除</button>
     </div>
     </div>
@@ -250,11 +261,11 @@
   </form>
 </dialog>
 
-<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastUndo" type="button">元に戻す</button></div>
+<div class="toast" id="toast" popover="manual" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastUndo" type="button">元に戻す</button></div>
 
 <!-- クラウド同期（右下の☁ボタンは、このスクリプトが作る）。読み込めなくても端末内だけで動く -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
-<script src="cloud-sync.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous" defer></script>
+<script src="cloud-sync.js" defer></script>
 <script>
 (function(){
   'use strict';
@@ -334,25 +345,42 @@
       repairs: (Array.isArray(x.repairs) ? x.repairs : []).slice(0, 50).map((r) => r && /^\d{4}-\d{2}-\d{2}$/.test(r.date) ? { id: String(r.id || Date.now() + Math.random()), date: r.date, note: str(r.note, 60), cost: num(r.cost, 10000000) } : null).filter(Boolean)
     };
   }
+  // 検証して、id の重複を振り直す（重複すると片方の編集でもう片方が消えるため）
+  function sanitizeList(arr){
+    const seen = new Set(), seenR = new Set();
+    const fresh = () => String(Date.now() + Math.random());
+    return arr.map(sanitizeItem).filter(Boolean).map((it) => {
+      if(seen.has(it.id)) it.id = fresh();
+      seen.add(it.id);
+      it.repairs.forEach((r) => { if(seenR.has(it.id + '/' + r.id)) r.id = fresh(); seenR.add(it.id + '/' + r.id); });
+      return it;
+    });
+  }
   let lastRaw = null;       // 最後に保存・読み込みした保存データ（古い画面の検出用）
   let loadFailed = false;   // 保存データが壊れていて、空で起動したとき true
+  // 読み込めなかった元データを別キーへ退避する（次の保存で消えないように）
+  function quarantine(raw, msg){
+    try{
+      const k = STORAGE_KEY + '-corrupt'; // 1つだけ。同じ内容なら書き直さない
+      if(localStorage.getItem(k) !== raw) localStorage.setItem(k, raw);
+      toast(msg + '元データは「' + k + '」に退避しました（⋯→退避データを書き出す）。', null, true);
+    }catch(e2){ toast(msg + '退避もできませんでした。ブラウザのデータを消さずにご相談ください。', null, true); }
+  }
   function load(){
     let raw = null;
     try{
       raw = localStorage.getItem(STORAGE_KEY); lastRaw = raw;
       const d = raw ? JSON.parse(raw) : [];
       if(!Array.isArray(d)) throw new Error('形式が正しくありません');
-      items = d.map(sanitizeItem).filter(Boolean);
+      items = sanitizeList(d);
+      // 配列は読めたが、中身が検証で落ちたとき（黙って消えて、次の保存で確定するのを防ぐ）
+      if(d.length && items.length < d.length){
+        if(!items.length) loadFailed = true;
+        quarantine(raw, '保存データの一部（' + (d.length - items.length) + '件）を読み込めませんでした。');
+      }
     }catch(e){
       items = []; loadFailed = true;
-      // 壊れたデータを別キーへ退避してから空で開始する（次の保存で消えないように）
-      if(raw){
-        try{
-          const k = STORAGE_KEY + '-corrupt'; // 1つだけ。同じ内容なら書き直さない
-          if(localStorage.getItem(k) !== raw) localStorage.setItem(k, raw);
-          toast('保存データを読み込めませんでした。元データは「' + k + '」に退避しました。');
-        }catch(e2){ toast('保存データを読み込めず、退避もできませんでした。ブラウザのデータを消さずにご相談ください。'); }
-      }
+      if(raw) quarantine(raw, '保存データを読み込めませんでした。');
     }
   }
   // 保存できたら true。失敗時は警告を出して false（クラウドへは知らせない）
@@ -374,7 +402,8 @@
       const d = JSON.parse(raw || '[]');
       if(!Array.isArray(d)) return;
       lastRaw = raw;
-      items = d.map(sanitizeItem).filter(Boolean);
+      items = sanitizeList(d);
+      clearUndo();
       closeOpenSheets();
       render();
       toast('別のタブでデータが更新されたため、最新の内容に更新しました。');
@@ -424,36 +453,43 @@
       (!keep || it.place === keep) && (!q || (it.name + ' ' + it.maker + ' ' + it.model).toLowerCase().indexOf(q) >= 0));
     const info = new Map(rows.map((it) => [it.id, calc(it)]));
     const sortBy = getSort();
+    $('#sortSel').options[0].textContent = tab === 'hist' ? '買い替えが新しい順' : '寿命が近い順';
     const big = (v) => (v === null ? Infinity : v);
     rows.sort((a, b) => {
       const ca = info.get(a.id), cb = info.get(b.id);
-      if(sortBy === 'old') return (a.bought || '9999') < (b.bought || '9999') ? -1 : 1;
-      if(sortBy === 'price') return b.price - a.price;
-      if(sortBy === 'yearly') return (cb.yearly || 0) - (ca.yearly || 0);
-      return big(ca.remain) - big(cb.remain);
+      let d;
+      if(sortBy === 'old') d = (a.bought || '9999') < (b.bought || '9999') ? -1 : ((a.bought || '9999') > (b.bought || '9999') ? 1 : 0);
+      else if(sortBy === 'price') d = b.price - a.price;
+      else if(sortBy === 'yearly') d = (cb.yearly || 0) - (ca.yearly || 0);
+      else if(tab === 'hist') d = (b.replacedAt || '') < (a.replacedAt || '') ? -1 : ((b.replacedAt || '') > (a.replacedAt || '') ? 1 : 0);
+      else d = big(ca.remain) === big(cb.remain) ? 0 : big(ca.remain) - big(cb.remain); // 寿命未設定同士は NaN になるため
+      return d || a.name.localeCompare(b.name, 'ja');
     });
 
     const ul = $('#list');
     if(!rows.length){
-      ul.innerHTML = '<li class="empty"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="13" y="5" width="22" height="38" rx="4"/><path d="M13 20h22M18 11v5M18 25v8"/></svg>' + (items.length ? '該当する家電がありません' : 'まだ家電がありません。<br>下の「＋ 追加」から登録してください') + '</li>';
+      ul.innerHTML = '<li class="empty"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="13" y="5" width="22" height="38" rx="4"/><path d="M13 20h22M18 11v5M18 25v8"/></svg>' + emptyText(!!(q || keep)) + '</li>';
       return;
     }
     ul.innerHTML = rows.map((it) => {
       const c = info.get(it.id), lv = it.status === 'using' ? level(c) : '';
       // 右の大きな表示（色だけに頼らず、文字と記号でも状態を伝える）
       let big;
-      if(it.status === 'replaced') big = '<b>買い替え</b><small>' + (it.replacedAt ? esc(fmtYM(it.replacedAt)) : '済み') + '</small>';
-      else if(c.remain === null) big = '<b>―</b><small>寿命未設定</small>';
-      else if(c.remain < 0) big = '<b>' + fmtSpan(-c.remain) + '</b><small>⚠ 寿命を超過</small>';
+      if(it.status === 'replaced') big = '<b style="font-size:1.05rem">買い替え済み</b><small>' + (it.replacedAt ? esc(fmtYM(it.replacedAt)) : '') + '</small>';
+      else if(c.remain === null) big = '<b>―</b><small>' + (it.life > 0 && !it.bought ? '購入年月が未入力' : '寿命未設定') + '</small>';
+      else if(c.remain < 0) big = '<b><span class="pre">超過</span>' + fmtSpan(-c.remain) + '</b><small>⚠ 寿命</small>';
       else if(c.remain === 0) big = '<b>今月</b><small>▲ 寿命</small>';
-      else big = '<b>' + fmtSpan(c.remain) + '</b><small>' + (lv === 'warn' ? '▲ ' : '') + '寿命まで</small>';
+      else big = '<b>' + fmtSpan(c.remain) + '</b><small>' + (lv === 'warn' ? '▲ ' : '✓ ') + '寿命まで</small>';
       let pills = '';
       if(it.status === 'using' && c.warn === 'out') pills = '<span class="pill">保証切れ</span>';
       else if(it.status === 'using' && c.warn !== null) pills = '<span class="pill c-warn">▲ 保証あと' + c.warn + '日</span>';
       const sub = [it.place, it.bought ? fmtYM(it.bought) + '購入' : '', c.used !== null ? '使用' + (c.used < 1 ? '1か月未満' : fmtSpan(c.used)) : ''].filter(Boolean).map((s) => '<span>' + esc(s) + '</span>').join(' ・ '); // 項目の途中では折り返さない
-      const bar = (it.status === 'using' && c.ratio !== null) ? '<div class="bar"><i class="b-' + lv + '" style="width:' + Math.min(100, Math.round(c.ratio * 100)) + '%"></i></div>' : '';
+      const bar = (it.status === 'using' && c.ratio !== null) ? '<div class="bar" aria-hidden="true"><i class="b-' + lv + '" style="width:' + Math.min(100, Math.round(c.ratio * 100)) + '%"></i></div>' : '';
+      // 読み上げ用の名前（表示の断片をつなげず、1文にする）
+      const plain = (h) => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const label = it.name + '、' + plain(big) + (pills ? '、' + plain(pills) : '') + '。タップで編集';
       const cost = (it.price ? yen(it.price) : '購入額未入力') + (c.repair ? ' ＋修理' + yen(c.repair) : '');
-      return '<li style="view-transition-name:c' + esc(it.id.replace(/\W/g, '_')) + '"><button class="card' + (lv ? ' lv-' + lv : '') + '" type="button" data-id="' + esc(it.id) + '">' +
+      return '<li style="view-transition-name:c' + esc(it.id.replace(/\W/g, '_')) + '"><button class="card' + (lv ? ' lv-' + lv : '') + '" type="button" data-id="' + esc(it.id) + '" aria-label="' + esc(label) + '">' +
         '<div><div class="name">' + esc(it.name) + '</div><div class="sub">' + (sub || '&nbsp;') + '</div></div>' +
         '<div class="big' + (lv ? ' c-' + lv : '') + '">' + big + '</div>' +
         (pills ? '<div class="pills">' + pills + '</div>' : '') + bar +
@@ -461,6 +497,11 @@
     }).join('');
   }
 
+  function emptyText(filtered){
+    if(filtered) return '条件に合う家電がありません<br><button type="button" class="clr" style="margin-top:12px">条件をクリア</button>';
+    if(!items.length) return 'まだ家電がありません。<br>下の「＋ 追加」から登録してください';
+    return tab === 'hist' ? '買い替え済みの家電はまだありません' : '使用中の家電はありません';
+  }
   // タブ・並べ替えは、カードが動いて入れ替わる（非対応の環境や、動きを減らす設定では普通に切り替える）
   function renderAnimated(){
     if(document.startViewTransition && !matchMedia('(prefers-reduced-motion:reduce)').matches) document.startViewTransition(render);
@@ -482,18 +523,25 @@
 
   // ---------- 追加・編集の画面 ----------
   const dlg = $('#dlg');
-  const F = { name:'#fName', place:'#fPlace', bought:'#fBought', price:'#fPrice', life:'#fLife', warranty:'#fWarranty', maker:'#fMaker', model:'#fModel', url:'#fUrl', memo:'#fMemo' };
+  const F = { name:'#fName', place:'#fPlace', bought:'#fBought', price:'#fPrice', life:'#fLife', warranty:'#fWarranty', maker:'#fMaker', model:'#fModel', url:'#fUrl', memo:'#fMemo', replacedAt:'#fReplaced' };
   let editId = null;      // 編集中の家電の id（追加のときは null）
   let draftRepairs = [];  // 編集中の修理履歴
   let editOrig = '';      // 開いた時点の内容（変更の有無の判定用）
+  let editBaseJson = '';  // 開いた時点の、保存済みの1台ぶん（他で更新されたかの判定用）
   function snap(){
     const o = {}; Object.keys(F).forEach((k) => { o[k] = $(F[k]).value; });
     return JSON.stringify([o, draftRepairs]);
   }
+  function updateUrlLink(){
+    const u = $('#fUrl').value.trim(), a = $('#urlLink');
+    a.hidden = !/^https?:\/\//i.test(u);
+    if(!a.hidden) a.href = u;
+  }
+  $('#fUrl').addEventListener('input', updateUrlLink);
   function renderRepairs(){
     $('#repList').innerHTML = draftRepairs.length ? draftRepairs.map((r) =>
       '<li><span>' + esc(r.date) + ' ' + esc(r.note || '修理') + (r.cost ? '（' + yen(r.cost) + '）' : '') + '</span>' +
-      '<button type="button" data-rid="' + esc(r.id) + '" aria-label="この修理を削除">削除</button></li>').join('')
+      '<button type="button" data-rid="' + esc(r.id) + '" aria-label="' + esc(r.date + ' ' + (r.note || '修理')) + 'の記録を削除">削除</button></li>').join('')
       : '<li style="color:var(--ink-soft)">修理の記録はありません</li>';
   }
   function openEdit(id){
@@ -506,32 +554,49 @@
     $('#rDate').value = todayISO(); $('#rCost').value = ''; $('#rNote').value = '';
     $('#err').textContent = '';
     $('#delBtn').hidden = !it;
-    $('#statusBtn').hidden = !it;
-    if(it) $('#statusBtn').textContent = it.status === 'using' ? '買い替え済みにする' : '使用中に戻す';
+    $('#replBox').hidden = !it;
+    if(!(it && it.status === 'replaced')) $('#fReplaced').value = todayISO(); // 買い替えた日の初期値は今日
+    if(it) $('#statusBtn').textContent = it.status === 'using' ? '保存して買い替え済みにする' : '保存して使用中に戻す';
+    updateUrlLink();
     renderRepairs();
     editOrig = snap();
+    editBaseJson = it ? JSON.stringify(it) : '';
     dlg.showModal();
-    if(!it) $('#fName').focus();
+    if(it) $('#dlgTitle').focus(); else $('#fName').focus();
   }
   // 同期・他タブの更新で内容が入れ替わるとき、編集中でなければ画面を閉じる（入力中の内容は残す）
   function closeOpenSheets(){
     if(dlg.open && snap() === editOrig) dlg.close();
   }
   $('#list').addEventListener('click', (e) => {
+    if(e.target.closest('.clr')){ $('#q').value = ''; $('#placeSel').value = ''; render(); return; }
     const b = e.target.closest('.card');
     if(b) openEdit(b.dataset.id);
   });
   $('#addBtn').addEventListener('click', () => openEdit(null));
-  $('#cancelBtn').addEventListener('click', () => dlg.close());
-  $('#rAdd').addEventListener('click', () => {
+  // 入力途中で閉じるときは、破棄してよいか確認する（キャンセルボタンと Esc キーの両方）
+  function askClose(){
+    if(snap() === editOrig || confirm('入力した内容を破棄して閉じますか？')) dlg.close();
+  }
+  $('#cancelBtn').addEventListener('click', askClose);
+  $('#closeBtn').addEventListener('click', askClose);
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); askClose(); });
+  // 入力中の修理を下書きへ足す。足せなければ false（理由は #err に出す）
+  function addRepair(){
     const date = $('#rDate').value;
-    if(!date){ $('#err').textContent = '修理した日を入力してください。'; return; }
-    if(draftRepairs.length >= 50){ $('#err').textContent = '修理の記録は50件までです。'; return; }
+    if(!date){ $('#err').textContent = '修理した日を入力してください。'; return false; }
+    if(draftRepairs.length >= 50){ $('#err').textContent = '修理の記録は50件までです。'; return false; }
     draftRepairs.push({ id: String(Date.now() + Math.random()), date: date, note: $('#rNote').value.trim().slice(0, 60), cost: num($('#rCost').value, 10000000) });
     draftRepairs.sort((a, b) => (a.date < b.date ? 1 : -1));
     $('#rCost').value = ''; $('#rNote').value = ''; $('#err').textContent = '';
     renderRepairs();
-  });
+    return true;
+  }
+  $('#rAdd').addEventListener('click', addRepair);
+  // 修理欄で Enter を押したときは、全体を保存せず、修理を追加する
+  ['#rDate', '#rCost', '#rNote'].forEach((s) => $(s).addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); addRepair(); }
+  }));
   $('#repList').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-rid]');
     if(!b) return;
@@ -543,7 +608,22 @@
   function readForm(base){
     const o = {};
     Object.keys(F).forEach((k) => { o[k] = $(F[k]).value; });
+    if(!(base && base.status === 'replaced')) o.replacedAt = ''; // 使用中の家電に買い替え日を残さない
     return sanitizeItem(Object.assign({}, base || {}, o, { id: base ? base.id : String(Date.now()), repairs: draftRepairs }));
+  }
+  // 保存前の入力チェック。問題があれば、メッセージと対象の欄を返す（黙って空にしない）
+  function validateForm(){
+    const bad = (sel, msg) => ({ sel: sel, msg: msg });
+    const url = $('#fUrl').value.trim();
+    if(url && !/^https?:\/\//i.test(url)) return bad('#fUrl', '説明書のURLは http:// または https:// で始めてください。');
+    for(const [sel, label] of [['#fBought', '購入した年月'], ['#fWarranty', '保証の期限'], ['#fReplaced', '買い替えた日']]){
+      if($(sel).validity.badInput) return bad(sel, label + 'を正しく入力してください。');
+    }
+    const price = $('#fPrice').value;
+    if(price !== '' && (!(Number(price) >= 0) || Number(price) > 100000000)) return bad('#fPrice', '購入額は0〜1億円で入力してください。');
+    const life = $('#fLife').value;
+    if(life !== '' && (!(Number(life) >= 0) || Number(life) > 50)) return bad('#fLife', '寿命の目安は0〜50年で入力してください。');
+    return null;
   }
   // 保存。statusChange があれば、状態（使用中／買い替え済み）も切り替える
   function commit(statusChange){
@@ -553,20 +633,33 @@
       toast('この家電は他の端末で削除されたため、保存できませんでした。');
       return;
     }
+    // 「修理を追加」を押し忘れた入力は、保存時に取り込む
+    if($('#rCost').value || $('#rNote').value.trim()){ if(!addRepair()) return; }
+    const v = validateForm();
+    if(v){ $('#err').textContent = v.msg; $(v.sel).focus(); return; }
     const next = readForm(base);
     if(!next){ $('#err').textContent = '名前を入力してください。'; $('#fName').focus(); return; }
+    // 開いてから、他の端末・タブでこの家電が更新されていたら、上書きの確認を取る
+    if(base && JSON.stringify(base) !== editBaseJson && !confirm('この家電は、編集中に他の端末で更新されました。今の入力で上書きしますか？')) return;
     if(statusChange){
       next.status = base.status === 'using' ? 'replaced' : 'using';
-      next.replacedAt = next.status === 'replaced' ? todayISO() : '';
+      next.replacedAt = next.status === 'replaced' ? ($('#fReplaced').value || todayISO()) : '';
     }
-    const before = items;
-    items = base ? items.map((x) => (x.id === base.id ? next : x)) : [next].concat(items);
-    if(!save()){ items = before; return; }
+    if(!setItems(base ? items.map((x) => (x.id === base.id ? next : x)) : [next].concat(items))){
+      $('#err').textContent = '端末に保存できませんでした。⋯→書き出しで、データを保存してください。'; // シートの下にトーストは見えないため、ここにも出す
+      return;
+    }
     dlg.close();
     const prevTab = tab;
     if(statusChange) tab = next.status === 'replaced' ? 'hist' : 'use';
+    else if(!base){ tab = 'use'; $('#q').value = ''; $('#placeSel').value = ''; } // 追加した家電が見えるように、絞り込みを外す
     render();
-    if(statusChange) toast(next.status === 'replaced' ? '履歴に移しました' : '使用中に戻しました', () => { items = before; tab = prevTab; save(); render(); });
+    if(statusChange) toast(next.status === 'replaced' ? '買い替え済みにしました' : '使用中に戻しました', () => {
+      // この1台だけを戻す（同期などで入った他の更新は消さない）
+      if(!items.some((x) => x.id === base.id)) return;
+      if(setItems(items.map((x) => (x.id === base.id ? base : x)))){ tab = prevTab; render(); }
+    });
+    else if(!base) toast('追加しました');
   }
   $('#form').addEventListener('submit', (e) => { e.preventDefault(); commit(false); });
   $('#statusBtn').addEventListener('click', () => commit(true));
@@ -575,26 +668,50 @@
     dlg.close();
     if(i < 0) return;
     const removed = items[i];
-    items.splice(i, 1);
-    save(); render();
-    toast('「' + removed.name + '」を削除しました', () => { items.splice(Math.min(i, items.length), 0, removed); save(); render(); });
+    if(!setItems(items.filter((x) => x.id !== removed.id))) return;
+    render();
+    toast('「' + removed.name + '」を削除しました', () => {
+      if(items.some((x) => x.id === removed.id)) return;
+      const at = Math.min(i, items.length);
+      if(setItems(items.slice(0, at).concat(removed, items.slice(at)))) render();
+    });
   });
 
   // ---------- 元に戻す（トースト） ----------
+  // 保存して items を入れ替える。保存できなければ元に戻して false（警告は save() が出す）
+  function setItems(next){
+    const before = items;
+    items = next;
+    if(!save()){ items = before; return false; }
+    return true;
+  }
   let toastTimer = null;
-  function toast(msg, undo){
+  const toastEl = $('#toast');
+  function hideToast(){
+    toastEl.classList.remove('show');
+    try{ if(toastEl.hidePopover && toastEl.matches(':popover-open')) toastEl.hidePopover(); }catch(e){}
+  }
+  // important: 警告など、読む時間が要るメッセージ（長く出し、タップで閉じる）
+  function toast(msg, undo, important){
     $('#toastMsg').textContent = msg;
     undoFn = undo || null;
     $('#toastUndo').style.display = undo ? '' : 'none';
-    $('#toast').classList.add('show');
+    toastEl.classList.add('show');
+    // 編集シートはいちばん手前の層に出るため、トーストも同じ層に出して隠れないようにする
+    try{ if(toastEl.showPopover && !toastEl.matches(':popover-open')) toastEl.showPopover(); }catch(e){}
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => $('#toast').classList.remove('show'), 6000);
+    toastTimer = setTimeout(hideToast, important ? 30000 : 6000);
+  }
+  // 外部の更新が入ったら、古い「元に戻す」は使えなくする
+  function clearUndo(){
+    if(undoFn){ undoFn = null; hideToast(); }
   }
   $('#toastUndo').addEventListener('click', () => {
     if(undoFn) undoFn();
     undoFn = null;
-    $('#toast').classList.remove('show');
+    hideToast();
   });
+  toastEl.addEventListener('click', (e) => { if(!e.target.closest('button')) hideToast(); });
 
   // ---------- 書き出し・読み込み（バックアップ用） ----------
   function exportJson(prefix){
@@ -607,6 +724,22 @@
   }
   $('#exportBtn').addEventListener('click', () => exportJson());
   $('#importBtn').addEventListener('click', () => $('#importFile').click());
+  // 壊れたデータの退避（-corrupt）と、取り込み前の退避（-prev-）を、読み込める形のJSONで書き出す
+  $('#rescueBtn').addEventListener('click', () => {
+    let keys = [];
+    try{ keys = Object.keys(localStorage).filter((k) => k.indexOf(STORAGE_KEY + '-') === 0).sort(); }catch(e){}
+    if(!keys.length){ toast('退避されたデータはありません'); return; }
+    keys.forEach((k, n) => setTimeout(() => {
+      let text = localStorage.getItem(k) || '';
+      try{ const a = JSON.parse(text); if(Array.isArray(a)) text = JSON.stringify({ app: APP_NAME, items: a }); }catch(e){ /* 壊れたデータは、そのまま書き出す */ }
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+      link.download = 'kaden-退避' + k.slice(STORAGE_KEY.length) + '.json';
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }, n * 400));
+    toast(keys.length + '件の退避データを書き出します');
+  });
   $('#importFile').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     e.target.value = '';
@@ -617,7 +750,7 @@
       // 他のアプリのバックアップや、別形式のファイルを取り込まない
       if(d.app !== undefined && d.app !== APP_NAME) throw new Error('このアプリのバックアップではありません');
       if(d.items.length && !d.items.some((x) => x && typeof x.name === 'string')) throw new Error('形式が違います');
-      const next = d.items.map(sanitizeItem).filter(Boolean);
+      const next = sanitizeList(d.items);
       let msg = '現在のデータ（' + items.length + '件）を、読み込んだ ' + next.length + ' 件に置き換えます。よろしいですか？';
       if(!next.length && items.length) msg = '【注意】ファイルは0件です。現在の' + items.length + '件がすべて消えます。 ' + msg;
       else if(items.length >= 5 && next.length < items.length / 2) msg = '【注意】ファイルの件数が現在の半分未満です。 ' + msg;
@@ -632,9 +765,9 @@
       }catch(e2){ /* 退避できなくても、JSONの自動保存で守る */ }
       exportJson('取り込み前-');
       const before = items;
-      items = next;
-      save(); render();
-      toast('読み込みました', () => { items = before; save(); render(); });
+      if(!setItems(next)) return;
+      render();
+      toast('読み込みました', () => { if(setItems(before)) render(); });
     }catch(err){
       toast('読み込めませんでした: ' + err.message);
     }
@@ -672,7 +805,8 @@
   render();
 
   // ---------- クラウド同期（cloud-sync.js） ----------
-  if(window.CloudSync){
+  function startCloud(){
+    if(!window.CloudSync) return;
     cloud = CloudSync.init({
       appName: APP_NAME,
       key: SYNC_KEY,
@@ -681,17 +815,20 @@
       hasData: function(){ return items.length > 0; },
       applyData: function(d){
         if(!d || !Array.isArray(d.items)) throw new Error('データ形式が違います');
-        const next = d.items.map(sanitizeItem).filter(Boolean);
+        const next = sanitizeList(d.items);
         // 先に端末へ保存する。失敗したら画面も古いままにして、次回の同期でやり直す
         try{ const s = JSON.stringify(next); localStorage.setItem(STORAGE_KEY, s); lastRaw = s; }
         catch(e){ toast('クラウドのデータを端末に保存できませんでした。'); throw e; }
         items = next;
         loadFailed = false;
+        clearUndo();
         closeOpenSheets();
         render();
       }
     });
   }
+  // 同期スクリプトは defer で後から読むため、読み込みが終わってから始める（CDNが遅くても、一覧は先に出る）
+  if(document.readyState === 'complete') startCloud(); else window.addEventListener('load', startCloud);
 })();
 </script>
 </body>
