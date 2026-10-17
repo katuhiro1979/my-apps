@@ -21,8 +21,20 @@
   const TABLE = "app_kv";
   const DELAY_MS = 5000; // 編集が止まってからクラウドへ送るまでの待ち時間
 
-  // 文字列の簡易ハッシュ(同期済みかどうかの比較用。暗号用途ではない)
+  // 文字列の簡易ハッシュ(同期済みかどうかの比較用。暗号用途ではない)。cyrb53 の53ビット版
   const hash = (s) => {
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 2654435761);
+      h2 = Math.imul(h2 ^ c, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return "2:" + s.length + ":" + (4294967296 * (2097151 & h2) + (h1 >>> 0));
+  };
+  // 旧形式（保存済みの meta.hash との照合用）
+  const hashOld = (s) => {
     let h = 5381;
     for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
     return s.length + ":" + h;
@@ -40,17 +52,23 @@
     const { appName, key, getData, applyData, hasData } = opts;
     const META_KEY = "cloudsync-meta::" + appName + "::" + key;
     const BACKUP_KEY = "cloudsync-backup::" + appName + "::" + key;
-    let meta = { hash: null, at: null, ever: false };
+    let meta = { hash: null, at: null, ever: false, uid: null };
     try { meta = Object.assign(meta, JSON.parse(lsGet(META_KEY) || "{}")); } catch (e) { /* 壊れていたら未同期扱い */ }
 
-    let user = null, status = "", conflict = null, msg = "", open = false;
+    let user = null, uid = null, status = "", conflict = null, msg = "", open = false;
+    let askUpload = false, hold = false, conflictNote = "", stEl = null; // askUpload: 別アカウントのデータを送るか確認中／hold: 確認の結果、送らない間は同期を止める
     let busy = false, again = false, timer = null;
     let edited = false; // この画面を開いてから、端末内への保存があったか(読み込み時の一時的な空を、全件削除と取り違えないため)
 
     // ever: この端末が、記録のある状態で同期したことがある印（全部消した操作と、空の新しい端末を見分ける）
-    const saveMeta = (h, at, nonEmpty) => { meta = { hash: h, at, ever: !!(meta.ever || nonEmpty) }; lsSet(META_KEY, JSON.stringify(meta)); };
-    // 上書きされる側のデータを1世代だけ端末内に退避する
-    const backup = (reason, data) => lsSet(BACKUP_KEY, JSON.stringify({ at: new Date().toLocaleString("ja-JP"), reason, data }));
+    const saveMeta = (h, at, nonEmpty) => { meta = { hash: h, at, ever: !!(meta.ever || nonEmpty), uid: uid || meta.uid || null }; lsSet(META_KEY, JSON.stringify(meta)); };
+    // meta と一致するか（旧形式のハッシュでも一致とみなす）
+    const sameAsMeta = (json) => meta.hash === hash(json) || meta.hash === hashOld(json);
+    // 上書きされる側のデータを1世代だけ端末内に退避する。退避できないときは例外にして、上書きを止める
+    const backup = (reason, data) => {
+      try { localStorage.setItem(BACKUP_KEY, JSON.stringify({ at: new Date().toLocaleString("ja-JP"), reason, data })); }
+      catch (e) { throw new Error("端末に退避できないため、上書きを中止しました"); }
+    };
 
     // ---- 通信 ----
     const pull = () => sb.from(TABLE).select("value, updated_at").eq("app_name", appName).eq("key", key).maybeSingle();
@@ -78,7 +96,7 @@
 
     async function sync(attempt) {
       attempt = attempt || 0;
-      if (!user || conflict) return;
+      if (!user || conflict || askUpload || hold) return;
       if (busy) { again = true; return; }
       busy = true;
       let retry = false;
@@ -89,30 +107,37 @@
         const localJson = JSON.stringify(getData());
         const lh = hash(localJson);
         const has = hasData();
+        // 端末のデータが、別のアカウントで同期されたものか（切り替えたとき、前の人のデータを混ぜないため）
+        const foreign = !!(meta.uid && uid && meta.uid !== uid);
         const pushLocal = async (expectedAt) => {
           const r = await push(localJson, expectedAt);
           if (r.error) throw r.error;
           if (r.conflict) { retry = true; return; }
           saveMeta(lh, r.updatedAt, has);
         };
-        if (!remote) {
+        if (foreign && has && (!remote || hash(remote.value) !== lh)) {
+          if (remote) { conflict = remote; conflictNote = "この端末のデータは、別のアカウントで同期されたものです。"; }
+          else askUpload = true; // 空のクラウドへ、別アカウントのデータを黙って送らない
+          open = true;
+        } else if (!remote) {
           if (has) await pushLocal(null); // クラウドが空のときだけ初回アップロード
         } else if (hash(remote.value) === lh) {
           saveMeta(lh, remote.updated_at, has);
         } else if (!has) {
-          if (meta.ever && edited && (!opts.trustEmpty || opts.trustEmpty()) && lh !== meta.hash && remote.updated_at === meta.at) {
+          if (!foreign && meta.ever && edited && (!opts.trustEmpty || opts.trustEmpty()) && !sameAsMeta(localJson) && remote.updated_at === meta.at) {
             // 同期済みの端末で全件を消した場合は、クラウドから復活させず、空の状態を送る
             backup("空にする前のクラウドデータ", remote.value);
             await pushLocal(remote.updated_at);
           } else await applyRemote(remote, localJson); // この端末が空なら、クラウドを取り込む
         } else {
-          const localChanged = lh !== meta.hash;
+          const localChanged = !sameAsMeta(localJson);
           const remoteChanged = remote.updated_at !== meta.at;
           if (!localChanged && remoteChanged) await applyRemote(remote, localJson);
           else if (localChanged && !remoteChanged) await pushLocal(remote.updated_at);
           else if (localChanged && remoteChanged) { conflict = remote; open = true; } // 両方変更: 上書きせず選んでもらう
         }
-        if (!retry) setStatus("同期済み " + hm());
+        if (askUpload || conflict) setStatus("確認が必要です");
+        else if (!retry) setStatus("同期済み " + hm());
       } catch (e) {
         console.error("クラウド同期に失敗しました", e);
         setStatus("同期できません(オフライン?端末内には保存されています)");
@@ -130,15 +155,25 @@
       const remote = conflict;
       conflict = null;
       try { await applyRemote(remote, JSON.stringify(getData())); setStatus("クラウドの内容を反映しました " + hm()); }
-      catch (e) { setStatus("クラウドのデータを読み込めませんでした"); }
+      catch (e) { conflict = remote; setStatus(e && e.message ? e.message : "クラウドのデータを読み込めませんでした"); }
       render();
     }
     async function resolveWithLocal() {
       const remote = conflict;
       conflict = null;
-      backup("同期前のクラウドデータ", remote.value);
+      try { backup("同期前のクラウドデータ", remote.value); }
+      catch (e) { conflict = remote; setStatus(e.message); render(); return; }
       const json = JSON.stringify(getData());
       const r = await push(json, remote.updated_at);
+      if (r.updatedAt) { saveMeta(hash(json), r.updatedAt, hasData()); setStatus("この端末の内容を送信しました " + hm()); }
+      else sync();
+      render();
+    }
+    // 別アカウントのデータを、空のクラウドへ送る（確認のあとだけ）
+    async function uploadForeign() {
+      askUpload = false;
+      const json = JSON.stringify(getData());
+      const r = await push(json, null);
       if (r.updatedAt) { saveMeta(hash(json), r.updatedAt, hasData()); setStatus("この端末の内容を送信しました " + hm()); }
       else sync();
       render();
@@ -167,7 +202,14 @@
 
     const el = (tag, text, props) => Object.assign(document.createElement(tag), text != null ? { textContent: text } : {}, props || {});
     function button(label, fn) { const b = el("button", label, { type: "button" }); b.onclick = fn; return b; }
-    function setStatus(s) { status = s; render(); }
+    // 状態の文言だけが変わるときは、パネルを作り直さない（入力中の文字やフォーカスを失わないため）
+    function setStatus(s) {
+      status = s;
+      btn.title = user ? "クラウド同期: " + (status || "ログイン中") : btn.title;
+      if (open && stEl && stEl.isConnected && user && !conflict && !askUpload) { stEl.textContent = s; return; }
+      if (open && !user && !conflict && !askUpload) return; // ログイン前の画面は状態を表示しない
+      render();
+    }
 
     function render() {
       btn.classList.toggle("on", !!user);
@@ -175,16 +217,24 @@
       panel.classList.toggle("open", open);
       if (!open) return;
       panel.replaceChildren();
+      stEl = null;
       panel.append(el("b", "☁ クラウド同期"));
+      if (askUpload) {
+        panel.append(el("p", "この端末のデータは、別のアカウントで同期されたものです。いまのアカウント(" + user + ")のクラウドは空です。この端末のデータを、このアカウントへ送りますか?"));
+        panel.append(button("送る", uploadForeign), button("送らない", () => { askUpload = false; hold = true; setStatus("同期を止めています(送らない)"); render(); }));
+        return;
+      }
       if (conflict) {
-        panel.append(el("p", "この端末とクラウドの両方でデータが変更されています。どちらを使いますか?(選ばなかった方は端末内に1世代だけ退避されます)"));
+        panel.append(el("p", (conflictNote ? conflictNote : "") + "この端末とクラウドの両方でデータが変更されています。どちらを使いますか?(選ばなかった方は端末内に1世代だけ退避されます)"));
+        if (status) panel.append(el("p", status, { className: "cs-msg" }));
         panel.append(button("クラウドの内容を使う", resolveWithCloud), button("この端末の内容を使う", resolveWithLocal));
         return;
       }
       if (user) {
         panel.append(el("p", "ログイン中: " + user));
-        panel.append(el("p", status, { className: "cs-st" }));
-        panel.append(button("今すぐ同期", () => sync()), button("ログアウト", () => { sb.auth.signOut(); status = ""; }));
+        stEl = el("p", status, { className: "cs-st" });
+        panel.append(stEl);
+        panel.append(button("今すぐ同期", () => sync()), button("ログアウト", () => { sb.auth.signOut(); status = ""; hold = false; }));
       } else {
         panel.append(el("p", "ログインすると、PCとスマホでデータが同期されます(データは端末内にも保存されます)。"));
         const em = el("input", null, { type: "email", placeholder: "メールアドレス" });
@@ -209,11 +259,13 @@
     }
 
     // ---- 起動 ----
-    sb.auth.getSession().then(({ data }) => { user = data && data.session ? data.session.user.email : null; render(); sync(); });
+    sb.auth.getSession().then(({ data }) => { user = data && data.session ? data.session.user.email : null; uid = data && data.session ? data.session.user.id : null; render(); sync(); });
     sb.auth.onAuthStateChange((_e, session) => {
       const next = session ? session.user.email : null;
       if (next === user) return;
       user = next;
+      uid = session ? session.user.id : null;
+      hold = false; askUpload = false; conflict = null; conflictNote = "";
       render();
       sync();
     });
