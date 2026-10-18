@@ -63,7 +63,7 @@
     padding:0 0 calc(96px + env(safe-area-inset-bottom,0px));font-variant-numeric:tabular-nums;}
   h1,h2,h3,p{margin:0;}
   button,input,select,textarea{font:inherit;color:inherit;}
-  .wrap{max-width:760px;margin:0 auto;padding:14px 20px 24px;}
+  .wrap{max-width:760px;margin:0 auto;padding:18px 20px 28px;}
 
   /* ===== 共通部品 ===== */
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 18px;border-radius:999px;
@@ -113,13 +113,19 @@
 
   /* ===== 追加ボックス ===== */
   .addbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px;margin-bottom:12px;box-shadow:var(--shadow);scroll-margin-top:calc(var(--top-h,56px) + 8px);transition:border-color .15s;}
-  .addbox:focus-within,.addbox.open{border-color:var(--accent);}
+  .addbox:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,111,94,.25);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent);}
   .addrow{display:flex;gap:8px;}
   .addrow .field{flex:1;min-width:0;border:none;background:none;padding-left:8px;}
   .addrow .field:focus-visible{outline:none;}
-  .addopts{display:none;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px;padding:10px 4px 4px;border-top:1px dashed var(--line);}
-  .addbox.open .addopts{display:flex;}
+  .addrow .field::placeholder{color:var(--ink-soft);opacity:.8;}
+  .addopts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px;padding:10px 4px 4px;border-top:1px dashed var(--line);}
+  /* 入力欄の文章から読み取れた日付・時刻の表示 */
+  .addhint{margin:2px 8px 0;min-height:20px;line-height:20px;font-size:12.5px;font-weight:600;color:var(--accent);}
+  .addhint:empty::before{content:"例：明日 16時 会議";font-weight:400;color:var(--ink-soft);opacity:.7;}
+  /* 文章から日付を読み取ったときは、日付チップより文章が優先されると分かるようにする */
+  .addbox.parsed .dp-quick{opacity:.5;}
   .dp{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  #addStatusBtn{min-height:40px;min-width:44px;padding:0 14px;justify-content:center;}
   .dp-quick{display:flex;flex-wrap:wrap;gap:6px;}
   .dp-inputs{display:flex;gap:6px;}
   .dp-inputs input{min-height:40px;padding:4px 8px;font-size:15px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-weight:400;}
@@ -157,15 +163,15 @@
   #tabs{scroll-margin-top:var(--top-h,56px);}
 
   /* ===== 一覧 ===== */
-  .grp{margin-top:14px;scroll-margin-top:var(--top-h,56px);}
+  .grp{margin-top:20px;scroll-margin-top:var(--top-h,56px);}
   /* 週・月の区切り線（日付順のときだけ） */
   .mo-line,.wk-line{display:flex;align-items:center;gap:8px;color:var(--ink-soft);}
   .mo-line:before,.mo-line:after,.wk-line:after{content:"";height:1px;flex:1;background:var(--line);}
-  .mo-line{margin:28px 4px 0;font-size:16px;font-weight:800;color:var(--ink);}
+  .mo-line{margin:32px 4px 0;font-size:20px;font-weight:800;color:var(--ink);}
   .mo-line:before,.mo-line:after{background:var(--ink-soft);opacity:.5;}
-  .wk-line{margin:16px 4px 0;font-size:12px;font-weight:600;}
+  .wk-line{margin:16px 4px 0;font-size:12.5px;font-weight:600;}
   .wk-line:after{height:1px;opacity:.8;}
-  .wk-line.is-now{color:var(--accent);}
+  .wk-line.is-now{color:var(--ink);}
   .grp:first-child{margin-top:2px;}
   .grp{scroll-margin-top:calc(var(--top-h,56px) + var(--tabs-h,0px) + 4px);}
   /* 「今日へ移動」で着いたとき、今日の見出しと一覧を一瞬ハイライト */
@@ -175,12 +181,12 @@
   @keyframes jumpRing{0%,35%{box-shadow:0 0 0 3px var(--accent);}100%{box-shadow:var(--shadow);}}
   .grp-h{position:sticky;top:calc(var(--top-h,56px) + var(--tabs-h,0px));z-index:5;display:flex;align-items:baseline;gap:8px;padding:4px 4px;margin:0 0 4px;
     background:var(--paper);background:color-mix(in srgb,var(--paper) 94%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
-  .grp-d{font-size:15px;font-weight:700;}
-  .grp-sub{font-size:12px;color:var(--ink-soft);}
+  .grp-d{font-size:16px;font-weight:700;}
+  .grp-sub{font-size:12.5px;color:var(--ink-soft);}
   .grp-h .grp-rel{font-size:11.5px;font-weight:700;padding:1px 9px;border-radius:999px;background:var(--surface-2);color:var(--ink-soft);}
   .grp-h .grp-n{margin-left:auto;font-size:12px;font-weight:400;color:var(--ink-soft);}
-  .grp.is-today .grp-d{color:var(--accent);}
-  .grp.is-today .grp-h::before{content:"";align-self:center;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:-2px;}
+  .grp.is-today .grp-d{color:var(--warn);}
+  .grp.is-today .grp-h::before{content:"";align-self:center;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-right:-2px;}
   .grp.is-over .grp-d{color:var(--danger);}
   .grp.is-over .grp-rel{background:var(--danger-bg);color:var(--danger);}
   .grp.is-memo .grp-d{color:var(--ink-soft);}
@@ -197,11 +203,11 @@
   .swc[aria-pressed="true"]::before{border-color:var(--surface);box-shadow:0 0 0 2px var(--ink);}
   .gr-n{font-size:12px;color:var(--ink-soft);white-space:nowrap;}
   ul.task-list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
-  ul.task-list > li + li{border-top:1px solid var(--line);}
+  ul.task-list > li + li{border-top:1px solid var(--line);border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);}
   li.task{position:relative;scroll-margin-top:calc(var(--top-h,56px) + var(--tabs-h,0px) + 56px);scroll-margin-bottom:96px;}
-  .task-in{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:0 4px;align-items:center;min-height:52px;padding:2px;background:var(--surface);touch-action:pan-y;}
+  .task-in{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:0 4px;align-items:center;min-height:58px;padding:4px 2px;background:var(--surface);touch-action:pan-y;}
   .task-in.back{transition:transform .2s ease;}
-  li.task.over .task-in{box-shadow:inset 4px 0 0 var(--danger);}
+  li.task.over .task-in{box-shadow:inset 5px 0 0 var(--danger);}
   li.task.done .task-text .tt{color:var(--ink-soft);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--ink-soft) 60%,transparent);}
   li.task.plain .task-in{grid-template-columns:minmax(0,1fr) auto;padding:8px 6px 8px 14px;}
   li.task.flash .task-in{animation:flash 1.4s ease-out;}
@@ -213,14 +219,14 @@
   li.task.armed .sw{filter:brightness(.8);}
   li.task[data-dir="r"] .sw-l,li.task[data-dir="l"] .sw-r{display:flex;}
   .chk{appearance:none;width:44px;height:44px;border:none;background:none;cursor:pointer;display:grid;place-items:center;padding:0;}
-  .chk .box{width:24px;height:24px;border-radius:7px;border:2px solid var(--ink-soft);display:grid;place-items:center;background:var(--surface);color:transparent;transition:background .15s,border-color .15s;}
+  .chk .box{width:26px;height:26px;border-radius:8px;border:2px solid var(--ink-soft);display:grid;place-items:center;background:var(--surface);color:transparent;transition:background .15s,border-color .15s;}
   .chk[aria-checked="true"] .box{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
   .chk.pop .box{animation:pop .3s ease;}
   @keyframes pop{0%{transform:scale(1);}40%{transform:scale(.76);}100%{transform:scale(1);}}
-  .task-main{min-width:0;padding:6px 0;}
-  .task-text{appearance:none;display:block;width:100%;text-align:left;border:none;background:none;padding:0;cursor:pointer;font-size:16px;line-height:1.45;color:var(--ink);}
+  .task-main{min-width:0;padding:8px 0;}
+  .task-text{appearance:none;display:block;width:100%;text-align:left;border:none;background:none;padding:0;cursor:pointer;font-size:16px;line-height:1.5;color:var(--ink);}
   .task-text .tt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;}
-  .task-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+  .task-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
   .task-side{display:flex;align-items:center;gap:4px;}
   .task-time{font-size:12px;color:var(--ink-soft);}
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
@@ -255,7 +261,7 @@
   .notice.error{border-color:var(--danger);background:var(--danger-bg);position:sticky;top:calc(var(--top-h,56px) + 8px);}
   .notice span{flex:1;}
   .notice button{appearance:none;border:none;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--ink-soft);min-width:44px;min-height:44px;margin:-12px -10px -12px 0;}
-  .toast{position:fixed;inset:auto auto calc(76px + env(safe-area-inset-bottom,0px)) 50%;margin:0;transform:translateX(-50%);z-index:100000;
+  .toast{position:fixed;inset:auto auto calc(76px + env(safe-area-inset-bottom,0px) + var(--kb,0px)) 50%;margin:0;transform:translateX(-50%);z-index:100000;
     max-width:calc(100vw - 32px);width:max-content;display:flex;align-items:center;gap:14px;padding:10px 14px 10px 18px;border:none;border-radius:14px;
     background:var(--ink);color:var(--paper);font-size:14px;font-weight:600;box-shadow:var(--shadow-pop);}
   .toast.off{display:none;}
@@ -289,6 +295,10 @@
   footer{text-align:center;font-size:12px;color:var(--ink-soft);margin-top:24px;}
 
   @media (max-width:640px){
+    .addopts{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+    .addopts::-webkit-scrollbar{display:none;}
+    .addopts .dp,.addopts .dp-quick{flex-wrap:nowrap;}
+    .addopts > *,.addopts .dp > *{flex:none;}
     .wrap{padding:12px 14px 24px;}
     .top-in{padding-left:14px;}
     .searchbar{padding:0 14px 10px;}
@@ -331,9 +341,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   <form class="addbox" id="addForm" autocomplete="off">
     <div class="addrow">
       <button type="button" class="addgrp" id="addGroupDot" aria-haspopup="menu" hidden></button>
-      <input type="text" class="field" id="addText" placeholder="やることを追加（例：明日 会議）" aria-label="やること" maxlength="500">
+      <input type="text" class="field" id="addText" placeholder="やることを追加（例：明日 会議）" aria-label="やること" maxlength="500" enterkeyhint="send" aria-describedby="addHint">
       <button type="submit" class="btn primary" id="addBtn">追加</button>
     </div>
+    <div class="addhint" id="addHint"></div>
     <div class="addopts">
       <div id="addDp" class="dp"></div>
       <button type="button" class="chip" id="addStatusBtn" aria-haspopup="menu" aria-label="状態を選ぶ"></button>
@@ -467,7 +478,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   const COLORS = { amber:'黄', green:'緑', blue:'青', red:'赤', purple:'紫', pink:'ピンク', teal:'青緑', gray:'灰' };
   const SAFE_ID = /^[A-Za-z0-9_.-]{1,80}$/;
   const $id = id=>document.getElementById(id);
-  const finePointer = ()=>!!(window.matchMedia && window.matchMedia('(pointer:fine)').matches);
+  const finePointer = ()=>!!(window.matchMedia && window.matchMedia('(any-pointer:fine)').matches);
 
   let cloud = null; // クラウド同期。読み込めない環境では null のまま
   function cloudNotify(){ if(cloud) cloud.notifyChanged(); }
@@ -531,6 +542,12 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     t.classList.add('off');
     document.body.classList.remove('toasting');
     if(hasPopover){ try{ t.hidePopover(); }catch(e){} }
+  }
+  // キーボードが出ているとき、トーストが隠れないよう高さを伝える（iOS Safari向け。拡大中は0）
+  if(window.visualViewport){
+    const vv = window.visualViewport;
+    const upd = ()=>{ const kb = vv.scale > 1.01 ? 0 : Math.max(0, window.innerHeight - vv.height - vv.offsetTop); document.documentElement.style.setProperty('--kb', Math.round(kb)+'px'); };
+    vv.addEventListener('resize', upd); vv.addEventListener('scroll', upd);
   }
   function showToast(msg, isError, undoFn){
     const t = $id('toast');
@@ -927,21 +944,32 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     return { text:s, date, time };
   }
 
-  // 追加欄は、入力するまでは1行だけにする（日付・状態は入力中だけ開く）
+  // 入力中に、文章から読み取れた日付・時刻を表示する（本文は変えない）
   const addForm = $id('addForm');
-  function expandAdd(on){ addForm.classList.toggle('open', on); }
-  addForm.addEventListener('focusin', ()=>expandAdd(true));
-  // 閉じるのはクリックが済んでから（押した瞬間にレイアウトが動いて、別の行を押すのを防ぐ）
-  document.addEventListener('click', function(e){
-    if(!addForm.classList.contains('open')) return;
-    if(addForm.contains(e.target) || (menuEl && menuEl.contains(e.target))) return;
-    if(!$id('addText').value.trim()) expandAdd(false);
-  });
+  function updateHint(){
+    const raw = $id('addText').value.trim();
+    let msg = '';
+    if(raw){
+      // 追加時と同じ決め方（文章の日付 > 日付チップ）
+      const q = parseQuick(raw), dp = addDp.get();
+      const date = q.date || dp.date || (q.time ? todayISO() : '');
+      const time = date ? (q.time || (q.date ? '' : dp.time)) : '';
+      msg = date ? '→ ' + (relLabel(date) || fmtMD(date)) + (time ? ' ' + time + ' ' : '') + 'に追加' : '→ 日付なしで追加';
+      addForm.classList.toggle('parsed', !!q.date);
+    } else addForm.classList.remove('parsed');
+    const h = $id('addHint');
+    if(h.textContent !== msg) h.textContent = msg; // 変わったときだけ書き換える
+  }
+  // 変換中は更新せず、確定したときに計算する
+  $id('addText').addEventListener('input', function(e){ if(!e.isComposing) updateHint(); });
+  $id('addText').addEventListener('compositionend', updateHint);
+  $id('addDp').addEventListener('click', updateHint);
+  $id('addDp').addEventListener('change', updateHint);
 
   $id('addForm').addEventListener('submit', function(e){
     e.preventDefault();
     const raw = $id('addText').value.trim();
-    if(!raw){ $id('addText').focus(); return; }
+    if(!raw){ $id('addText').focus({ preventScroll:true }); return; }
     const q = parseQuick(raw);
     const dp = addDp.get();
     const date = q.date || dp.date || (q.time ? todayISO() : '');
@@ -951,16 +979,16 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(groupById(addGroupId)) it.group = addGroupId;
     items.push(it);
     flashId = it.id;
-    $id('addText').value = '';
+    $id('addText').value = ''; updateHint();
     const ok = save(); render();
     if(ok){
       const when = date ? (relLabel(date) || fmtMD(date)) + (time ? ' '+time : '') : '';
       if(q.date || q.time){
         // 読み取りが違ったときのため、元に戻すと入力欄に書いた文字が戻る
-        showToast('追加しました（'+when+'）。', false, ()=>{ items = items.filter(x=>x.id!==it.id); $id('addText').value = raw; expandAdd(true); commit(); });
+        showToast('追加しました（'+when+'）。', false, ()=>{ items = items.filter(x=>x.id!==it.id); $id('addText').value = raw; updateHint(); commit(); });
       } else showToast('追加しました。');
     }
-    if(finePointer()) $id('addText').focus();
+    $id('addText').focus({ preventScroll:true });
   });
 
   // ---- 操作 ----
@@ -1779,7 +1807,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   // 空の画面のボタン
   $id('emptyState').addEventListener('click', function(e){
     const b = e.target.closest('[data-em]'); if(!b) return;
-    if(b.dataset.em==='add'){ expandAdd(true); $id('addText').focus(); }
+    if(b.dataset.em==='add'){ $id('addText').focus(); }
     else { $id('searchBox').value = ''; statusFilter = null; groupFilter = null; render(); }
   });
 
@@ -2057,6 +2085,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   setInterval(function(){ if(!document.hidden) refreshDay(); }, 60000);
 
   load();
+  if(finePointer()) $id('addText').focus({ preventScroll:true });
 
   // スワイプ操作のヒントを、タッチ端末で一度だけ出す
   try{
