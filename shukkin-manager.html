@@ -147,6 +147,12 @@
   .tl-leg .l-ot::before{ background:var(--t-ot); background:repeating-linear-gradient(90deg,var(--t-ot) 0 3px,color-mix(in srgb,var(--t-ot) 65%,#000) 3px 4px); }
   .tl-leg .l-deem::before{ background:repeating-linear-gradient(135deg,var(--t-deem) 0 3px,transparent 3px 6px); border:1.5px solid var(--t-deem); }
 
+  /* プリセットの色（自由色。枠・左線・丸印だけに使う） */
+  input[type=color]{ height:44px; padding:3px; cursor:pointer; }
+  .badge.hc{ color:var(--ink); border-color:var(--pc); } .badge.hc::before{ content:""; width:.6em; height:.6em; border-radius:50%; background:var(--pc); }
+  .chip.hc{ border-color:var(--pc); } .chip.hc::before{ content:""; display:inline-block; width:.6em; height:.6em; border-radius:50%; background:var(--pc); margin-right:6px; }
+  .card.hc, .day.hc{ border-left-color:var(--pc); }
+
   /* 残業メーター（月45時間） */
   .meter{ height:12px; border-radius:999px; background:var(--surface-2); overflow:hidden; margin:8px 0 6px; }
   .meter > i{ display:block; height:100%; background:var(--ok); border-radius:999px; }
@@ -298,6 +304,7 @@
         <div class="fld"><label for="pIn">出勤の初期値</label><input type="time" id="pIn"></div>
         <div class="fld"><label for="pOut">退勤の初期値</label><input type="time" id="pOut"></div>
       </div>
+      <div class="fld"><label for="pColor">色（なしなら、種類の色）</label><div class="two"><input type="color" id="pColor"><button type="button" id="pColorClear">色をなしにする</button></div></div>
       <div class="fld"><label for="pBrk">休憩（分）</label><input type="number" id="pBrk" min="0" max="480" inputmode="numeric"></div>
       <div class="fld"><label for="pDeem">みなし勤務（分。0 ならなし）</label><div class="two"><input type="number" id="pDeem" min="0" max="450" inputmode="numeric"><button type="button" id="pDeemAuto">足りない分を入れる</button></div></div>
       <div class="fld"><label for="pOts">時間外が始まる時数（分。450 なら所定7:30）</label><input type="number" id="pOts" min="1" max="1440" inputmode="numeric"></div>
@@ -448,7 +455,7 @@
       // みなし（分）。数値でなければ（旧形式の true/false を含む）、所定に足りない分を初期値にする
       const dm = (typeof p.deem === 'number' && p.deem >= 0) ? Math.min(Math.round(p.deem), 450) : (p.deem === false || kind !== 'work' ? 0 : shortfall(st0, en0, bb));
       const ots = (typeof p.ots === 'number' && p.ots >= 1 && p.ots <= 1440) ? Math.round(p.ots) : STD;
-      out.push({ id:v, name:name, kind:kind, start:st0, end:en0, brk:bb, deem:dm, ots:ots });
+      out.push({ id:v, name:name, kind:kind, start:st0, end:en0, brk:bb, deem:dm, ots:ots, color: typeof p.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(p.color) ? p.color.toLowerCase() : '' });
     });
     return out;
   }
@@ -677,6 +684,10 @@
       '<div class="meter ' + lv + '" role="img" aria-label="' + label + ' ' + hm(ot) + '（上限45時間の ' + Math.round(pct) + '%）"><i style="width:' + pct + '%"></i></div>' +
       '<p class="meter-msg">' + msg + '</p>';
   }
+  // プリセットの色（記録は名前で結びつける）。色は枠・左線・丸印だけに使い、文字色は変えない
+  const hcol = (n) => { const p = st.presets.find((x) => x.name === n); return p && p.color ? p.color : ''; };
+  const hcls = (n) => (hcol(n) ? ' hc' : '');
+  const hsty = (n) => (hcol(n) ? ' style="--pc:' + hcol(n) + '"' : '');
   // 泊は、引く60分の「休憩」表示を出さない（計算は同じ）
   const hideBrk = (r) => !!r && r.type === '泊';
   // 1日の帯。出勤日を基準にした分で並べる（日またぎは b が 1440 を超える）
@@ -714,12 +725,12 @@ let nights = '', nrange = [];
   }
   function badgeHtml(r){
     if(!r || (!r.type && !r.clockIn)) return '<span class="badge none">未入力</span>';
-    return '<span class="badge k-' + r.kind + '">' + esc(r.type || KINDS[r.kind]) + '</span>';
+    return '<span class="badge k-' + r.kind + hcls(r.type) + '"' + hsty(r.type) + '>' + esc(r.type || KINDS[r.kind]) + '</span>';
   }
   function renderToday(){
     const ds = curDate, r = st.records[ds] || null, c = calc(r), isToday = ds === todayISO();
     const locked = !!(r && r.locked), leave = r && r.kind === 'leave';
-    const chipOf = (p) => '<button type="button" class="chip k-' + p.kind + '" data-preset="' + esc(p.id) + '" aria-pressed="' + !!(r && r.type === p.name) + '"' + (locked ? ' disabled' : '') + '>' + esc(p.name) + '</button>';
+    const chipOf = (p) => '<button type="button" class="chip k-' + p.kind + hcls(p.name) + '"' + hsty(p.name) + ' data-preset="' + esc(p.id) + '" aria-pressed="' + !!(r && r.type === p.name) + '"' + (locked ? ' disabled' : '') + '>' + esc(p.name) + '</button>';
     const chipsW = st.presets.filter((p) => p.kind === 'work').map(chipOf).join(''), chipsO = st.presets.filter((p) => p.kind !== 'work').map(chipOf).join('');
     let stats = '';
     if(c.has){
@@ -736,7 +747,7 @@ let nights = '', nrange = [];
       '<div class="mid"><b>' + dayLabel(ds) + '</b><small>' + (isToday ? '今日' : '') + '</small></div>' +
       (isToday ? '' : '<button type="button" class="today-btn" data-act="dtoday">今日へ</button>') +
       '<button type="button" data-act="dnext" aria-label="次の日">›</button></div>' +
-      '<div class="card' + (r ? ' k-' + r.kind : '') + '"><div class="state">' + badgeHtml(r) + (locked ? '<span class="hint" style="margin:0">🔒 確定済み</span>' : '') + '</div>' +
+      '<div class="card' + (r ? ' k-' + r.kind + hcls(r.type) : '') + '"' + (r ? hsty(r.type) : '') + '><div class="state">' + badgeHtml(r) + (locked ? '<span class="hint" style="margin:0">🔒 確定済み</span>' : '') + '</div>' +
       (locked ? '<p class="lockmsg">確定（ロック）されているため、変更できません。詳細から解除できます。</p>' : '') +
       (chipsW ? '<div class="chips-lbl">勤務</div><div class="chips" role="group" aria-label="業務内容（勤務）">' + chipsW + '</div>' : '') +
       (chipsO ? '<div class="chips-lbl">休み</div><div class="chips" role="group" aria-label="業務内容（休み）">' + chipsO + '</div>' : '') +
@@ -759,7 +770,7 @@ let nights = '', nrange = [];
     for(let d = 1; d <= dim(mv.y, mv.m); d++){
       const ds = mv.y + '-' + pad(mv.m) + '-' + pad(d), r = st.records[ds] || null, c = calc(r), w = toDate(ds).getDay();
       const right = r ? (c.has ? '<b class="num">' + hm(c.work) + '</b>' + (c.ot > 0 ? '<div class="ot num">残 ' + hm(c.ot) + '</div>' : '') + (c.night > 0 ? '<div class="num">深 ' + hm(c.night) + '</div>' : '') : (r.otManual ? '<div class="ot num">残 ' + hm(r.otManual) + '</div>' : '')) : '';
-      h += '<li><button type="button" class="day' + (r ? ' k-' + r.kind : '') + (w === 6 ? ' sat' : '') + (w === 0 ? ' sun' : '') + (ds === tdy ? ' today' : '') + '" data-date="' + ds + '" aria-label="' + dayLabel(ds) + (r ? ' ' + (r.type || KINDS[r.kind]) : ' 未入力') + '">' +
+      h += '<li><button type="button" class="day' + (r ? ' k-' + r.kind : '') + (w === 6 ? ' sat' : '') + (w === 0 ? ' sun' : '') + (ds === tdy ? ' today' : '') + (r ? hcls(r.type) : '') + '"' + (r ? hsty(r.type) : '') + ' data-date="' + ds + '" aria-label="' + dayLabel(ds) + (r ? ' ' + (r.type || KINDS[r.kind]) : ' 未入力') + '">' +
         '<span class="d num">' + d + '<small>' + WD[w] + '</small></span>' +
         '<span class="mid">' + (r ? badgeHtml(r) : '') + (r && c.has ? '<span class="tm num">' + r.clockIn + '–' + r.clockOut + '</span>' : '') + (r && r.locked ? '<span aria-hidden="true">🔒</span>' : '') +
         (r && r.remark ? '<span class="rm">' + esc(r.remark) + '</span>' : '') + '</span>' +
@@ -785,7 +796,7 @@ let nights = '', nrange = [];
       '<p class="hint">時間外は「勤務（休憩を引いた時間）− 所定7:30」で自動計算しています。法定休日の勤務は45時間に含めません。</p>';
   }
   function renderSet(){
-    const pl = st.presets.map((p, i) => '<li><div class="nm"><span class="badge k-' + p.kind + '">' + esc(p.name) + '</span> <small>' + KINDS[p.kind] + (p.start && p.end ? '　' + p.start + '–' + p.end : '') + (p.name !== '泊' && (p.kind === 'work' || p.kind === 'off' || p.kind === 'legal') ? '　休憩' + p.brk + '分' : '') + (p.kind === 'work' ? (p.deem ? '　みなし' + hm(p.deem) : '　みなしなし') + (p.ots !== STD ? '　時間外は時数' + hm(p.ots) + 'から' : '') : '') + '</small></div>' +
+    const pl = st.presets.map((p, i) => '<li><div class="nm"><span class="badge k-' + p.kind + hcls(p.name) + '"' + hsty(p.name) + '>' + esc(p.name) + '</span> <small>' + KINDS[p.kind] + (p.start && p.end ? '　' + p.start + '–' + p.end : '') + (p.name !== '泊' && (p.kind === 'work' || p.kind === 'off' || p.kind === 'legal') ? '　休憩' + p.brk + '分' : '') + (p.kind === 'work' ? (p.deem ? '　みなし' + hm(p.deem) : '　みなしなし') + (p.ots !== STD ? '　時間外は時数' + hm(p.ots) + 'から' : '') : '') + '</small></div>' +
       '<button type="button" data-pup="' + i + '" aria-label="' + esc(p.name) + 'を上へ"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
       '<button type="button" data-pdn="' + i + '" aria-label="' + esc(p.name) + 'を下へ"' + (i === st.presets.length - 1 ? ' disabled' : '') + '>↓</button>' +
       '<button type="button" data-pedit="' + i + '" aria-label="' + esc(p.name) + 'を編集">編集</button></li>').join('');
@@ -967,10 +978,12 @@ let nights = '', nrange = [];
     pIdx = i;
     const p = i >= 0 ? st.presets[i] : { name:'', kind:'work', start:'', end:'', brk:0, deem:0, ots:STD };
     $('#pTitle').textContent = i >= 0 ? 'プリセットを編集' : 'プリセットを追加';
-    $('#pName').value = p.name; $('#pKind').value = p.kind; $('#pIn').value = p.start; $('#pOut').value = p.end; $('#pBrk').value = p.brk; $('#pDeem').value = p.deem; $('#pOts').value = p.ots;
+    $('#pName').value = p.name; $('#pKind').value = p.kind; $('#pIn').value = p.start; $('#pOut').value = p.end; $('#pBrk').value = p.brk; $('#pDeem').value = p.deem; $('#pOts').value = p.ots; $('#pColor').value = p.color || '#4f77b0'; $('#pColor').dataset.set = p.color ? '1' : '';
     $('#pDel').hidden = i < 0; $('#pErr').textContent = '';
     pdlg.showModal(); $('#pTitle').focus();
   }
+  $('#pColor').addEventListener('input', () => { $('#pColor').dataset.set = '1'; });
+  $('#pColorClear').addEventListener('click', () => { $('#pColor').dataset.set = ''; $('#pColor').value = '#4f77b0'; });
   $('#pClose').addEventListener('click', () => pdlg.close());
   // 出勤・退勤・休憩から、所定に足りない分を入れる
   $('#pDeemAuto').addEventListener('click', () => {
@@ -992,7 +1005,7 @@ let nights = '', nrange = [];
     if(!(dmv >= 0 && dmv <= 450)){ pErr('#pDeem', 'みなしは0〜450分で入力してください。'); return; }
     const otv = Number($('#pOts').value || STD);
     if(!(otv >= 1 && otv <= 1440)){ pErr('#pOts', '時間外が始まる時数は1〜1440分で入力してください。'); return; }
-    const p = { id: pIdx >= 0 ? st.presets[pIdx].id : 'p' + Date.now().toString(36), name:name, ots: Math.round(otv), kind:kind, start: kind === 'leave' ? '' : s, end: kind === 'leave' ? '' : en, brk: kind === 'leave' ? 0 : Math.round(b), deem: kind === 'work' ? Math.round(dmv) : 0 };
+    const p = { id: pIdx >= 0 ? st.presets[pIdx].id : 'p' + Date.now().toString(36), name:name, ots: Math.round(otv), kind:kind, start: kind === 'leave' ? '' : s, end: kind === 'leave' ? '' : en, brk: kind === 'leave' ? 0 : Math.round(b), deem: kind === 'work' ? Math.round(dmv) : 0, color: $('#pColor').dataset.set ? $('#pColor').value : '' };
     const ps = st.presets.slice(); if(pIdx >= 0) ps[pIdx] = p; else ps.push(p);
     if(!setState(Object.assign({}, st, { presets: ps }))){ pErr(null, '端末に保存できませんでした。'); return; }
     pdlg.close(); render();
