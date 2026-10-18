@@ -677,6 +677,8 @@
       '<div class="meter ' + lv + '" role="img" aria-label="' + label + ' ' + hm(ot) + '（上限45時間の ' + Math.round(pct) + '%）"><i style="width:' + pct + '%"></i></div>' +
       '<p class="meter-msg">' + msg + '</p>';
   }
+  // 泊は、引く60分の「休憩」表示を出さない（計算は同じ）
+  const hideBrk = (r) => !!r && r.type === '泊';
   // 1日の帯。出勤日を基準にした分で並べる（日またぎは b が 1440 を超える）
   function timelineHtml(r, c, hintOk){
     if(!c.has) return hintOk && r && r.kind !== 'leave' ? '<p class="hint">出勤・退勤を入れると、1日の帯が出ます。</p>' : '';
@@ -704,7 +706,7 @@ let nights = '', nrange = [];
     if(nights) leg += '<span class="l-night">深夜 ' + hm(c.night) + '（' + nrange.join('、') + '）</span>';
     let note = '';
     if(manual) note += r.kind === 'work' ? '時間外は手入力のため、帯には出しません。' : '時間外は手入力（' + hm(r.otManual) + '）です。帯は勤務した時間の全体です。';
-    if(c.brk > 0) note += '帯は休憩 ' + c.brk + '分を含みます。';
+    if(c.brk > 0 && !hideBrk(r)) note += '帯は休憩 ' + c.brk + '分を含みます。';
     const step = Math.ceil(span / 420) * 60; // 目盛りは多くても7個ほど
     let ticks = '';
     for(let t = Math.ceil(lo / step) * step; t <= hi; t += step) { const p = Number(pos(t)); ticks += '<span style="left:' + p + '%' + (p < 3 ? ';transform:none' : (p > 97 ? ';transform:translateX(-100%)' : '')) + '">' + ((((t % 1440) + 1440) % 1440) / 60) + '時</span>'; }
@@ -725,7 +727,7 @@ let nights = '', nrange = [];
         '<div><small>みなし</small><b class="num">' + hm(c.deemed) + '</b></div>' +
         '<div' + (c.ot > 0 ? ' class="hot"' : '') + '><small>時間外' + (r.otManual !== null ? '（手入力）' : '') + '</small><b class="num">' + hm(c.ot) + '</b></div>' +
         '<div><small>深夜</small><b class="num">' + hm(c.night) + '</b></div></div>' +
-        '<p class="hint">休憩 ' + c.brk + '分を引いています。' + (c.otFrom ? '時間外は ' + c.otFrom + ' から。' : (r.kind === 'legal' ? '法定休日の勤務は別集計です。' : '休日の勤務は全部が時間外です。')) + '</p>';
+        '<p class="hint">' + (hideBrk(r) ? '' : '休憩 ' + c.brk + '分を引いています。') + (c.otFrom ? '時間外は ' + c.otFrom + ' から。' : (r.kind === 'legal' ? '法定休日の勤務は別集計です。' : '休日の勤務は全部が時間外です。')) + '</p>';
     }else if(leave) stats = '<p class="hint">有給休暇です。</p>';
     const tm = calcMonth(Number(ds.slice(0, 4)), Number(ds.slice(5, 7)));
     const yr = Number(ds.slice(0, 4)), left = st.settings.leaveTotal - leaveUsed(yr);
@@ -783,7 +785,7 @@ let nights = '', nrange = [];
       '<p class="hint">時間外は「勤務（休憩を引いた時間）− 所定7:30」で自動計算しています。法定休日の勤務は45時間に含めません。</p>';
   }
   function renderSet(){
-    const pl = st.presets.map((p, i) => '<li><div class="nm"><span class="badge k-' + p.kind + '">' + esc(p.name) + '</span> <small>' + KINDS[p.kind] + (p.start && p.end ? '　' + p.start + '–' + p.end : '') + (p.kind === 'work' || p.kind === 'off' || p.kind === 'legal' ? '　休憩' + p.brk + '分' : '') + (p.kind === 'work' ? (p.deem ? '　みなし' + hm(p.deem) : '　みなしなし') + (p.ots !== STD ? '　時間外は時数' + hm(p.ots) + 'から' : '') : '') + '</small></div>' +
+    const pl = st.presets.map((p, i) => '<li><div class="nm"><span class="badge k-' + p.kind + '">' + esc(p.name) + '</span> <small>' + KINDS[p.kind] + (p.start && p.end ? '　' + p.start + '–' + p.end : '') + (p.name !== '泊' && (p.kind === 'work' || p.kind === 'off' || p.kind === 'legal') ? '　休憩' + p.brk + '分' : '') + (p.kind === 'work' ? (p.deem ? '　みなし' + hm(p.deem) : '　みなしなし') + (p.ots !== STD ? '　時間外は時数' + hm(p.ots) + 'から' : '') : '') + '</small></div>' +
       '<button type="button" data-pup="' + i + '" aria-label="' + esc(p.name) + 'を上へ"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
       '<button type="button" data-pdn="' + i + '" aria-label="' + esc(p.name) + 'を下へ"' + (i === st.presets.length - 1 ? ' disabled' : '') + '>↓</button>' +
       '<button type="button" data-pedit="' + i + '" aria-label="' + esc(p.name) + 'を編集">編集</button></li>').join('');
@@ -875,7 +877,7 @@ let nights = '', nrange = [];
     const r = readDay(); const ot = r.otManual; r.otManual = Number.isNaN(ot) ? null : ot;
     const c = calc(r);
     $('#dTl').innerHTML = r.brk !== null && !(r.brk >= 0 && r.brk <= 480) ? '' : timelineHtml(r, c); // 休憩が範囲外のときは帯を出さない
-    $('#dPv').textContent = c.has ? '勤務 ' + hm(c.work) + '（休憩 ' + c.brk + '分）　みなし ' + hm(c.deemed) + '　時間外 ' + hm(c.ot) + (r.otManual !== null ? '（手入力）' : '') + '　深夜 ' + hm(c.night) + (c.otFrom ? '　時間外は ' + c.otFrom + ' から' : '') + (r.kind === 'work' && r.deem !== null && r.deem > c.deemed ? '\n※みなしは、所定7:30に足りない分までです（入力 ' + r.deem + '分 → ' + hm(c.deemed) + '）。' : '') : '出勤・退勤を入れると、ここに計算結果が出ます。';
+    $('#dPv').textContent = c.has ? '勤務 ' + hm(c.work) + (hideBrk(r) ? '' : '（休憩 ' + c.brk + '分）') + '　みなし ' + hm(c.deemed) + '　時間外 ' + hm(c.ot) + (r.otManual !== null ? '（手入力）' : '') + '　深夜 ' + hm(c.night) + (c.otFrom ? '　時間外は ' + c.otFrom + ' から' : '') + (r.kind === 'work' && r.deem !== null && r.deem > c.deemed ? '\n※みなしは、所定7:30に足りない分までです（入力 ' + r.deem + '分 → ' + hm(c.deemed) + '）。' : '') : '出勤・退勤を入れると、ここに計算結果が出ます。';
   }
   function setDayDisabled(on){ ['#dType', '#dIn', '#dOut', '#dBrk', '#dOt', '#dDeem', '#dRemark', '#dClear'].forEach((s) => { $(s).disabled = on; }); }
   function openDay(ds){
