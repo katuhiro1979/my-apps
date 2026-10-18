@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>バックアップ管理</title>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F4F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1116" media="(prefers-color-scheme: dark)">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous" defer></script>
+<style>
+  :root{
+    color-scheme:light dark;
+    --bg:#F4F5F7; --paper:#FFFFFF; --surface-2:#EEF0F4;
+    --ink:#1B2333; --ink-soft:#505A6E; --line:#D7DBE3; --line-strong:#8A93A5;
+    --accent:#1B2333; --on-accent:#FFFFFF;
+    --danger:#B3281C; --warn:#854F0B; --ok:#3B6D11;
+    --warn-bg:#FAEEDA; --danger-bg:#FCEBEB; --ok-bg:#EAF3DE;
+    --radius:14px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1116; --paper:#171B22; --surface-2:#1F242D;
+      --ink:#E8ECF3; --ink-soft:#A3ACBD; --line:#2C3340; --line-strong:#6B7589;
+      --accent:#E8ECF3; --on-accent:#0E1116;
+      --danger:#F08A80; --warn:#E8B766; --ok:#9CC96A;
+      --warn-bg:#3A2D14; --danger-bg:#3A1B18; --ok-bg:#1F2E12;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI",Meiryo,sans-serif}
+  main{max-width:760px;margin:0 auto;padding:16px}
+  h1{font-size:1.4rem;margin:8px 0 4px}
+  h2{font-size:1.1rem;margin:0 0 8px}
+  .sub{color:var(--ink-soft);font-size:.9rem;margin:0 0 16px}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:0 0 16px}
+  label{display:block;font-size:.9rem;color:var(--ink-soft);margin:10px 0 4px}
+  input[type=text],input[type=email],input[type=password],input[type=file]{width:100%;font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px}
+  button{font:inherit;min-height:44px;padding:8px 16px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);cursor:pointer}
+  button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  button.danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+  .note{font-size:.88rem;color:var(--ink-soft);margin:8px 0 0}
+  .banner{border-radius:10px;padding:10px 12px;margin:10px 0 0;font-size:.92rem}
+  .banner.warn{background:var(--warn-bg);color:var(--warn)}
+  .banner.err{background:var(--danger-bg);color:var(--danger)}
+  .banner.ok{background:var(--ok-bg);color:var(--ok)}
+  ul.log{list-style:none;margin:10px 0 0;padding:0;font-size:.92rem}
+  ul.log li{padding:6px 0;border-top:1px solid var(--line)}
+  ul.log li:first-child{border-top:0}
+  .ok{color:var(--ok)} .ng{color:var(--danger)} .dim{color:var(--ink-soft)}
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  th,td{text-align:left;padding:6px 8px;border-top:1px solid var(--line)}
+  th{color:var(--ink-soft);font-weight:600}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <h1>バックアップ管理</h1>
+  <p class="sub">Supabase のデータを暗号化して、Google ドライブのフォルダへ保存・復元します。</p>
+
+  <section class="card" id="cardLogin">
+    <h2>1. ログイン</h2>
+    <div id="loginOut">
+      <label for="email">メールアドレス</label>
+      <input type="email" id="email" autocomplete="username">
+      <label for="pw">パスワード</label>
+      <input type="password" id="pw" autocomplete="current-password">
+      <div class="row"><button class="primary" id="btnLogin">ログイン</button></div>
+    </div>
+    <div id="loginIn" hidden>
+      <p>ログイン中: <strong id="who"></strong></p>
+      <div class="row"><button id="btnLogout">ログアウト</button></div>
+    </div>
+    <div id="loginMsg"></div>
+  </section>
+
+  <section class="card" id="cardSetup">
+    <h2>2. 設定</h2>
+    <h3 style="font-size:1rem;margin:4px 0">保存先フォルダ</h3>
+    <p id="dirState" class="note"></p>
+    <div class="row">
+      <button id="btnDir">フォルダを選ぶ</button>
+      <button id="btnDirPerm" hidden>書き込みを許可する</button>
+    </div>
+    <p class="note">Google ドライブ for desktop の同期フォルダ(マイドライブ内)を選んでください。中に「SupabaseBackup」フォルダを作ります。</p>
+    <p id="dirUnsupported" class="banner warn" hidden>このブラウザはフォルダへの直接保存に対応していません。バックアップは通常のダウンロードで保存されます。保存後に、手動でドライブへ移してください(PC の Chrome / Edge を推奨)。</p>
+
+    <h3 style="font-size:1rem;margin:16px 0 4px">暗号化の鍵</h3>
+    <p id="keyState" class="note"></p>
+    <div id="keyNew">
+      <label for="kpw1">秘密鍵を守るパスワード(10文字以上)</label>
+      <input type="password" id="kpw1" autocomplete="new-password">
+      <label for="kpw2">もう一度入力</label>
+      <input type="password" id="kpw2" autocomplete="new-password">
+      <div class="row"><button id="btnKeyGen">鍵を作成する</button></div>
+      <p class="note">作成すると「秘密鍵ファイル」が保存されます。このファイルとパスワードの両方を失うと、バックアップは二度と復元できません。別の場所にも控えを保管してください。</p>
+    </div>
+    <div>
+      <label for="keyFile">別のPCで使う場合: 既存の秘密鍵ファイルを読み込む(公開鍵だけを取り出します)</label>
+      <input type="file" id="keyFile" accept=".json,application/json">
+    </div>
+  </section>
+
+  <section class="card" id="cardBackup">
+    <h2>3. バックアップ</h2>
+    <p class="note">全アプリのデータを取得し、アプリごとに暗号化して保存します。クラウドのデータは変更しません。</p>
+    <div class="row"><button class="primary" id="btnBackup" disabled>バックアップを実行</button></div>
+    <ul class="log" id="backupLog"></ul>
+  </section>
+
+  <section class="card" id="cardHistory">
+    <h2>4. 履歴</h2>
+    <div class="row"><button id="btnHistory" disabled>保存済みの世代を表示</button></div>
+    <div id="historyOut"></div>
+    <p class="note">各アプリ最新10世代を残し、古いものは削除せず「_old」フォルダへ移します。</p>
+  </section>
+
+  <section class="card" id="cardRestore">
+    <h2>5. 復元</h2>
+    <label for="rFile">バックアップファイル(.json.enc)</label>
+    <input type="file" id="rFile" accept=".enc,.json,application/json">
+    <label for="rKey">秘密鍵ファイル</label>
+    <input type="file" id="rKey" accept=".json,application/json">
+    <label for="rPw">秘密鍵のパスワード</label>
+    <input type="password" id="rPw" autocomplete="off">
+    <div class="row"><button id="btnPreview" disabled>復号して内容を確認</button></div>
+    <div id="restoreOut"></div>
+    <div class="row" id="restoreActions" hidden>
+      <button class="danger" id="btnRestore">この内容で復元する</button>
+    </div>
+    <p class="note">復元前に、現在のクラウドの内容を自動で保存します。バックアップに無い行は削除しません。</p>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ===== 設定 ===== */
+  const SB_URL = 'https://kcadsiwjxlmhzremgzet.supabase.co';
+  // 公開前提の anon キー。service_role キーは絶対に入れないこと。
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjYWRzaXdqeGxtaHpyZW1nemV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4ODgzNzAsImV4cCI6MjEwNTQ2NDM3MH0.ZOm5zNFazsLKFl8N-oLhBeUxZcYscPNdOpYPOwq8d9M';
+  const KEEP = 10;                       // アプリごとに残す世代数
+  const ROOT_NAME = 'SupabaseBackup';
+  const OLD_NAME = '_old';
+  const PRE_RESTORE_NAME = '_復元前';
+  const COMMON = '共通';                  // apps / review_apps / memos をまとめるグループ名
+  const APP_TABLES = ['app_kv', 'items', 'review_app_kv'];        // app_name でグループ化
+  const COMMON_TABLES = ['apps', 'review_apps', 'memos'];         // 共通グループ
+  const ALL_TABLES = APP_TABLES.concat(COMMON_TABLES);
+  const ORDER = { app_kv: ['app_name', 'key'], review_app_kv: ['app_name', 'key'], items: ['id'], apps: ['id'], review_apps: ['id'], memos: ['id'] };
+  const PBKDF2_ITER = 600000;
+  const LS_PUB = 'bk-public-key';
+  const FORMAT = 'supabase-backup';
+
+  const $ = (id) => document.getElementById(id);
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  /* ===== 小さな部品 ===== */
+  function h(tag, attrs, ...kids) {
+    const e = document.createElement(tag);
+    if (attrs) for (const k in attrs) { if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); }
+    for (const c of kids) if (c != null) e.append(c.nodeType ? c : document.createTextNode(String(c)));
+    return e;
+  }
+  const b64 = (buf) => {
+    const u = new Uint8Array(buf); let s = '';
+    for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+    return btoa(s);
+  };
+  const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const pad = (n, w = 2) => String(n).padStart(w, '0');
+  function stamp(d) { return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()); }
+  function stampLabel(s) { const m = /^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$/.exec(s); return m ? `${m[1]}/${m[2]}/${m[3]} ${m[4]}:${m[5]}` : s; }
+  function safeName(s) { const t = String(s).replace(/[\\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/^[.\s]+|[.\s]+$/g, ''); return t || '_'; }
+  const pubOnly = (j) => ({ kty: j.kty, crv: j.crv, x: j.x, y: j.y });
+  function say(el, kind, text) { el.replaceChildren(); if (text) el.append(h('div', { class: 'banner ' + kind }, text)); }
+
+  /* ===== 暗号 (ECDH P-256 + HKDF-SHA256 + AES-256-GCM / 秘密鍵は PBKDF2 + AES-GCM) ===== */
+  const ECDH = { name: 'ECDH', namedCurve: 'P-256' };
+  const INFO = enc.encode('supabase-backup v1');
+  async function genKeyPair() {
+    const kp = await crypto.subtle.generateKey(ECDH, true, ['deriveBits']);
+    return { priv: await crypto.subtle.exportKey('jwk', kp.privateKey), pub: pubOnly(await crypto.subtle.exportKey('jwk', kp.publicKey)) };
+  }
+  async function deriveAes(privKey, pubKey, salt, usage) {
+    const bits = await crypto.subtle.deriveBits({ name: 'ECDH', public: pubKey }, privKey, 256);
+    const base = await crypto.subtle.importKey('raw', bits, 'HKDF', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt, info: INFO }, base, { name: 'AES-GCM', length: 256 }, false, [usage]);
+  }
+  async function encryptFor(pubJwk, plainBytes) {
+    const pub = await crypto.subtle.importKey('jwk', pubOnly(pubJwk), ECDH, false, []);
+    const eph = await crypto.subtle.generateKey(ECDH, true, ['deriveBits']);
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveAes(eph.privateKey, pub, salt, 'encrypt');
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plainBytes);
+    const ephPub = pubOnly(await crypto.subtle.exportKey('jwk', eph.publicKey));
+    return { format: FORMAT + '-enc', version: 1, alg: 'ECDH-P256+HKDF-SHA256+AES-256-GCM', eph: ephPub, salt: b64(salt), iv: b64(iv), ct: b64(ct) };
+  }
+  async function decryptWith(privJwk, envelope) {
+    if (!envelope || envelope.format !== FORMAT + '-enc' || envelope.version !== 1) throw new Error('バックアップファイルの形式が正しくありません');
+    const priv = await crypto.subtle.importKey('jwk', privJwk, ECDH, false, ['deriveBits']);
+    const eph = await crypto.subtle.importKey('jwk', pubOnly(envelope.eph), ECDH, false, []);
+    const key = await deriveAes(priv, eph, unb64(envelope.salt), 'decrypt');
+    try { return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(envelope.iv) }, key, unb64(envelope.ct))); }
+    catch (e) { throw new Error('復号できません(別の鍵で作られたファイルか、ファイルが壊れています)'); }
+  }
+  async function pwKey(password, salt, iter, usage) {
+    const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, base, { name: 'AES-GCM', length: 256 }, false, [usage]);
+  }
+  async function wrapPrivate(privJwk, pubJwk, password) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await pwKey(password, salt, PBKDF2_ITER, 'encrypt');
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(privJwk)));
+    return { format: FORMAT + '-key', version: 1, kdf: 'PBKDF2-SHA256', iter: PBKDF2_ITER, salt: b64(salt), iv: b64(iv), ct: b64(ct), pub: pubOnly(pubJwk) };
+  }
+  async function unwrapPrivate(file, password) {
+    if (!file || file.format !== FORMAT + '-key' || file.version !== 1) throw new Error('秘密鍵ファイルの形式が正しくありません');
+    const key = await pwKey(password, unb64(file.salt), file.iter, 'decrypt');
+    try { return JSON.parse(dec.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(file.iv) }, key, unb64(file.ct)))); }
+    catch (e) { throw new Error('パスワードが違うか、秘密鍵ファイルが壊れています'); }
+  }
+
+  /* ===== データのグループ化・世代の計画(純粋関数) ===== */
+  // 取得した全テーブルの行を、アプリごと(+共通)の { app, tables } に分ける
+  function groupRows(data) {
+    const map = new Map();
+    const get = (app) => { if (!map.has(app)) map.set(app, { app, tables: {} }); return map.get(app); };
+    for (const t of APP_TABLES) for (const r of (data[t] || [])) { const g = get(r.app_name); (g.tables[t] = g.tables[t] || []).push(r); }
+    for (const t of COMMON_TABLES) { const rows = data[t] || []; if (rows.length) get(COMMON).tables[t] = rows.slice(); }
+    return [...map.values()];
+  }
+  function buildPayload(group, createdAt) {
+    const counts = {}; for (const t in group.tables) counts[t] = group.tables[t].length;
+    return { format: FORMAT, version: 1, app: group.app, createdAt: createdAt.toISOString(), counts, tables: group.tables };
+  }
+  const FILE_RE = /^(.*)_(\d{8}_\d{6})(?:_\d+)?\.json\.enc$/;
+  // 新しい順に並べ、KEEP 世代を超えた古い分のファイル名を返す
+  function planRotation(names, keep) {
+    const items = names.map((n) => { const m = FILE_RE.exec(n); return m ? { n, s: m[2] } : null; }).filter(Boolean);
+    items.sort((a, b) => (a.s === b.s ? (a.n < b.n ? 1 : -1) : (a.s < b.s ? 1 : -1)));
+    return items.slice(keep).map((x) => x.n);
+  }
+
+  /* ===== フォルダ操作 (File System Access API) ===== */
+  const hasFS = typeof window.showDirectoryPicker === 'function';
+  let dirHandle = null;
+  const idb = () => new Promise((res, rej) => { const r = indexedDB.open('bk-db', 1); r.onupgradeneeded = () => r.result.createObjectStore('h'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  async function idbGet(k) { const db = await idb(); return new Promise((res, rej) => { const q = db.transaction('h').objectStore('h').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+  async function idbSet(k, v) { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction('h', 'readwrite'); t.objectStore('h').put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
+  async function loadDirHandle() { try { dirHandle = (await idbGet('dir')) || null; } catch (e) { dirHandle = null; } }
+  async function dirPerm(request) {
+    if (!dirHandle) return 'none';
+    try {
+      let p = await dirHandle.queryPermission({ mode: 'readwrite' });
+      if (p !== 'granted' && request) p = await dirHandle.requestPermission({ mode: 'readwrite' });
+      return p;
+    } catch (e) { return 'none'; }
+  }
+  async function sub(dir, names, create) { let d = dir; for (const n of names) d = await d.getDirectoryHandle(n, { create: !!create }); return d; }
+  async function exists(dir, name) { try { await dir.getFileHandle(name); return true; } catch (e) { return false; } }
+  async function uniqueName(dir, name) {
+    if (!(await exists(dir, name))) return name;
+    const base = name.replace(/\.json\.enc$/, '');
+    for (let i = 2; i < 1000; i++) { const n = `${base}_${i}.json.enc`; if (!(await exists(dir, n))) return n; }
+    throw new Error('ファイル名を決められません');
+  }
+  async function writeText(dir, name, text) { const fh = await dir.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(text); await w.close(); return fh; }
+  async function readText(dir, name) { return (await (await dir.getFileHandle(name)).getFile()).text(); }
+  async function listFiles(dir) { const out = []; for await (const [n, e] of dir.entries()) if (e.kind === 'file') out.push(n); return out; }
+  async function listDirs(dir) { const out = []; for await (const [n, e] of dir.entries()) if (e.kind === 'directory') out.push(n); return out; }
+  function download(name, text) {
+    const a = h('a', { href: URL.createObjectURL(new Blob([text], { type: 'application/json' })), download: name });
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  }
+  // 失敗した工程が分かるよう、エラーに工程名を付ける
+  async function step(label, fn) { try { return await fn(); } catch (e) { throw new Error(`${label}に失敗(${e.name || 'Error'}: ${e.message})`); } }
+  // 保存して読み戻し検証する。フォルダ未設定ならダウンロード。戻り値: 'folder' | 'download'
+  async function saveFile(subPath, name, text) {
+    if (dirHandle && (await dirPerm(false)) === 'granted') {
+      const dir = await step('フォルダの作成', () => sub(dirHandle, [ROOT_NAME].concat(subPath), true));
+      const finalName = await step('ファイル名の決定', () => uniqueName(dir, name));
+      await step('ファイルの書き込み', () => writeText(dir, finalName, text));
+      let back; try { back = await readText(dir, finalName); } catch (e) { back = null; }
+      if (back !== text) { try { await dir.removeEntry(finalName); } catch (e) { /* 失敗しても次で報告 */ } throw new Error('保存後の読み戻しが一致しませんでした'); }
+      return { mode: 'folder', name: finalName, dir };
+    }
+    download(name, text);
+    return { mode: 'download', name };
+  }
+  // 古い世代を _old/<app>/ へ移す(コピー→検証→元を削除。完全削除はしない)
+  async function rotate(folder) {
+    const appDir = await sub(dirHandle, [ROOT_NAME, folder], true);
+    const move = planRotation(await listFiles(appDir), KEEP);
+    if (!move.length) return 0;
+    const oldDir = await sub(dirHandle, [ROOT_NAME, OLD_NAME, folder], true);
+    let n = 0;
+    for (const f of move) {
+      const text = await readText(appDir, f);
+      const to = await uniqueName(oldDir, f);
+      await writeText(oldDir, to, text);
+      if ((await readText(oldDir, to)) !== text) throw new Error('退避の検証に失敗: ' + f);
+      await appDir.removeEntry(f);
+      n++;
+    }
+    return n;
+  }
+
+  /* ===== Supabase ===== */
+  let sb = null, session = null;
+  function needSb() { if (!sb) throw new Error('Supabase を読み込めません(通信環境を確認してください)'); return sb; }
+  async function fetchTable(t) {
+    const all = [];
+    for (let from = 0; ; from += 1000) {
+      let q = needSb().from(t).select('*');
+      for (const c of ORDER[t]) q = q.order(c);
+      const { data, error } = await q.range(from, from + 999);
+      if (error) throw new Error(`${t} の取得に失敗: ${error.message}`);
+      all.push(...data);
+      if (data.length < 1000) break;
+    }
+    return all;
+  }
+  async function fetchAll() { const out = {}; for (const t of ALL_TABLES) out[t] = await fetchTable(t); return out; }
+
+  /* ===== 公開鍵 ===== */
+  function getPub() { try { return JSON.parse(localStorage.getItem(LS_PUB) || 'null'); } catch (e) { return null; } }
+  function setPub(j) { try { localStorage.setItem(LS_PUB, JSON.stringify(pubOnly(j))); return true; } catch (e) { return false; } }
+  async function pickJson(input) { const f = input.files && input.files[0]; if (!f) throw new Error('ファイルを選んでください'); try { return JSON.parse(await f.text()); } catch (e) { throw new Error('JSON として読めません: ' + f.name); } }
+
+  /* ===== 画面の状態 ===== */
+  function refresh() {
+    const loggedIn = !!session;
+    $('loginOut').hidden = loggedIn; $('loginIn').hidden = !loggedIn;
+    $('who').textContent = loggedIn ? (session.user.email || '') : '';
+    const pub = getPub();
+    $('keyState').textContent = pub ? '公開鍵: 設定済み(バックアップできます)' : '公開鍵: 未設定。鍵を作成するか、秘密鍵ファイルを読み込んでください。';
+    $('keyNew').hidden = !!pub;
+    $('dirUnsupported').hidden = hasFS;
+    $('btnDir').hidden = !hasFS;
+    $('btnBackup').disabled = !(loggedIn && pub);
+    $('btnHistory').disabled = !hasFS || !dirHandle;
+    $('btnPreview').disabled = !loggedIn;
+    updateDirState();
+  }
+  async function updateDirState() {
+    if (!hasFS) { $('dirState').textContent = '保存先: ダウンロード(フォルダ指定は未対応のブラウザ)'; $('btnDirPerm').hidden = true; return; }
+    if (!dirHandle) { $('dirState').textContent = '保存先: 未設定(未設定のままではダウンロードで保存されます)'; $('btnDirPerm').hidden = true; return; }
+    const p = await dirPerm(false);
+    $('dirState').textContent = `保存先: ${dirHandle.name}/${ROOT_NAME}` + (p === 'granted' ? '' : '(書き込みの許可が必要です)');
+    $('btnDirPerm').hidden = p === 'granted';
+    $('btnHistory').disabled = !dirHandle || p !== 'granted';
+  }
+
+  /* ===== 操作 ===== */
+  async function doLogin() {
+    const m = $('loginMsg'); say(m, '', '');
+    try {
+      const { data, error } = await needSb().auth.signInWithPassword({ email: $('email').value.trim(), password: $('pw').value });
+      if (error) throw new Error(error.message);
+      session = data.session; $('pw').value = ''; refresh();
+    } catch (e) { say(m, 'err', 'ログインできませんでした: ' + e.message); }
+  }
+  async function doLogout() { try { await needSb().auth.signOut(); } catch (e) { /* 画面側は閉じる */ } session = null; refresh(); }
+
+  async function doDir() {
+    try {
+      const d = await window.showDirectoryPicker({ mode: 'readwrite' });
+      dirHandle = d; await idbSet('dir', d); refresh();
+    } catch (e) { if (e.name !== 'AbortError') alert('フォルダを設定できませんでした: ' + e.message); }
+  }
+  async function doDirPerm() { await dirPerm(true); refresh(); }
+
+  async function doKeyGen() {
+    const p1 = $('kpw1').value, p2 = $('kpw2').value;
+    if (p1.length < 10) return alert('パスワードは10文字以上にしてください');
+    if (p1 !== p2) return alert('確認用のパスワードが一致しません');
+    try {
+      const kp = await genKeyPair();
+      const file = await wrapPrivate(kp.priv, kp.pub, p1);
+      const name = 'supabase-backup-secret-key.json';
+      // 秘密鍵ファイルを先に保存してから、公開鍵を有効にする
+      download(name, JSON.stringify(file));
+      if (!setPub(kp.pub)) throw new Error('公開鍵をこのブラウザに保存できません');
+      $('kpw1').value = ''; $('kpw2').value = '';
+      alert('秘密鍵ファイル「' + name + '」を保存しました。パスワードと一緒に、安全な別の場所にも控えを保管してください。');
+      refresh();
+    } catch (e) { alert('鍵を作成できませんでした: ' + e.message); }
+  }
+  async function doKeyImport() {
+    try {
+      const f = await pickJson($('keyFile'));
+      if (!f || f.format !== FORMAT + '-key' || !f.pub) throw new Error('秘密鍵ファイルではありません');
+      await crypto.subtle.importKey('jwk', pubOnly(f.pub), ECDH, false, []);
+      if (!setPub(f.pub)) throw new Error('公開鍵を保存できません');
+      refresh();
+    } catch (e) { alert('読み込めませんでした: ' + e.message); }
+    $('keyFile').value = '';
+  }
+
+  async function doBackup() {
+    const log = $('backupLog'); log.replaceChildren();
+    const add = (cls, text) => log.append(h('li', { class: cls }, text));
+    const btn = $('btnBackup'); btn.disabled = true;
+    try {
+      const pub = getPub(); if (!pub) throw new Error('公開鍵が未設定です');
+      if (dirHandle && (await dirPerm(true)) !== 'granted') throw new Error('フォルダへの書き込みが許可されていません');
+      add('dim', '取得中…');
+      const data = await fetchAll();                         // 1つでも失敗したら全体を中止(途中までの保存はしない)
+      const groups = groupRows(data);
+      if (!groups.length) throw new Error('バックアップするデータがありません');
+      const now = new Date(); let okN = 0, ngN = 0;
+      for (const g of groups) {
+        const folder = g.app === COMMON ? '_' + COMMON : safeName(g.app);
+        try {
+          const payload = buildPayload(g, now);
+          const env = await encryptFor(pub, enc.encode(JSON.stringify(payload)));
+          const res = await saveFile([folder], `${safeName(g.app)}_${stamp(now)}.json.enc`, JSON.stringify(env));
+          let moved = 0, rotateErr = '';
+          if (res.mode === 'folder') { try { moved = await rotate(folder); } catch (e) { rotateErr = e.message; } }
+          const total = Object.values(payload.counts).reduce((a, b) => a + b, 0);
+          add('ok', `✓ ${g.app}: ${total}件を保存(${res.mode === 'folder' ? '検証済み' : 'ダウンロード'})` + (moved ? `、古い${moved}世代を _old へ移動` : ''));
+          if (rotateErr) add('ng', `  ⚠ ${g.app}: 保存はできましたが、古い世代の整理に失敗しました(${rotateErr})`);
+          okN++;
+        } catch (e) { add('ng', `✗ ${g.app}: ${e.message}`); ngN++; }
+      }
+      add(ngN ? 'ng' : 'ok', ngN ? `完了: 成功${okN}件 / 失敗${ngN}件` : `完了: ${okN}件すべて成功`);
+    } catch (e) { add('ng', 'バックアップを中止しました: ' + e.message); }
+    refresh();
+  }
+
+  async function doHistory() {
+    const out = $('historyOut'); out.replaceChildren();
+    try {
+      if (!dirHandle || (await dirPerm(true)) !== 'granted') throw new Error('フォルダへの書き込みが許可されていません');
+      const root = await sub(dirHandle, [ROOT_NAME], true);
+      const dirs = (await listDirs(root)).filter((n) => n !== OLD_NAME && n !== PRE_RESTORE_NAME).sort();
+      if (!dirs.length) { out.append(h('p', { class: 'note' }, 'まだバックアップがありません')); return; }
+      const tb = h('tbody');
+      for (const d of dirs) {
+        const files = (await listFiles(await sub(root, [d]))).map((n) => FILE_RE.exec(n)).filter(Boolean).map((m) => m[2]).sort().reverse();
+        tb.append(h('tr', null, h('td', null, d), h('td', null, files.length + ' 世代'), h('td', null, files.length ? stampLabel(files[0]) : '-')));
+      }
+      out.append(h('table', null, h('thead', null, h('tr', null, h('th', null, 'アプリ'), h('th', null, '世代数'), h('th', null, '最新'))), tb));
+    } catch (e) { say(out, 'err', e.message); }
+  }
+
+  /* ===== 復元 ===== */
+  let pending = null;   // { payload, current(group の tables), diffs }
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  // 復元対象の行を現在の行と照合し、{table,key,status:'新規'|'変更'|'同一',row,existing} を返す
+  function diffRows(payload, currentTables) {
+    const out = [];
+    const T = payload.tables || {};
+    const find = {
+      app_kv: (c, r) => c.find((x) => x.app_name === r.app_name && x.key === r.key),
+      review_app_kv: (c, r) => c.find((x) => x.app_name === r.app_name && x.key === r.key),
+      items: (c, r) => c.find((x) => x.id === r.id),
+      apps: (c, r) => c.find((x) => x.id === r.id),
+      review_apps: (c, r) => c.find((x) => x.name === r.name),
+      memos: (c, r) => c.find((x) => x.id === r.id),
+    };
+    const label = { app_kv: (r) => r.key, review_app_kv: (r) => r.key, items: (r) => r.title, apps: (r) => r.name, review_apps: (r) => r.name, memos: (r) => String(r.id).slice(0, 8) };
+    const cmpKeys = { app_kv: ['value'], review_app_kv: ['value'], items: ['app_name', 'title', 'data'], apps: ['name', 'url', 'description'], review_apps: ['url', 'description'], memos: ['content'] };
+    for (const t of Object.keys(T)) {
+      if (!ALL_TABLES.includes(t)) throw new Error('未知のテーブルが含まれています: ' + t);
+      const cur = currentTables[t] || [];
+      for (const r of T[t]) {
+        const ex = find[t](cur, r);
+        let status = '新規';
+        if (ex) status = cmpKeys[t].every((k) => same(ex[k], r[k])) ? '同一' : '変更';
+        out.push({ table: t, key: label[t](r), status, row: r, existing: ex || null });
+      }
+    }
+    return out;
+  }
+  async function doPreview() {
+    const out = $('restoreOut'); out.replaceChildren(); $('restoreActions').hidden = true; pending = null;
+    try {
+      const envFile = await pickJson($('rFile'));
+      const keyFile = await pickJson($('rKey'));
+      const pw = $('rPw').value; if (!pw) throw new Error('パスワードを入力してください');
+      const priv = await unwrapPrivate(keyFile, pw);
+      const payload = JSON.parse(dec.decode(await decryptWith(priv, envFile)));
+      if (payload.format !== FORMAT || payload.version !== 1 || !payload.app || !payload.tables) throw new Error('バックアップの内容が正しくありません');
+      const cur = groupRows(await fetchAll()).find((g) => g.app === payload.app);
+      const diffs = diffRows(payload, cur ? cur.tables : {});
+      pending = { payload, current: cur ? cur.tables : {}, diffs };
+      const n = (s) => diffs.filter((d) => d.status === s).length;
+      out.append(h('p', null, `アプリ: ${payload.app} / 作成: ${new Date(payload.createdAt).toLocaleString('ja-JP')}`));
+      out.append(h('p', null, `新規 ${n('新規')}件 / 変更 ${n('変更')}件 / 同一 ${n('同一')}件`));
+      const tb = h('tbody');
+      for (const d of diffs) tb.append(h('tr', null, h('td', null, d.table), h('td', null, d.key), h('td', { class: d.status === '同一' ? 'dim' : (d.status === '変更' ? 'ng' : 'ok') }, d.status)));
+      out.append(h('table', null, h('thead', null, h('tr', null, h('th', null, 'テーブル'), h('th', null, '項目'), h('th', null, '状態'))), tb));
+      const todo = n('新規') + n('変更');
+      if (!todo) out.append(h('div', { class: 'banner ok' }, '現在のクラウドと同じ内容です。復元は不要です。'));
+      $('restoreActions').hidden = !todo;
+    } catch (e) { say(out, 'err', e.message); }
+  }
+  async function writeRows(diffs, uid) {
+    const client = needSb(); const nowIso = new Date().toISOString();
+    const fail = (t, error) => { if (error) throw new Error(`${t} の書き込みに失敗: ${error.message}`); };
+    const todo = diffs.filter((d) => d.status !== '同一');
+    const by = (t) => todo.filter((d) => d.table === t).map((d) => d);
+    for (const t of ['app_kv', 'review_app_kv']) {
+      const rows = by(t).map((d) => ({ user_id: uid, app_name: d.row.app_name, key: d.row.key, value: d.row.value, updated_at: nowIso }));
+      if (rows.length) { const { error } = await client.from(t).upsert(rows, { onConflict: 'user_id,app_name,key' }); fail(t, error); }
+    }
+    const items = by('items').map((d) => ({ id: d.row.id, user_id: uid, app_name: d.row.app_name, title: d.row.title, data: d.row.data, created_at: d.row.created_at }));
+    if (items.length) { const { error } = await client.from('items').upsert(items, { onConflict: 'id' }); fail('items', error); }
+    const apps = by('apps').map((d) => ({ id: d.row.id, user_id: uid, name: d.row.name, url: d.row.url, description: d.row.description }));
+    if (apps.length) { const { error } = await client.from('apps').upsert(apps, { onConflict: 'id' }); fail('apps', error); }
+    for (const d of by('review_apps')) {    // id は自動採番のため、名前で照合して更新 / 追加
+      if (d.existing) { const { error } = await client.from('review_apps').update({ url: d.row.url, description: d.row.description }).eq('id', d.existing.id); fail('review_apps', error); }
+      else { const { error } = await client.from('review_apps').insert({ user_id: uid, name: d.row.name, url: d.row.url, description: d.row.description }); fail('review_apps', error); }
+    }
+    const memos = by('memos').map((d) => ({ id: d.row.id, content: d.row.content, created_at: d.row.created_at }));
+    if (memos.length) { const { error } = await client.from('memos').upsert(memos, { onConflict: 'id' }); fail('memos', error); }
+  }
+  async function doRestore() {
+    if (!pending || !session) return;
+    const out = $('restoreOut'); const btn = $('btnRestore'); btn.disabled = true;
+    const status = h('div'); out.append(status);
+    try {
+      const { payload, diffs } = pending;
+      const todo = diffs.filter((d) => d.status !== '同一').length;
+      if (!confirm(`「${payload.app}」を、バックアップの内容で復元します(${todo}件を書き込み)。\nバックアップに無い行は削除しません。続けますか?`)) return;
+      if (!confirm('本当に復元しますか? 現在のクラウドの内容は、先に自動保存します。')) return;
+      const pub = getPub(); if (!pub) throw new Error('公開鍵が未設定のため、復元前の自動保存ができません。鍵を設定してください');
+      if (dirHandle && (await dirPerm(true)) !== 'granted') throw new Error('フォルダへの書き込みが許可されていません');
+      // 1) 復元前の状態を保存(失敗したら中止)
+      say(status, '', '復元前の内容を保存中…');
+      const latest = groupRows(await fetchAll()).find((g) => g.app === payload.app);
+      if (latest) {
+        const now = new Date();
+        const env = await encryptFor(pub, enc.encode(JSON.stringify(buildPayload(latest, now))));
+        await saveFile([PRE_RESTORE_NAME, safeName(payload.app)], `${safeName(payload.app)}_${stamp(now)}.json.enc`, JSON.stringify(env));
+      }
+      // 2) 書き戻し
+      say(status, '', '書き込み中…');
+      await writeRows(diffs, session.user.id);
+      // 3) 検証(app_kv の値が一致するか)
+      const after = groupRows(await fetchAll()).find((g) => g.app === payload.app);
+      const chk = diffRows(payload, after ? after.tables : {}).filter((d) => d.status !== '同一' && d.table !== 'review_apps');
+      if (chk.length) throw new Error(`書き込み後の確認で ${chk.length}件が一致しません`);
+      say(status, 'ok', `復元しました(${todo}件)。アプリを開き直すと反映されます。`);
+      $('restoreActions').hidden = true; pending = null;
+    } catch (e) { say(status, 'err', '復元を中止しました: ' + e.message); }
+    finally { btn.disabled = false; }
+  }
+
+  /* ===== 起動 ===== */
+  async function init() {
+    await loadDirHandle();
+    $('btnLogin').onclick = doLogin; $('btnLogout').onclick = doLogout;
+    $('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+    $('btnDir').onclick = doDir; $('btnDirPerm').onclick = doDirPerm;
+    $('btnKeyGen').onclick = doKeyGen; $('keyFile').onchange = doKeyImport;
+    $('btnBackup').onclick = doBackup; $('btnHistory').onclick = doHistory;
+    $('btnPreview').onclick = doPreview; $('btnRestore').onclick = doRestore;
+    refresh();
+    // supabase-js は defer 読み込みなので、読み込み完了を待つ
+    await new Promise((res) => { if (window.supabase) res(); else window.addEventListener('load', res, { once: true }); });
+    if (window.supabase) {
+      sb = window.supabase.createClient(SB_URL, SB_KEY);
+      const { data } = await sb.auth.getSession(); session = data.session;
+      sb.auth.onAuthStateChange((_e, s) => { session = s; refresh(); });
+    } else { say($('loginMsg'), 'err', 'Supabase を読み込めません。通信環境を確認してください。'); }
+    refresh();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
