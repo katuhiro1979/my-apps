@@ -493,10 +493,11 @@
     const kindOf = (n) => (n === '有給' ? 'leave' : (n === '法定' ? 'legal' : (hol.indexOf(n) >= 0 ? 'off' : 'work')));
     const presets = names.map((n, i) => {
       const t = Array.isArray(auto[n]) ? auto[n] : [];
-      const s = timeOrEmpty(t[0]), e = timeOrEmpty(t[1]), k = kindOf(n);
+      let s = timeOrEmpty(t[0]), e = timeOrEmpty(t[1]); const k = kindOf(n);
+      if(n === '泊'){ s = '19:00'; e = '02:30'; } // 泊は 19:00–02:30、時数6:30、みなしなし
       let brk = 0;
       if(k === 'work' && s && e) brk = 60; // 旧版からの取り込みは、時刻のある勤務はすべて休憩60分にする
-      return { id:'p' + (i + 1), name:n, kind:k, start:s, end:e, brk:brk, deem:true, ots:STD };
+      return { id:'p' + (i + 1), name:n, kind:k, start:s, end:e, brk:brk, deem: n === '泊' ? 0 : true, ots: n === '泊' ? 390 : STD };
     });
     const byName = {}; presets.forEach((p) => { byName[p.name] = p; });
     const recs = {};
@@ -510,7 +511,7 @@
       const s = toMin(r.otStart); let e = toMin(r.otEnd);
       if(s !== null && e !== null){ if(e <= s) e += 1440; otManual = e - s; }
       if(toMin(r.clockIn) !== null && toMin(r.clockOut) !== null) otManual = null; // 出退勤の時刻がある日は、時間外を自動計算に任せる
-      recs[k] = { type:type, kind:kind, brk: p && kind !== 'leave' ? p.brk : null, clockIn:r.clockIn, clockOut:r.clockOut, otManual:otManual, remark: typeof r.remark === 'string' && r.remark !== type ? r.remark : '', locked: !!r.locked };
+      recs[k] = { type:type, kind:kind, brk: p && kind !== 'leave' ? p.brk : null, deem: type === '泊' ? 0 : null, ots: type === '泊' ? 390 : null, clockIn:r.clockIn, clockOut:r.clockOut, otManual:otManual, remark: typeof r.remark === 'string' && r.remark !== type ? r.remark : '', locked: !!r.locked };
     });
     const lt = d.settings && Number(d.settings.paidLeaveTotal);
     return { presets: presets, records: recs, settings: { leaveTotal: lt } };
