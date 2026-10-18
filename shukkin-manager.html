@@ -495,7 +495,7 @@
       const t = Array.isArray(auto[n]) ? auto[n] : [];
       const s = timeOrEmpty(t[0]), e = timeOrEmpty(t[1]), k = kindOf(n);
       let brk = 0;
-      if(k === 'work' && s && e){ let a = toMin(s), b = toMin(e); if(b < a) b += 1440; brk = n === '明' ? 60 : autoBrk(b - a); }
+      if(k === 'work' && s && e) brk = 60; // 旧版からの取り込みは、時刻のある勤務はすべて休憩60分にする
       return { id:'p' + (i + 1), name:n, kind:k, start:s, end:e, brk:brk, deem:true, ots:STD };
     });
     const byName = {}; presets.forEach((p) => { byName[p.name] = p; });
