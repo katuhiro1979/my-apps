@@ -509,6 +509,7 @@
       let otManual = null;
       const s = toMin(r.otStart); let e = toMin(r.otEnd);
       if(s !== null && e !== null){ if(e <= s) e += 1440; otManual = e - s; }
+      if(toMin(r.clockIn) !== null && toMin(r.clockOut) !== null) otManual = null; // 出退勤の時刻がある日は、時間外を自動計算に任せる
       recs[k] = { type:type, kind:kind, brk: p && kind !== 'leave' ? p.brk : null, clockIn:r.clockIn, clockOut:r.clockOut, otManual:otManual, remark: typeof r.remark === 'string' && r.remark !== type ? r.remark : '', locked: !!r.locked };
     });
     const lt = d.settings && Number(d.settings.paidLeaveTotal);
