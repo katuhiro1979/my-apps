@@ -109,6 +109,9 @@
   .chip.k-leave{ border-color:var(--c-leave); color:var(--c-leave); }
   .chip{ position:relative; }
   .chip[aria-pressed="true"]::after{ content:"✓"; content:"✓" / ""; position:absolute; top:-6px; right:-4px; width:18px; height:18px; border-radius:50%; background:var(--paper); color:var(--ink); border:1.5px solid var(--ink); font-size:.7rem; line-height:15px; text-align:center; }
+  .preset-sel{ display:none; margin-bottom:14px; }
+  .preset-sel select{ font-size:1rem; } /* 16px以上（iOSの自動拡大を防ぐ） */
+  @media (max-width:639px){ .preset-sel{ display:block; } #pgToday .chips-lbl, #pgToday .chips{ display:none; } } /* スマホ幅はプルダウン */
   .chips-lbl{ font-size:.8rem; font-weight:700; color:var(--ink-soft); margin:0 0 4px; }
   .chip[aria-pressed="true"]{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
   .chip.k-off[aria-pressed="true"]{ background:var(--c-off); color:var(--bg); border-color:var(--c-off); }
@@ -732,6 +735,12 @@ let nights = '', nrange = [];
     const locked = !!(r && r.locked), leave = r && r.kind === 'leave';
     const chipOf = (p) => '<button type="button" class="chip k-' + p.kind + hcls(p.name) + '"' + hsty(p.name) + ' data-preset="' + esc(p.id) + '" aria-pressed="' + !!(r && r.type === p.name) + '"' + (locked ? ' disabled' : '') + '>' + esc(p.name) + '</button>';
     const chipsW = st.presets.filter((p) => p.kind === 'work').map(chipOf).join(''), chipsO = st.presets.filter((p) => p.kind !== 'work').map(chipOf).join('');
+    // スマホ幅用のプルダウン（選択は下のチップと同じ処理を通す）
+    const optOf = (p) => '<option value="' + esc(p.id) + '"' + (r && r.type === p.name ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+    const selW = st.presets.filter((p) => p.kind === 'work').map(optOf).join(''), selO = st.presets.filter((p) => p.kind !== 'work').map(optOf).join('');
+    const selHtml = '<div class="preset-sel fld"><label for="presetSel">業務内容</label><select id="presetSel"' + (locked ? ' disabled' : '') + '>' +
+      '<option value=""' + (r && r.type ? '' : ' selected') + '>未選択</option>' + (r && r.type ? '<option value="__clear">未入力に戻す</option>' : '') +
+      (selW ? '<optgroup label="勤務">' + selW + '</optgroup>' : '') + (selO ? '<optgroup label="休み">' + selO + '</optgroup>' : '') + '</select></div>';
     let stats = '';
     if(c.has){
       stats = '<div class="stats"><div><small>勤務</small><b class="num">' + hm(c.work) + '</b></div>' +
@@ -749,6 +758,7 @@ let nights = '', nrange = [];
       '<button type="button" data-act="dnext" aria-label="次の日">›</button></div>' +
       '<div class="card' + (r ? ' k-' + r.kind + hcls(r.type) : '') + '"' + (r ? hsty(r.type) : '') + '><div class="state">' + badgeHtml(r) + (locked ? '<span class="hint" style="margin:0">🔒 確定済み</span>' : '') + '</div>' +
       (locked ? '<p class="lockmsg">確定（ロック）されているため、変更できません。詳細から解除できます。</p>' : '') +
+      selHtml +
       (chipsW ? '<div class="chips-lbl">勤務</div><div class="chips" role="group" aria-label="業務内容（勤務）">' + chipsW + '</div>' : '') +
       (chipsO ? '<div class="chips-lbl">休み</div><div class="chips" role="group" aria-label="業務内容（休み）">' + chipsO + '</div>' : '') +
       '<div class="times"><div class="fld"><label for="tIn">出勤</label><input type="time" id="tIn" value="' + (r ? r.clockIn : '') + '"' + (locked || leave ? ' disabled' : '') + '></div>' +
@@ -853,6 +863,13 @@ let nights = '', nrange = [];
   });
   // 今日の出勤・退勤の入力（変更を確定したときに保存）
   document.addEventListener('change', (e) => {
+    if(e.target.id === 'presetSel'){ // プルダウン：チップと同じ applyPreset を通す（解除はいまの種類をもう一度選ぶ扱い）
+      const v = e.target.value, cur = st.records[curDate];
+      if(v && v !== '__clear'){ const p = st.presets.filter((x) => x.id === v)[0]; if(p) applyPreset(curDate, p); }
+      else if(cur && cur.type) applyPreset(curDate, { name: cur.type });
+      else render();
+      return;
+    }
     if(e.target.id === 'tIn' || e.target.id === 'tOut'){
       const i = $('#tIn').value, o = $('#tOut').value;
       if(i && o && i === o){ toast('出勤と退勤が同じ時刻です。', null, true); render(); return; }
