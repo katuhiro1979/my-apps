@@ -142,6 +142,8 @@
   .tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
   .tabs::-webkit-scrollbar{display:none;}
   .tabs button{flex:none;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;cursor:pointer;white-space:nowrap;}
+  .tabs button{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;}
+  .tabs button.tab-drag{box-shadow:var(--shadow-pop);transform:scale(1.06);cursor:grabbing;}
   .tabs button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
   /* グループの切り替え帯 */
   .gbar{display:flex;gap:8px;overflow-x:auto;padding:0 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
@@ -225,10 +227,34 @@
   @keyframes pop{0%{transform:scale(1);}40%{transform:scale(.76);}100%{transform:scale(1);}}
   .task-main{min-width:0;padding:8px 0;}
   .task-text{appearance:none;display:block;width:100%;text-align:left;border:none;background:none;padding:0;cursor:pointer;font-size:16px;line-height:1.5;color:var(--ink);}
-  .task-text .tt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;}
+  .task-text .tt{display:block;white-space:pre-wrap;overflow-wrap:anywhere;}
+  /* 長い内容は省略せず全文を出し、文字を少し小さくする */
+  /* 改行は、編集画面と同じく入力どおりの行で表示する */
+  .task-text .ln{display:block;}
+  .task-text .ln:empty::before{content:"\00a0";}
+  .task-text.long{font-size:14px;line-height:1.45;}
+  .task-text.longer{font-size:13px;line-height:1.4;}
   .task-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
-  .task-side{display:flex;align-items:center;gap:4px;}
+  .task-side{display:flex;align-items:center;gap:6px;}
   .task-time{font-size:12px;color:var(--ink-soft);}
+  .task-time.m{display:none;}
+  /* スマホ幅: 時刻を本文の下の行へ移し、右側の操作を詰めて本文の幅を確保する */
+  @media (max-width:480px){
+    .task-time.s{display:none;}
+    .task-time.m{display:inline;}
+    .task-in{grid-template-columns:40px minmax(0,1fr) auto;gap:0 2px;}
+    .chk{width:40px;}
+    .task-side{gap:2px;}
+    .task-side .chip{padding:0 8px;}
+    .drag,.drag-sp{width:34px;}
+  }
+  .drag,.drag-sp{width:36px;height:44px;flex:none;}
+  .drag{appearance:none;border:none;background:none;padding:0;display:grid;place-items:center;border-radius:8px;color:color-mix(in srgb,var(--ink-soft) 85%,var(--ink));cursor:grab;touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;}
+  .drag svg{width:18px;height:18px;}
+  @media (hover:hover){ .drag:hover{color:var(--ink);background:var(--surface-2);} }
+  li.task.dragging{position:relative;z-index:2;box-shadow:var(--shadow-pop);}
+  li.task.dragging .task-in{background:color-mix(in srgb,var(--accent) 16%,var(--surface));outline:2px solid var(--accent);outline-offset:-2px;}
+  li.task.dragging .drag{cursor:grabbing;}
   .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
   .toasting .jump{bottom:calc(150px + env(safe-area-inset-bottom,0px));}
   .gtag{display:inline-flex;align-items:center;gap:5px;min-height:20px;font-size:12px;font-weight:600;color:var(--gc,var(--ink-soft));}
@@ -774,7 +800,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       seen.add(id);
       const rec = {
         id,
-        text: String(it.text==null ? '' : it.text).slice(0,500).trim() || '（無題）',
+        text: String(it.text==null ? '' : it.text).replace(/\r\n?/g,'\n').slice(0,500).trim() || '（無題）',
         date: isDate(it.date) ? it.date : '',
         time: '',
         status: ids.has(it.status) ? it.status : open,
@@ -784,6 +810,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       if(rec.date && isTime(it.time)) rec.time = it.time;
       if(typeof it.group==='string' && gset.has(it.group)) rec.group = it.group;
       if(typeof it.prev==='string' && ids.has(it.prev)) rec.prev = it.prev;
+      if(typeof it.ord==='number' && isFinite(it.ord)) rec.ord = it.ord; // 手動の並び順（同じ日付の中）
       if(it.archived) rec.archived = true;
       if(it.deleted){ rec.deleted = true; rec.deletedAt = isDate(it.deletedAt) ? it.deletedAt : ''; }
       out.push(rec);
@@ -978,6 +1005,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const it = { id:newId(), text:q.text, date, time, status:st.id, createdAt:new Date().toISOString(), doneAt: st.done ? todayISO() : '' };
     if(groupById(addGroupId)) it.group = addGroupId;
     items.push(it);
+    placeInDay(it);
     flashId = it.id;
     $id('addText').value = ''; updateHint();
     const ok = save(); render();
@@ -993,12 +1021,38 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   // ---- 操作 ----
   function commit(){ const ok = save(); render(); return ok; }
+  // 同じ日の中の並び: 未完了→完了、手動で並べたもの（ord順）→時刻→登録順
+  function byTime(a,b){
+    const oa = typeof a.ord==='number' ? a.ord : Infinity, ob = typeof b.ord==='number' ? b.ord : Infinity;
+    return (Number(isDone(a))-Number(isDone(b))) || (oa===ob ? 0 : oa<ob ? -1 : 1) || (a.time||'').localeCompare(b.time||'') || (a.createdAt||'').localeCompare(b.createdAt||'');
+  }
+  // 新規追加・日付変更・未完了へ戻したタスクを、その日の手動の並びの中へ時刻順で入れる。
+  // 古い ord は捨てる。その日に手動の並びがなければ何もしない（これまでどおり時刻順）
+  function placeInDay(it){
+    delete it.ord;
+    if(it.deleted || it.archived || isDone(it)) return;
+    const day = items.filter(i=>i!==it && !i.deleted && !i.archived && !isDone(i) && (i.date||'')===(it.date||'')).sort(byTime);
+    if(!day.some(i=>typeof i.ord==='number')) return;
+    let at = it.time ? day.findIndex(i=>i.time && i.time > it.time) : -1;
+    if(at < 0) at = day.length;
+    day.splice(at, 0, it);
+    day.forEach((i,n)=>{ i.ord = n; });
+  }
+  // 画面に出ている未完了タスクの新しい並び(ids)を、同じ日の全体の並びに反映する
+  function reorderDay(key, ids){
+    const all = items.filter(i=>!i.deleted && !i.archived && !isDone(i) && (i.date||'')===key).sort(byTime);
+    const shown = new Set(ids), byId = new Map(all.map(i=>[i.id, i]));
+    let k = 0;
+    all.map(i=>shown.has(i.id) ? byId.get(ids[k++]) : i).forEach((i,n)=>{ if(i) i.ord = n; });
+    commit();
+  }
   function toggleDone(id){
     const it = items.find(i=>i.id===id); if(!it) return;
     if(isDone(it)){
       // 完了前の状態があれば戻し、なければ最初の未完了状態にする
       const p = it.prev && statusById(it.prev) && !statusById(it.prev).done ? it.prev : firstOpenId();
       it.status = p; it.doneAt = ''; delete it.prev;
+      placeInDay(it);
     } else {
       it.prev = it.status; it.status = firstDoneId(); it.doneAt = todayISO(); popId = id;
     }
@@ -1007,17 +1061,21 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   function setStatus(id, stId){
     const it = items.find(i=>i.id===id); const st = statusById(stId); if(!it || !st) return;
     if(it.status === stId) return;
-    if(st.done && !isDone(it)){ it.prev = it.status; it.doneAt = todayISO(); popId = id; }
+    const wasDone = isDone(it);
+    if(st.done && !wasDone){ it.prev = it.status; it.doneAt = todayISO(); popId = id; }
     if(!st.done){ it.doneAt = ''; delete it.prev; }
     it.status = stId;
+    if(wasDone && !st.done) placeInDay(it);
     commit();
   }
   // 状態まわりの変更を元に戻すための控え
   function snap(it){ return { status:it.status, prev:it.prev, doneAt:it.doneAt }; }
   function restoreSnap(id, s){
     const cur = items.find(i=>i.id===id); if(!cur || !statusById(s.status)) return;
+    const wasDone = isDone(cur);
     cur.status = s.status; cur.doneAt = s.doneAt;
     if(s.prev===undefined) delete cur.prev; else cur.prev = s.prev;
+    if(wasDone && !isDone(cur)) placeInDay(cur);
     commit();
   }
   // 状態チップのタップ: 次の状態へ順に切り替える
@@ -1112,6 +1170,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const text = $id('editText').value.trim();
     if(!text){ $id('editText').focus(); return; }
     const dp = editDp.get();
+    const dateChanged = (it.date||'') !== (dp.date||''), wasDone = isDone(it);
     it.text = text; it.date = dp.date; it.time = dp.time;
     const gv = $id('editGroup').value;
     if(groupById(gv)) it.group = gv; else delete it.group;
@@ -1121,6 +1180,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       if(!st.done){ it.doneAt = ''; delete it.prev; }
       it.status = st.id;
     }
+    if(dateChanged || (wasDone && !isDone(it))) placeInDay(it);
     closeDlg($id('editDlg'));
     commit();
   });
@@ -1403,7 +1463,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   function focusKey(){
     const a = document.activeElement, li = a && a.closest ? a.closest('#taskArea li.task') : null;
     if(!li) return null;
-    return { id: li.dataset.id, sel: a.dataset.act ? '[data-act="'+a.dataset.act+'"]' : (a.dataset.menu ? '[data-menu]' : null) };
+    return { id: li.dataset.id, sel: a.dataset.act ? '[data-act="'+a.dataset.act+'"]' : (a.dataset.menu ? '[data-menu]' : (a.dataset.drag ? '[data-drag]' : null)) };
   }
   function restoreFocus(k){
     if(!k || !k.sel) return;
@@ -1478,7 +1538,6 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     $id('searchToggle').classList.toggle('on', !$id('searchBar').hidden || !!query);
 
     // グループ分け（同じ日の中は、未完了→完了、時刻の順）
-    const byTime = (a,b)=>(Number(isDone(a))-Number(isDone(b))) || (a.time||'').localeCompare(b.time||'') || (a.createdAt||'').localeCompare(b.createdAt||'');
     let groups;
     const mode = (sortMode==='group' && !allGroups().length) ? 'dateDesc' : sortMode;
     if(mode==='group'){
@@ -1581,7 +1640,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
             (over ? '<span class="grp-rel">期限切れ</span>' : '')+'<span class="grp-n">'+g.items.length+'件</span></h2>';
         }
       }
-      const ctx = { today, showDate: g.key===null, fId, pId, hideGroup: g.gid!==undefined || (!!groupFilter && groupFilter!=='__none') };
+      // 日付ごとのまとまりで、未完了が2件以上あるときだけ手動の並べ替えができる
+      const canDrag = !plain && g.key!==null && g.items.filter(i=>!isDone(i)).length>1;
+      if(canDrag) dayAttr += ' data-dkey="'+g.key+'"';
+      const ctx = { today, showDate: g.key===null, fId, pId, drag: canDrag, hideGroup: g.gid!==undefined || (!!groupFilter && groupFilter!=='__none') };
       const row = it=>taskHtml(it, plain, ctx);
       const doneIt = noFold ? [] : g.items.filter(isDone);
       let rows;
@@ -1609,7 +1671,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const done = !!st.done;
     const over = isOverdue(it);
     const id = escapeHtml(it.id);
-    const text = '<button type="button" class="task-text" data-act="'+(plain ? 'none' : 'edit')+'"><span class="tt">'+(over && !plain ? '<span class="sr-only">期限切れ：</span>' : '')+escapeHtml(it.text)+'</span></button>';
+    const len = it.text.length, sz = len>90 ? ' longer' : len>40 ? ' long' : '';
+    const text = '<button type="button" class="task-text'+sz+'" data-act="'+(plain ? 'none' : 'edit')+'"><span class="tt">'+(over && !plain ? '<span class="sr-only">期限切れ：</span>' : '')+it.text.split('\n').map(l=>'<span class="ln">'+escapeHtml(l)+'</span>').join('')+'</span></button>';
     const menuBtn = '<button type="button" class="icon-btn plain" data-menu="1" aria-haspopup="menu" aria-expanded="false" aria-label="メニュー">'+DOTS+'</button>';
     if(plain){
       const dateTxt = it.date ? fmtMD(it.date)+(it.time ? ' '+it.time : '') : '日付なし';
@@ -1629,14 +1692,20 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     }
     const gt = c.hideGroup ? '' : groupTag(it);
     if(gt) meta = meta ? meta.replace('</div>', gt+'</div>') : '<div class="task-meta">'+gt+'</div>';
-    const time = (!c.showDate && it.time) ? '<span class="task-time">'+escapeHtml(it.time)+'</span>' : '';
+    const hasTime = !c.showDate && it.time;
+    const time = hasTime ? '<span class="task-time s">'+escapeHtml(it.time)+'</span>' : '';
+    if(hasTime){ // スマホ幅では、時刻をグループ名と同じ行に出す
+      const tm = '<span class="task-time m">'+escapeHtml(it.time)+'</span>';
+      meta = meta ? meta.replace('</div>', tm+'</div>') : '<div class="task-meta">'+tm+'</div>';
+    }
     const chip = '<button type="button" class="chip c-'+st.color+'" data-act="status" aria-haspopup="menu" aria-label="状態：'+escapeHtml(st.name)+'、変更">'+escapeHtml(st.name)+'</button>';
-    return '<li class="task'+(done?' done':'')+(over?' over':'')+(c.fId===it.id?' flash':'')+'" data-id="'+id+'">'+
+    const grip = (c.drag && !done) ? '<button type="button" class="drag" data-drag="1" aria-label="並べ替え：'+escapeHtml(it.text)+'（ドラッグ、または上下キー）"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="6" r="1.8"/><circle cx="9" cy="12" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="9" cy="18" r="1.8"/><circle cx="15" cy="18" r="1.8"/></svg></button>' : '';
+    return '<li class="task'+(done?' done':'')+(over?' over':'')+(c.fId===it.id?' flash':'')+(grip?' can-drag':'')+'" data-id="'+id+'">'+
       '<div class="sw sw-l" aria-hidden="true">'+(done ? '↩ 未完了に戻す' : '✓ 完了にする')+'</div><div class="sw sw-r" aria-hidden="true">ごみ箱へ 🗑</div>'+
       '<div class="task-in">'+
         '<button type="button" class="chk'+(c.pId===it.id?' pop':'')+'" role="checkbox" aria-checked="'+done+'" aria-label="'+(done?'未完了に戻す：':'完了にする：')+escapeHtml(it.text)+'" data-act="toggle"><span class="box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>'+
         '<div class="task-main">'+text+meta+'</div>'+
-        '<div class="task-side">'+time+chip+menuBtn+'</div>'+
+        '<div class="task-side">'+time+chip+(grip || (c.drag ? '<span class="drag-sp" aria-hidden="true"></span>' : ''))+menuBtn+'</div>'+
       '</div></li>';
   }
 
@@ -1648,6 +1717,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   $id('taskArea').addEventListener('click', function(e){
     if(Date.now() - swipedAt < 350) return;
+    if(e.target.closest('[data-drag]')) return;
     const fold = e.target.closest('[data-fold]');
     if(fold){
       const k = fold.dataset.fold;
@@ -1769,7 +1839,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   const SW_MAX = 130, SW_GO = 76, SW_GO_TRASH = 96; // ごみ箱へ行く左スワイプは、誤操作を避けるため深めにする
   let sw = null;
   $id('taskArea').addEventListener('pointerdown', function(e){
-    if(e.pointerType!=='touch') return;
+    if(e.pointerType!=='touch' || e.target.closest('[data-drag]')) return;
     const inn = e.target.closest('.task-in'); if(!inn) return;
     const li = inn.parentElement; if(li.classList.contains('plain')) return;
     sw = { li, inn, x:e.clientX, y:e.clientY, dx:0, on:false };
@@ -1803,6 +1873,49 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   }
   $id('taskArea').addEventListener('pointerup', ()=>endSwipe(false));
   $id('taskArea').addEventListener('pointercancel', ()=>endSwipe(true));
+
+  // 同じ日付の中で、つかみ（⋮⋮）をドラッグ、または上下キーで並べ替える
+  let dr = null;
+  const dragIds = ul=>Array.from(ul.querySelectorAll('li.can-drag')).map(x=>x.dataset.id);
+  const dragKey = ul=>ul.closest('section').getAttribute('data-dkey');
+  $id('taskArea').addEventListener('pointerdown', function(e){
+    const h = e.target.closest('[data-drag]');
+    if(!h || e.button>0) return;
+    e.preventDefault();
+    const li = h.closest('li.task'), ul = li.parentElement;
+    closeMenu(false); lpStop();
+    dr = { li, ul, h, before: dragIds(ul).join() };
+    li.classList.add('dragging');
+    try{ h.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  $id('taskArea').addEventListener('pointermove', function(e){
+    if(!dr) return;
+    const others = Array.from(dr.ul.children).filter(x=>x!==dr.li && x.classList.contains('can-drag'));
+    const next = others.find(s=>{ const r = s.getBoundingClientRect(); return e.clientY < r.top + r.height/2; });
+    if(next){ if(dr.li.nextElementSibling!==next) dr.ul.insertBefore(dr.li, next); }
+    else { const last = others[others.length-1]; if(last && last.nextElementSibling!==dr.li) last.after(dr.li); }
+  });
+  function endDrag(cancel){
+    if(!dr) return;
+    const d = dr; dr = null;
+    d.li.classList.remove('dragging');
+    if(!d.li.isConnected) return; // ドラッグ中に画面が描き直された（同期など）ときは、古い並びを保存しない
+    const ids = dragIds(d.ul);
+    if(cancel || ids.join()===d.before){ if(cancel) render(); return; }
+    reorderDay(dragKey(d.ul), ids);
+  }
+  $id('taskArea').addEventListener('pointerup', ()=>endDrag(false));
+  $id('taskArea').addEventListener('pointercancel', ()=>endDrag(true));
+  $id('taskArea').addEventListener('keydown', function(e){
+    const h = e.target.closest && e.target.closest('[data-drag]');
+    if(!h || (e.key!=='ArrowUp' && e.key!=='ArrowDown')) return;
+    e.preventDefault();
+    const li = h.closest('li.task'), ul = li.parentElement, ids = dragIds(ul), i = ids.indexOf(li.dataset.id);
+    const j = i + (e.key==='ArrowUp' ? -1 : 1);
+    if(i<0 || j<0 || j>=ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    reorderDay(dragKey(ul), ids);
+  });
 
   // 空の画面のボタン
   $id('emptyState').addEventListener('click', function(e){
@@ -1847,6 +1960,50 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const btn = e.target.closest('button[data-tab]'); if(!btn) return;
     setTab(btn.dataset.tab);
   });
+  // タブの並び順: ドラッグ（スマホは長押ししてから動かす）で入れ替え。順番はこの端末に保存する
+  const TABORDER_KEY = 'todo-tab-order';
+  (function(){
+    const bar = $id('tabs');
+    try{
+      const saved = JSON.parse(localStorage.getItem(TABORDER_KEY) || '[]');
+      if(Array.isArray(saved)) saved.forEach(k=>{ const b = bar.querySelector('button[data-tab="'+CSS.escape(String(k))+'"]'); if(b) bar.appendChild(b); });
+    }catch(e){}
+    let td = null, tHold = null, justDragged = 0;
+    const start = ()=>{ td.on = true; td.btn.classList.add('tab-drag'); closeMenu(false); };
+    bar.addEventListener('pointerdown', function(e){
+      const btn = e.target.closest('button[data-tab]');
+      if(!btn || e.button>0) return;
+      td = { btn, x:e.clientX, y:e.clientY, on:false, touch:e.pointerType==='touch', id:e.pointerId };
+      if(td.touch) tHold = setTimeout(function(){ if(td && !td.on){ start(); if(navigator.vibrate) navigator.vibrate(10); } }, 400);
+    });
+    bar.addEventListener('pointermove', function(e){
+      if(!td) return;
+      if(!td.on){
+        if(Math.hypot(e.clientX-td.x, e.clientY-td.y) <= 8) return;
+        if(td.touch){ clearTimeout(tHold); td = null; return; } // 長押し前に動かしたら通常のスクロール
+        start();
+      }
+      try{ td.btn.setPointerCapture(td.id); }catch(_){}
+      const others = Array.from(bar.children).filter(x=>x!==td.btn);
+      const next = others.find(s=>{ const r = s.getBoundingClientRect(); return e.clientX < r.left + r.width/2; });
+      if(next){ if(td.btn.nextElementSibling!==next) bar.insertBefore(td.btn, next); }
+      else if(bar.lastElementChild!==td.btn) bar.appendChild(td.btn);
+    });
+    // 長押し成立後は、ページのスクロールを止める
+    bar.addEventListener('touchmove', function(e){ if(td && td.on) e.preventDefault(); }, { passive:false });
+    function end(){
+      clearTimeout(tHold);
+      if(!td) return;
+      const d = td; td = null;
+      if(!d.on) return;
+      d.btn.classList.remove('tab-drag'); justDragged = Date.now();
+      try{ localStorage.setItem(TABORDER_KEY, JSON.stringify(Array.from(bar.children).map(b=>b.dataset.tab))); }catch(e){}
+    }
+    bar.addEventListener('pointerup', end);
+    bar.addEventListener('pointercancel', end);
+    bar.addEventListener('click', function(e){ if(Date.now()-justDragged < 300){ e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+    bar.addEventListener('contextmenu', function(e){ if(td && td.on) e.preventDefault(); });
+  })();
   document.querySelectorAll('.stat[data-go]').forEach(b=>b.addEventListener('click', function(){
     setTab(b.dataset.go);
     $id('tabs').scrollIntoView({ block:'start' });
