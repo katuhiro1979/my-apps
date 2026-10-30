@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>医療管理</title>
+<meta name="theme-color" content="#F4F7F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1514" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="医療管理">
+<link rel="manifest" href="medical-manifest.json">
+<link rel="icon" href="medical-icon-192.png">
+<link rel="apple-touch-icon" href="medical-icon-192.png">
+<script>
+  /* 保存済みの表示設定を、画面が描かれる前に反映（ちらつき防止） */
+  try{ var t=localStorage.getItem('medical-app-theme'); if(t==='light'||t==='dark') document.documentElement.setAttribute('data-theme',t); }catch(e){}
+</script>
+<style>
+  /* ===== デザイントークン（ライト／ダーク。ダークは端末の設定に自動で従う） ===== */
+  :root{
+    color-scheme:light dark;
+    --bg:#F4F7F6; --paper:#FFFFFF; --surface-2:#EAF0EE;
+    --ink:#16221F; --ink-soft:#52625D; --line:#D3DEDA;
+    --accent:#0F6B5C; --on-accent:#FFFFFF; --tint:#E1F2EE; --focus:#1D6FD8;
+    --danger:#B3261E; --danger-bg:#FDECEA;
+    --shadow-lg:0 8px 28px rgba(22,34,31,.22);
+    --radius:14px; --radius-s:10px; /* カード／ボタン・入力欄 */
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; /* 余白の刻み */
+    --font:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo UI",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0F1514; --paper:#182120; --surface-2:#1F2B29;
+      --ink:#E8F0ED; --ink-soft:#9FB1AB; --line:#2A3735;
+      --accent:#5CC7B2; --on-accent:#06231E; --tint:#173A34; --focus:#6FA8FF;
+      --danger:#FF8F87; --danger-bg:#3A1D1B;
+      --shadow-lg:0 8px 28px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"]{ color-scheme:light; }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#0F1514; --paper:#182120; --surface-2:#1F2B29;
+    --ink:#E8F0ED; --ink-soft:#9FB1AB; --line:#2A3735;
+    --accent:#5CC7B2; --on-accent:#06231E; --tint:#173A34; --focus:#6FA8FF;
+    --danger:#FF8F87; --danger-bg:#3A1D1B;
+    --shadow-lg:0 8px 28px rgba(0,0,0,.6);
+  }
+
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); line-height:1.6; font-variant-numeric:tabular-nums; padding:env(safe-area-inset-top) 16px calc(112px + env(safe-area-inset-bottom)); }
+  main{ max-width:640px; margin:0 auto; }
+  header{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:16px 0 8px; }
+  h1{ font-size:1.25rem; margin:0; }
+  h2{ font-size:1.05rem; margin:20px 0 8px; }
+  button, input, select, textarea{ font:inherit; color:inherit; }
+  button{ min-height:44px; padding:0 14px; border:1px solid var(--line); border-radius:var(--radius-s); background:var(--paper); cursor:pointer; }
+  button.primary{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{ outline:3px solid var(--focus); outline-offset:2px; }
+  .bar{ display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 16px; }
+  .card{ padding:12px 14px; margin-bottom:10px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); }
+  .card .num{ font-size:1.4rem; font-weight:700; }
+  .soft{ color:var(--ink-soft); font-size:.9rem; }
+  .vh{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; } /* 読み上げだけに出す文字 */
+  /* 下のタブ（画面の切り替え） */
+  #tabs{ position:fixed; left:0; right:0; bottom:0; z-index:10; background:var(--paper); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); }
+  #tabs .in{ display:flex; max-width:640px; margin:0 auto; }
+  #tabs button{ flex:1 1 0; min-width:0; min-height:56px; padding:0 2px; border:0; border-radius:0; background:transparent; color:var(--ink-soft); font-size:.8rem; }
+  @media (min-width:360px){ #tabs button{ font-size:.875rem; } }
+  #tabs button[aria-current="page"]{ color:var(--accent); font-weight:700; box-shadow:inset 0 3px 0 var(--accent); }
+  /* 消えない通知（警告など。閉じるまで残る） */
+  .notice{ display:flex; align-items:flex-start; gap:8px; margin:4px 0 12px; padding:10px 12px; border:1px solid var(--danger); border-radius:var(--radius-s); background:var(--danger-bg); color:var(--danger); font-size:.9rem; }
+  .notice[hidden]{ display:none; }
+  .notice span{ flex:1; padding-top:10px; }
+  .notice button{ min-height:44px; background:transparent; color:inherit; border-color:currentColor; }
+  /* 確認画面（標準の confirm の代わり） */
+  #cfm{ margin:auto; width:min(420px,calc(100% - 32px)); max-height:none; padding:16px; border-radius:16px; }
+  #cfm p{ margin:0 0 14px; line-height:1.6; white-space:pre-line; }
+  #cfm .acts{ display:flex; gap:8px; }
+  #cfm .acts button{ flex:1; }
+  .err{ color:var(--danger); font-size:.875rem; min-height:1.2em; margin-bottom:4px; } /* 入力エラーの表示欄 */
+  .toast{ position:fixed; left:50%; bottom:calc(80px + env(safe-area-inset-bottom)); transform:translateX(-50%); display:none; align-items:center; gap:12px; padding:10px 14px; background:var(--ink); color:var(--bg); border-radius:12px; box-shadow:var(--shadow-lg); z-index:50; max-width:calc(100vw - 32px); }
+  .toast{ top:auto; right:auto; margin:0; border:0; overflow:visible; } /* popover（最前面の層）の既定の見た目を打ち消す */
+  .toast.show{ display:flex; }
+  .toast button{ min-height:44px; background:transparent; color:inherit; border-color:currentColor; }
+  h3{ font-size:1rem; margin:16px 0 8px; }
+  .field{ margin-bottom:10px; }
+  button[aria-pressed="true"]{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  /* 記録: 最新の数値タイルと、グラフの面 */
+  .tiles{ display:grid; grid-template-columns:repeat(2,1fr); gap:var(--sp-2); margin-bottom:var(--sp-3); }
+  .tile{ display:flex; flex-direction:column; gap:2px; padding:12px 14px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); min-width:0; }
+  .tile b{ font-size:2rem; line-height:1.1; color:var(--accent); overflow-wrap:anywhere; }
+  .tile .unit{ font-size:.875rem; color:var(--ink-soft); }
+  .tile .soft{ font-size:.875rem; }
+  .card[data-kind=labResults] .mn{ font-size:1.25rem; }
+  #recBody svg, #labBody svg{ background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); padding:var(--sp-2); box-sizing:border-box; }
+  .chtab{ margin:8px 0 16px; }
+  .chtab summary{ min-height:44px; display:flex; align-items:center; cursor:pointer; }
+  .chtab table{ width:100%; border-collapse:collapse; font-size:.9rem; }
+  .chtab th, .chtab td{ text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); }
+  .bar .field{ flex:1 1 140px; margin:0; }
+  .field label{ display:block; font-size:.9rem; color:var(--ink-soft); margin-bottom:2px; }
+  .field input, .field select, .field textarea{ width:100%; min-height:44px; padding:8px 12px; border:1px solid var(--line); border-radius:var(--radius-s); background:var(--paper); }
+  .field textarea{ resize:vertical; }
+  .field [aria-invalid="true"]{ border-color:var(--danger); }
+  /* 緊急情報（読むだけの画面。文字を大きく） */
+  #emg{ margin:auto; width:min(560px,calc(100% - 24px)); max-height:90vh; overflow:auto; padding:16px; border-radius:16px; }
+  #emg h2{ margin:0 0 8px; }
+  #emg dl{ margin:0 0 12px; }
+  #emg .er{ padding:8px 0; border-top:1px solid var(--line); }
+  #emg dt{ font-size:.875rem; color:var(--ink-soft); }
+  #emg dd{ margin:0; font-size:1.15rem; white-space:pre-wrap; word-break:break-word; }
+  #emg ul{ margin:0; padding-left:1.2em; list-style:disc; }
+  #emg .acts button{ width:100%; }
+  /* 診察用要約（緊急情報と同じ作り。文字は少し小さめ） */
+  #sum{ margin:auto; width:min(640px,calc(100% - 24px)); max-height:90vh; overflow:auto; padding:16px; border-radius:16px; }
+  #sum h2{ margin:0 0 8px; }
+  #sum h3{ margin:16px 0 4px; font-size:1.05rem; padding-left:8px; border-left:4px solid var(--accent); }
+  #sum dl{ margin:0; }
+  #sum .er{ padding:6px 0; border-top:1px solid var(--line); }
+  #sum dt{ font-size:.875rem; color:var(--ink-soft); }
+  #sum dd{ margin:0; word-break:break-word; white-space:pre-wrap; }
+  #sum ul{ margin:0; padding-left:1.2em; list-style:disc; }
+  #sum .acts button{ width:100%; }
+  /* 薬の一覧と登録・編集 */
+  .card .acts{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .card.ended{ background:var(--surface-2); }
+  .hl{ margin:6px 0 0; padding-left:1.2em; list-style:disc; }
+  /* ホーム: 次の予約を一番目立たせ、気をつけることは左の太線で示す */
+  .card.hero{ background:var(--tint); border-color:var(--accent); }
+  .card.hero .num{ font-size:1.8rem; color:var(--accent); }
+  .card.hero .hl > li:first-child{ font-size:1.3rem; font-weight:700; }
+  .card .ttl{ font-size:1rem; font-weight:700; color:var(--ink); }
+  .tag.today{ background:var(--accent); color:var(--on-accent); font-weight:700; }
+  .card.attn{ border-left:5px solid var(--danger); }
+  /* お薬手帳・通院・設定: 見出しの左線、薬名・日時を大きく、設定の入力欄を面にまとめる */
+  #v-med h3, #v-visit h3, #v-set h3{ padding-left:8px; border-left:4px solid var(--accent); }
+  .card .mn{ font-size:1.15rem; }
+  .card.ended .mn{ color:var(--ink-soft); }
+  #pfForm, #rgForm{ padding:var(--sp-3); background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); }
+  #rgForm:empty{ display:none; }
+  /* 共通部品: 警告バッジ（色だけに頼らず、▲と文字を必ず付ける）／状態の札／空の状態 */
+  .warn{ display:inline-block; color:var(--danger); background:var(--danger-bg); font-weight:700; font-size:.9rem; padding:1px 10px; border-radius:8px; }
+  .tag{ display:inline-block; font-size:.875rem; padding:1px 10px; border-radius:99px; background:var(--tint); color:var(--ink); }
+  .empty{ padding:20px 16px; text-align:center; border:1px dashed var(--line); border-radius:var(--radius); background:var(--paper); }
+  .card .acts{ padding-top:var(--sp-2); border-top:1px solid var(--line); }
+  .field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible{ border-color:var(--accent); }
+  button{ transition:background-color .15s, border-color .15s, transform .1s; }
+  button:active{ transform:scale(.98); }
+  @media (hover:hover){ button:not(.primary):not([aria-pressed="true"]):hover{ background:var(--surface-2); } button.primary:hover{ filter:brightness(1.08); } }
+  @media (prefers-reduced-motion:reduce){ button{ transition:none; } button:active{ transform:none; } }
+  #ed{ margin:auto; width:min(560px,calc(100% - 24px)); max-height:92vh; overflow:auto; padding:0; border-radius:16px; }
+  #edForm{ padding:16px; }
+  #edForm h2{ margin:0 0 12px; }
+  #edForm fieldset{ border:0; margin:0 0 10px; padding:0; }
+  #edForm legend{ font-size:.9rem; color:var(--ink-soft); padding:0; margin-bottom:2px; }
+  .chks{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chks label{ display:inline-flex; align-items:center; gap:6px; min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:var(--radius-s); background:var(--paper); }
+  .chks input{ width:20px; height:20px; margin:0; }
+  #edForm .acts{ display:flex; gap:8px; flex-wrap:wrap; }
+  #edForm .acts button{ flex:1; }
+  button.danger{ color:var(--danger); border-color:var(--danger); }
+  /* 同期の☁ボタン（cloud-sync.js が作る）を、下のタブの上へ逃がす */
+  #cs-btn{ bottom:calc(68px + env(safe-area-inset-bottom,0px)) !important; }
+  #cs-panel{ bottom:calc(120px + env(safe-area-inset-bottom,0px)) !important; }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>医療管理</h1>
+    <button id="themeBtn" type="button" aria-label="表示の切り替え"></button>
+  </header>
+
+  <div class="notice" id="notice" role="alert" hidden><span id="noticeMsg"></span><button type="button" id="noticeClose" aria-label="この通知を閉じる">閉じる</button></div>
+
+  <!-- 画面ごとの入れ物。表示するのは1つだけ。中身は各フェーズで作る -->
+  <section id="v-home" aria-labelledby="t-home">
+    <h2 id="t-home">ホーム</h2>
+    <div class="bar"><button id="emgBtn" type="button" class="primary">緊急情報を開く</button><button id="sumBtn" type="button">診察用の要約を開く</button></div>
+    <div id="homeBody"></div>
+  </section>
+  <section id="v-med" aria-labelledby="t-med" hidden>
+    <h2 id="t-med">お薬手帳</h2>
+    <div id="medBody"></div>
+  </section>
+  <section id="v-visit" aria-labelledby="t-visit" hidden>
+    <h2 id="t-visit">通院</h2>
+    <div id="visitBody"></div>
+  </section>
+  <section id="v-rec" aria-labelledby="t-rec" hidden>
+    <h2 id="t-rec">記録</h2>
+    <div id="recBody"></div>
+  </section>
+  <section id="v-lab" aria-labelledby="t-lab" hidden>
+    <h2 id="t-lab">検査</h2>
+    <div id="labBody"></div>
+  </section>
+  <section id="v-set" aria-labelledby="t-set" hidden>
+    <h2 id="t-set">設定</h2>
+    <h3>プロフィール</h3>
+    <form id="pfForm" novalidate>
+      <div class="field"><label for="pf-name">氏名</label><input id="pf-name" type="text" maxlength="100" autocomplete="off"></div>
+      <div class="field"><label for="pf-birth">生年月日</label><input id="pf-birth" type="date"></div>
+      <div class="field"><label for="pf-blood">血液型（ABO式）</label><select id="pf-blood"><option value="">未登録</option><option value="A">A型</option><option value="B">B型</option><option value="O">O型</option><option value="AB">AB型</option></select></div>
+      <div class="field"><label for="pf-height">身長（cm）</label><input id="pf-height" type="number" inputmode="decimal" min="1" max="300" step="0.1"></div>
+      <div class="field"><label for="pf-allergy">アレルギー</label><textarea id="pf-allergy" rows="2" maxlength="1000"></textarea></div>
+      <div class="field"><label for="pf-disease">持病</label><textarea id="pf-disease" rows="2" maxlength="1000"></textarea></div>
+      <div class="field"><label for="pf-history">既往歴</label><textarea id="pf-history" rows="2" maxlength="1000"></textarea></div>
+      <div class="field"><label for="pf-doctor">かかりつけ医</label><input id="pf-doctor" type="text" maxlength="100" autocomplete="off"></div>
+      <div class="field"><label for="pf-contactName">緊急連絡先の名前</label><input id="pf-contactName" type="text" maxlength="100" autocomplete="off"></div>
+      <div class="field"><label for="pf-contactTel">緊急連絡先の電話番号</label><input id="pf-contactTel" type="tel" maxlength="30" autocomplete="off"></div>
+      <div class="err" id="pfErr" role="alert"></div>
+      <div class="bar"><button class="primary" type="submit">プロフィールを保存</button></div>
+    </form>
+    <h3>基準値（グラフの線）</h3>
+    <p class="soft">記録タブのグラフに、下限・上限の線を引きます。外れた値には「▲」がつきます。空欄は未設定です。医師に指示された目安などを入れてください（このアプリは判定をしません）。</p>
+    <form id="rgForm" novalidate></form>
+    <h3>データ</h3>
+    <div class="bar">
+      <button id="exportBtn" type="button">書き出し（JSON）</button>
+      <button id="importBtn" type="button">読み込み</button>
+      <button id="rescueBtn" type="button">退避データを書き出す</button>
+      <input id="importFile" type="file" accept="application/json,.json" hidden>
+    </div>
+    <h3>ごみ箱</h3>
+    <p class="soft">削除した項目がここに入ります。復元するか、1件ずつ完全に削除できます。</p>
+    <div id="trashBody"></div>
+    <p class="soft">データ件数: <span id="setCount"></span></p>
+    <p class="soft">このアプリは記録のためのものです。医療行為の判断には使わず、医師・薬剤師の指示に従ってください。</p>
+  </section>
+</main>
+
+<nav id="tabs" aria-label="画面の切り替え">
+  <div class="in">
+    <button type="button" data-view="home" aria-current="page">ホーム</button>
+    <button type="button" data-view="med">お薬手帳</button>
+    <button type="button" data-view="visit">通院</button>
+    <button type="button" data-view="rec">記録</button>
+    <button type="button" data-view="lab">検査</button>
+    <button type="button" data-view="set">設定</button>
+  </div>
+</nav>
+
+<dialog id="emg" aria-labelledby="emgTitle">
+  <h2 id="emgTitle" tabindex="-1">緊急情報</h2>
+  <dl id="emgBody"></dl>
+  <form method="dialog" class="acts"><button class="primary" id="emgClose">閉じる</button></form>
+</dialog>
+
+<dialog id="sum" aria-labelledby="sumTitle">
+  <h2 id="sumTitle" tabindex="-1">診察用の要約</h2>
+  <div class="field"><label for="sumDays">記録・症状メモの期間</label><select id="sumDays"></select></div>
+  <div id="sumBody"></div>
+  <form method="dialog" class="acts"><button class="primary" id="sumClose">閉じる</button></form>
+</dialog>
+
+<dialog id="ed" aria-labelledby="edTitle">
+  <form id="edForm" novalidate>
+    <h2 id="edTitle"></h2>
+    <div id="edFields"></div>
+    <div class="err" id="edErr" role="alert"></div>
+    <div class="acts">
+      <button class="primary" type="submit">保存</button>
+      <button type="button" id="edCancel">キャンセル</button>
+      <button type="button" id="edDel" class="danger">削除</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="cfm" aria-labelledby="cfmMsg">
+  <form method="dialog">
+    <p id="cfmMsg"></p>
+    <div class="acts"><button class="primary" id="cfmNo" value="no"></button><button id="cfmOk" value="ok"></button></div>
+  </form>
+</dialog>
+
+<div class="vh" id="live" role="status" aria-live="polite"></div>
+<div class="toast" id="toast" popover="manual"><span id="toastMsg"></span><button id="toastUndo" type="button">元に戻す</button><button id="toastClose" type="button" aria-label="閉じる">×</button></div>
+
+<!-- クラウド同期（右下の☁ボタンは、このスクリプトが作る）。読み込めなくても端末内だけで動く -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous" defer></script>
+<script src="cloud-sync.js" defer></script>
+<script>
+(function(){
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+
+  const STORAGE_KEY = 'medical-app-data-v1';
+  const THEME_KEY = 'medical-app-theme';
+  const APP_NAME = '医療管理'; // クラウドの app_name。他のアプリと重複させない（重複すると上書きされる）
+  const SYNC_KEY = 'data-v1';
+  const DATA_VERSION = 1;
+
+  let state = null;     // アプリのデータ本体（emptyState と同じ形）
+  let cloud = null;     // クラウド同期。読み込めない環境では null のまま
+  let undoFn = null;    // 直前の操作を元に戻す関数
+  let view = 'home';    // 表示中の画面
+
+  // ---------- 日付・値の部品 ----------
+  const pad = (n) => (n < 10 ? '0' : '') + n;
+  function todayISO(){ const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  // 日付の検証（13月や2月30日、5桁の年を通さない）
+  function isDate(s){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+    if(!m) return false;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return d.getFullYear() === Number(m[1]) && d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]);
+  }
+  // 日時（YYYY-MM-DDTHH:mm）の検証。25時や60分を通さない
+  function isDateTime(s){
+    const m = /^(\d{4}-\d{2}-\d{2})T([01]\d|2[0-3]):[0-5]\d$/.exec(s || '');
+    return !!m && isDate(m[1]);
+  }
+  const str = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  // 空なら '' 、正しい日付ならその値、不正なら null
+  const dateOrEmpty = (v) => (v === undefined || v === null || v === '') ? '' : (isDate(v) ? v : null);
+  // 空なら null、0以上の整数・上限以内ならその数、不正なら undefined
+  function intOrNull(v, max){
+    if(v === undefined || v === null || v === '') return null;
+    const n = Number(v);
+    return Number.isInteger(n) && n >= 0 && n <= max ? n : undefined;
+  }
+
+  // ---------- データの形と検証 ----------
+  const SLOTS = ['朝', '昼', '夕', '就寝前', '頓服'];
+  const BLOODS = ['', 'A', 'B', 'O', 'AB'];
+  const LISTS = ['medicines', 'hospitals', 'appointments', 'visits', 'vitals', 'symptoms', 'labResults', 'checkups'];
+  // 健康記録の項目と、入力できる範囲（範囲外は、入力時は確認、読み込み時は取り除く）
+  const VITAL_KEYS = ['temp', 'sys', 'dia', 'pulse', 'weight'];
+  const VITAL_RANGE = { temp: [30, 45], sys: [60, 300], dia: [30, 200], pulse: [20, 300], weight: [1, 500] };
+  const VITAL_LABEL = { temp: '体温', sys: '最高血圧', dia: '最低血圧', pulse: '脈拍', weight: '体重' };
+  const TIMINGS = ['', '朝', '夜', 'その他'];
+  const emptyProfile = () => ({ name:'', birth:'', blood:'', height:null, allergy:'', disease:'', history:'', doctor:'', contactName:'', contactTel:'' });
+  // 基準値（健康記録のグラフに線で出す）。項目ごとの下限・上限（未設定は null）
+  const emptySettings = () => ({ ranges: VITAL_KEYS.reduce((o, k) => { o[k] = { low: null, high: null }; return o; }, {}) });
+  const emptyState = () => ({ v: DATA_VERSION, profile: emptyProfile(), settings: emptySettings(), medicines: [], hospitals: [], appointments: [], visits: [], vitals: [], symptoms: [], labResults: [], checkups: [] });
+
+  // どの項目にも共通の部分
+  function base(x){
+    return { id: String(x.id === undefined || x.id === null || x.id === '' ? Date.now() + '_' + Math.random() : x.id).slice(0, 60), createdAt: str(x.createdAt, 30), updatedAt: str(x.updatedAt, 30), deleted: !!x.deleted };
+  }
+  // 項目ごとの検証。壊れていれば null（取り除く）
+  function sanitizeMedicine(x){
+    if(!x || typeof x !== 'object') return null;
+    const name = str(x.name, 100); if(!name) return null;
+    const start = dateOrEmpty(x.start), end = dateOrEmpty(x.end);
+    if(start === null || end === null || (start && end && end < start)) return null;
+    return Object.assign(base(x), { name, dose: str(x.dose, 50), slots: Array.isArray(x.slots) ? SLOTS.filter((s) => x.slots.indexOf(s) >= 0) : [],
+      start, end, active: x.active !== false, hospitalId: str(x.hospitalId, 60), purpose: str(x.purpose, 200), memo: str(x.memo, 1000) });
+  }
+  function sanitizeHospital(x){
+    if(!x || typeof x !== 'object') return null;
+    const name = str(x.name, 100); if(!name) return null;
+    return Object.assign(base(x), { name, dept: str(x.dept, 100), address: str(x.address, 200), tel: str(x.tel, 30), hours: str(x.hours, 200), memo: str(x.memo, 1000) });
+  }
+  function sanitizeAppointment(x){
+    if(!x || typeof x !== 'object' || !isDateTime(x.at)) return null;
+    return Object.assign(base(x), { at: x.at, hospitalId: str(x.hospitalId, 60), dept: str(x.dept, 100), purpose: str(x.purpose, 200), bring: str(x.bring, 300), memo: str(x.memo, 1000) });
+  }
+  function sanitizeVisit(x){
+    if(!x || typeof x !== 'object' || !isDate(x.date)) return null;
+    const next = dateOrEmpty(x.next), cost = intOrNull(x.cost, 1e9);
+    if(next === null || cost === undefined) return null;
+    return Object.assign(base(x), { date: x.date, hospitalId: str(x.hospitalId, 60), diagnosis: str(x.diagnosis, 500), instruction: str(x.instruction, 500),
+      prescribed: !!x.prescribed, next, cost, memo: str(x.memo, 1000) });
+  }
+  // 空なら null、有限の数で min〜max ならその数、不正なら undefined
+  function numOrNull(v, min, max){
+    if(v === undefined || v === null || v === '') return null;
+    const n = typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN);
+    return Number.isFinite(n) && n >= min && n <= max ? n : undefined;
+  }
+  // 健康記録: 1回の測定＝1件。測った項目だけ入っている（全部空は取り除く）
+  function sanitizeVital(x){
+    if(!x || typeof x !== 'object' || !isDateTime(x.at)) return null;
+    const o = {};
+    for(const k of VITAL_KEYS){
+      o[k] = numOrNull(x[k], VITAL_RANGE[k][0], VITAL_RANGE[k][1]);
+      if(o[k] === undefined) return null;
+    }
+    if(VITAL_KEYS.every((k) => o[k] === null)) return null;
+    if(o.sys !== null && o.dia !== null && o.dia >= o.sys) return null;
+    return Object.assign(base(x), o, { at: x.at, timing: TIMINGS.indexOf(x.timing) >= 0 ? x.timing : '', memo: str(x.memo, 1000) });
+  }
+  function sanitizeSymptom(x){
+    if(!x || typeof x !== 'object' || !isDateTime(x.at)) return null;
+    const symptom = str(x.symptom, 200); if(!symptom) return null;
+    const level = numOrNull(x.level, 1, 5);
+    if(level === undefined || (level !== null && !Number.isInteger(level))) return null;
+    return Object.assign(base(x), { at: x.at, symptom, level, memo: str(x.memo, 1000) });
+  }
+  // 検査値: checkupId があれば健診の値
+  function sanitizeLab(x){
+    if(!x || typeof x !== 'object' || !isDate(x.date)) return null;
+    const name = str(x.name, 100); if(!name) return null;
+    const value = numOrNull(x.value, -1e9, 1e9), low = numOrNull(x.low, -1e9, 1e9), high = numOrNull(x.high, -1e9, 1e9);
+    if(value === null || value === undefined || low === undefined || high === undefined || (low !== null && high !== null && low > high)) return null;
+    return Object.assign(base(x), { date: x.date, hospitalId: str(x.hospitalId, 60), checkupId: str(x.checkupId, 60), name, value, unit: str(x.unit, 30), low, high });
+  }
+  // 健診: 総合判定（A〜Eなど）は入力した文字をそのまま持つ。アプリは解釈しない
+  function sanitizeCheckup(x){
+    if(!x || typeof x !== 'object' || !isDate(x.date)) return null;
+    const next = dateOrEmpty(x.next);
+    if(next === null) return null;
+    return Object.assign(base(x), { date: x.date, hospitalId: str(x.hospitalId, 60), venue: str(x.venue, 100), kind: str(x.kind, 50), grade: str(x.grade, 20),
+      finding: str(x.finding, 1000), issue: str(x.issue, 1000), issueStatus: x.issueStatus === 'open' || x.issueStatus === 'done' ? x.issueStatus : '', next, memo: str(x.memo, 1000) });
+  }
+  const SANITIZERS = { medicines: sanitizeMedicine, hospitals: sanitizeHospital, appointments: sanitizeAppointment, visits: sanitizeVisit,
+    vitals: sanitizeVital, symptoms: sanitizeSymptom, labResults: sanitizeLab, checkups: sanitizeCheckup };
+  // id の重複を振り直す（重複すると片方の編集でもう片方が消えるため）
+  function dedupe(list){
+    const seen = new Set();
+    return list.map((it) => {
+      let n = 2, v = it.id;
+      while(seen.has(v)) v = it.id + '_' + (n++);
+      it.id = v; seen.add(v);
+      return it;
+    });
+  }
+  // 読み込んだ値を検証する（端末・クラウド・ファイルに共通）。bad＝取り除いた件数、total＝元の件数
+  function sanitizeState(d){
+    if(!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('形式が正しくありません');
+    if(Number(d.v) > DATA_VERSION) throw new Error('このアプリより新しい形式のデータです');
+    let bad = 0, total = 0;
+    const out = emptyState();
+    LISTS.forEach((key) => {
+      if(d[key] === undefined) return;
+      if(!Array.isArray(d[key])){ bad++; return; }
+      total += d[key].length;
+      const ok = d[key].map(SANITIZERS[key]).filter(Boolean);
+      bad += d[key].length - ok.length;
+      out[key] = dedupe(ok);
+    });
+    // プロフィール: 不正な欄だけ空にする（件数に数える）
+    const p = d.profile && typeof d.profile === 'object' && !Array.isArray(d.profile) ? d.profile : {};
+    const pf = out.profile;
+    ['name', 'allergy', 'disease', 'history', 'doctor', 'contactName'].forEach((k) => { pf[k] = str(p[k], k === 'name' || k === 'doctor' || k === 'contactName' ? 100 : 1000); });
+    pf.contactTel = str(p.contactTel, 30);
+    const birth = dateOrEmpty(p.birth); if(birth === null) bad++; else pf.birth = birth;
+    if(p.blood === undefined || BLOODS.indexOf(p.blood) >= 0) pf.blood = p.blood || ''; else bad++;
+    const h = p.height === undefined || p.height === null || p.height === '' ? null : Number(p.height);
+    if(h === null) pf.height = null; else if(Number.isFinite(h) && h > 0 && h <= 300) pf.height = h; else bad++;
+    // 基準値: 不正な項目だけ未設定に戻す（件数に数える）
+    const rg = d.settings && typeof d.settings === 'object' && d.settings.ranges && typeof d.settings.ranges === 'object' ? d.settings.ranges : {};
+    VITAL_KEYS.forEach((k) => {
+      const r = rg[k] && typeof rg[k] === 'object' ? rg[k] : {};
+      const low = numOrNull(r.low, 0, 1000), high = numOrNull(r.high, 0, 1000);
+      if(low === undefined || high === undefined || (low !== null && high !== null && low > high)) bad++;
+      else out.settings.ranges[k] = { low, high };
+    });
+    return { state: out, bad, total };
+  }
+  const countItems = (s) => LISTS.reduce((n, k) => n + s[k].length, 0);
+  const profileFilled = (s) => { const p = s.profile; return !!(p.name || p.birth || p.blood || p.height || p.allergy || p.disease || p.history || p.doctor || p.contactName || p.contactTel); };
+  const settingsFilled = (s) => VITAL_KEYS.some((k) => s.settings.ranges[k].low !== null || s.settings.ranges[k].high !== null);
+  const isEmptyState = (s) => countItems(s) === 0 && !profileFilled(s) && !settingsFilled(s);
+
+  // ---------- 保存と読み込み ----------
+  let lastRaw = null;       // 最後に保存・読み込みした保存データ（古い画面の検出用）
+  let loadFailed = false;   // 保存データが壊れていて、空で起動したとき true
+  // 読み込めなかった元データを別キーへ退避する（次の保存で消えないように）。日時つきで3世代まで
+  function quarantine(raw, msg){
+    try{
+      const P = STORAGE_KEY + '-corrupt';
+      const keys = Object.keys(localStorage).filter((k) => k.indexOf(P) === 0).sort();
+      let k = keys.filter((x) => localStorage.getItem(x) === raw)[0]; // 同じ内容なら書き直さない
+      if(!k){
+        k = P + '-' + Date.now();
+        localStorage.setItem(k, raw);
+        keys.concat(k).sort().slice(0, -3).forEach((x) => localStorage.removeItem(x));
+      }
+      notice(msg + '元データは「' + k + '」に退避しました。');
+    }catch(e2){ notice(msg + '退避もできませんでした。ブラウザのデータを消さずにご相談ください。'); }
+  }
+  function load(){
+    let raw = null;
+    try{
+      raw = localStorage.getItem(STORAGE_KEY); lastRaw = raw;
+      if(!raw){ state = emptyState(); return; }
+      const r = sanitizeState(JSON.parse(raw));
+      state = r.state;
+      // 読めたが、中身の一部が検証で落ちたとき（黙って消えて、次の保存で確定するのを防ぐ）
+      if(r.bad){
+        if(r.total && countItems(state) === 0) loadFailed = true;
+        quarantine(raw, '保存データの一部（' + r.bad + '件）を読み込めませんでした。');
+      }
+    }catch(e){
+      state = emptyState(); loadFailed = true;
+      if(raw) quarantine(raw, '保存データを読み込めませんでした。');
+    }
+  }
+  // 保存できたら true。失敗時は警告を出して false（クラウドへは知らせない）
+  function save(){
+    try{
+      const s = JSON.stringify(state);
+      localStorage.setItem(STORAGE_KEY, s); lastRaw = s;
+    }catch(e){
+      notice('端末に保存できませんでした。このまま閉じると変更が失われます。書き出し（JSON）で保存してください。');
+      return false;
+    }
+    if(cloud) cloud.notifyChanged(); // 端末へ保存した直後に必ず呼ぶ
+    return true;
+  }
+  // 保存して state を入れ替える。保存できなければ元に戻して false（警告は save() が出す）
+  // 項目の追加・変更・削除は、state を直接書き換えず、必ずこれを使う
+  function setState(next){
+    const before = state;
+    state = next;
+    if(!save()){ state = before; return false; }
+    loadFailed = false; // 正常に保存できたので、「破損で空になった」状態は終わり
+    return true;
+  }
+
+  // 別のタブで保存されたら最新の内容に更新する（古い画面のまま上書きして消すのを防ぐ）
+  function adoptStored(raw){
+    try{
+      const r = sanitizeState(raw ? JSON.parse(raw) : emptyState());
+      lastRaw = raw;
+      state = r.state;
+      clearUndo();
+      closeEdIfClean();
+      render();
+      toast('別のタブでデータが更新されたため、最新の内容に更新しました。');
+    }catch(err){ /* 壊れた値は無視 */ }
+  }
+  window.addEventListener('storage', (e) => { if(e.key === STORAGE_KEY) adoptStored(e.newValue); });
+  // 凍結・キャッシュ復帰したタブは storage イベントを受け取れないため、戻ったときに見比べる
+  function checkStale(){
+    let cur = null;
+    try{ cur = localStorage.getItem(STORAGE_KEY); }catch(e){ return; }
+    if(cur && lastRaw !== null && cur !== lastRaw) adoptStored(cur);
+  }
+  window.addEventListener('pageshow', (e) => { if(e.persisted) checkStale(); });
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) checkStale(); });
+
+  // ---------- 画面 ----------
+  // 消えない通知（警告など。閉じるまで残る）
+  function notice(msg){ $('#noticeMsg').textContent = msg; $('#notice').hidden = false; }
+  $('#noticeClose').addEventListener('click', () => { $('#notice').hidden = true; });
+  const alive = (list) => list.filter((x) => !x.deleted);
+  const activeMeds = () => alive(state.medicines).filter((m) => m.active);
+  const upcoming = () => {
+    const now = new Date(); const cut = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+    return alive(state.appointments).filter((a) => a.at >= cut);
+  };
+  const tile = (label, n, unit) => '<div class="card"><span class="soft">' + label + '</span><br><b class="num">' + n + '</b> ' + unit + '</div>';
+  const later = (phase) => '<p class="soft">登録・編集の画面は、フェーズ' + phase + 'で作ります。</p>';
+
+  function render(){
+    renderHome();
+    renderMedicines();
+    renderVisitTab();
+    renderRecords();
+    renderLabs();
+    if($('#sum').open) renderSummary();
+    if($('#emg').open) renderEmergency();
+        $('#setCount').textContent = '薬 ' + alive(state.medicines).length + '件／病院 ' + alive(state.hospitals).length + '件／予約 ' + alive(state.appointments).length + '件／診察記録 ' + alive(state.visits).length + '件／測定 ' + alive(state.vitals).length + '件／症状 ' + alive(state.symptoms).length + '件／検査値 ' + alive(state.labResults).length + '件／健診 ' + alive(state.checkups).length + '件';
+    renderTrash();
+    fillProfile();
+    fillRanges();
+    showView(view);
+  }
+  // ごみ箱（設定画面）: 削除した項目を種類をまたいで新しい順に並べる
+  const KIND_LABEL = { medicines: '薬', hospitals: '病院', appointments: '予約', visits: '診察記録', vitals: '測定', symptoms: '症状', labResults: '検査値', checkups: '健診' };
+  function renderTrash(){
+    const items = [];
+    Object.keys(KIND_LABEL).forEach((k) => state[k].filter((x) => x.deleted).forEach((x) => items.push({ kind: k, item: x })));
+    items.sort((a, b) => a.item.updatedAt < b.item.updatedAt ? 1 : -1);
+    $('#trashBody').innerHTML = items.length ? items.map((t) => {
+      const n = nameOf(t.kind, t.item);
+      return '<div class="card" data-tk="' + t.kind + '" data-tid="' + esc(t.item.id) + '"><div><span class="soft">' + KIND_LABEL[t.kind] + '</span> <b class="mn">' + esc(n) + '</b></div>' +
+        '<div class="acts"><button type="button" data-trash="restore" aria-label="' + esc(n) + 'を元に戻す">復元</button>' +
+        '<button type="button" class="danger" data-trash="purge" aria-label="' + esc(n) + 'を完全に削除">完全に削除</button></div></div>';
+    }).join('') : '<p class="soft empty">ごみ箱は空です。</p>';
+  }
+  $('#trashBody').addEventListener('click', async (e) => {
+    const b = e.target.closest('button[data-trash]'), c = e.target.closest('.card[data-tk]');
+    if(!b || !c) return;
+    const kind = c.dataset.tk, m = findItem(kind, c.dataset.tid);
+    if(!m || !m.deleted) return;
+    const n = nameOf(kind, m);
+    // 健診と一緒に削除された検査値（同じ削除時刻の印がついたもの）
+    const withLabs = kind === 'checkups' ? state.labResults.filter((l) => l.checkupId === m.id && l.deleted && l.updatedAt === m.updatedAt) : [];
+    if(b.dataset.trash === 'restore'){
+      if(withLabs.length){
+        const t = nowISO();
+        changeMulti([['checkups', Object.assign({}, m, { deleted: false, updatedAt: t }), m]].concat(withLabs.map((l) => ['labResults', Object.assign({}, l, { deleted: false, updatedAt: t }), l])), '「' + n + '」を元に戻しました（検査値' + withLabs.length + '件も一緒に）');
+      }else changeItem(kind, Object.assign({}, m, { deleted: false, updatedAt: nowISO() }), m, '「' + n + '」を元に戻しました');
+    }else{
+      if(!(await askConfirm('「' + n + '」を完全に削除します。元に戻せません。よろしいですか？', '完全に削除', 'やめる'))) return;
+      const cur = findItem(kind, m.id);
+      if(!cur || !cur.deleted) return;     // 確認中に他で復元された
+      const ids = withLabs.map((l) => l.id);
+      if(!setState(Object.assign({}, putItem(kind, null, m.id), kind === 'checkups' ? { labResults: state.labResults.filter((l) => ids.indexOf(l.id) < 0) } : {}))) return;
+      render();
+      toast('「' + n + '」を完全に削除しました' + (ids.length ? '（検査値' + ids.length + '件も）' : ''));
+    }
+    const first = $('#trashBody button'); (first || $('#exportBtn')).focus();
+  });
+  // ホーム: 次回の健診（30日以内、または予定日を過ぎたもの）と、未対応の指摘事項。なければ何も出さない
+  function checkupHome(){
+    const cs = alive(state.checkups).slice().sort((a, b) => a.date < b.date ? 1 : -1);
+    const withNext = cs.filter((c) => c.next)[0];       // 一番新しい健診の次回予定だけを見る
+    const open = cs.filter((c) => c.issueStatus === 'open');
+    const lis = [];
+    if(withNext){
+      const days = Math.round((new Date(withNext.next + 'T00:00') - new Date(todayISO() + 'T00:00')) / 864e5);
+      if(days < 0) lis.push('<li><span class="warn"><span aria-hidden="true">▲</span>次回の健診の予定日（' + esc(ymd(withNext.next)) + '）を過ぎています</span></li>');
+      else if(days <= 30) lis.push('<li><span class="warn"><span aria-hidden="true">▲</span>次回の健診まで' + (days === 0 ? '今日' : days + '日') + '</span>（' + esc(ymd(withNext.next)) + '）</li>');
+    }
+    if(open.length) lis.push('<li><span class="warn"><span aria-hidden="true">▲</span>健診の指摘事項が未対応: ' + open.length + '件</span></li>');
+    return lis.length ? '<div class="card attn"><span class="ttl">気をつけること（健康診断）</span><ul class="hl">' + lis.join('') + '</ul><div class="acts"><button type="button" data-go="lab" data-labmode="checkup">健診を開く</button></div></div>' : '';
+  }
+  // ホーム: 服用中の薬と、直近の予約（今日・明日は記号つき。色だけに頼らない）
+  function renderHome(){
+    const meds = activeMeds().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    const aps = upcoming().sort((a, b) => a.at < b.at ? -1 : 1);
+    const shown = aps.slice(0, 3);
+    const medLis = meds.map((m) => '<li>' + esc(m.name) + (m.dose ? ' ' + esc(m.dose) : '') + (medExpired(m) ? ' <span class="warn"><span aria-hidden="true">▲</span>期間終了</span>' : '') + '</li>').join('');
+    const apLis = shown.map((a) => {
+      const d = a.at.slice(0, 10), mark = d === todayISO() ? '今日' : (d === tomorrowISO() ? '明日' : ''), hn = hospName(a.hospitalId);
+      return '<li>' + (mark ? '<span class="tag today"><span aria-hidden="true">▲</span>' + mark + '</span> ' : '') + esc(ymdhm(a.at)) + (hn ? ' ' + esc(hn) : '') + (a.purpose ? '（' + esc(a.purpose) + '）' : '') + '</li>';
+    }).join('');
+    // 並び順: 次の予約（目立たせる）→ 気をつけること → 服用中の薬
+    $('#homeBody').innerHTML =
+      '<div class="card hero"><span class="ttl">これからの予約</span><br><b class="num">' + aps.length + '</b> 件' + (apLis ? '<ul class="hl">' + apLis + '</ul>' : '') +
+      (aps.length > shown.length ? '<div class="soft">ほか ' + (aps.length - shown.length) + ' 件</div>' : '') +
+      '<div class="acts"><button type="button" data-go="visit">通院を開く</button></div></div>' +
+      checkupHome() +
+      '<div class="card"><span class="ttl">服用中の薬</span><br><b class="num">' + meds.length + '</b> 件' + (medLis ? '<ul class="hl">' + medLis + '</ul>' : '') +
+      '<div class="acts"><button type="button" data-go="med">お薬手帳を開く</button></div></div>' +
+      (profileFilled(state) ? '' : '<p class="soft">プロフィールは、まだ登録されていません（設定タブで入力できます）。</p>');
+  }
+  $('#homeBody').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-go]');
+    if(b){ if(b.dataset.labmode){ labMode = b.dataset.labmode; renderLabs(); } showView(b.dataset.go); window.scrollTo(0, 0); }
+  });
+  function showView(v){
+    view = v;
+    ['home', 'med', 'visit', 'rec', 'lab', 'set'].forEach((k) => { $('#v-' + k).hidden = (k !== v); });
+    document.querySelectorAll('#tabs button').forEach((b) => {
+      if(b.dataset.view === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+  }
+  $('#tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-view]');
+    if(!b) return;
+    showView(b.dataset.view);
+    window.scrollTo(0, 0);
+  });
+
+  // ---------- プロフィール（設定画面） ----------
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const PF_KEYS = ['name', 'birth', 'blood', 'height', 'allergy', 'disease', 'history', 'doctor', 'contactName', 'contactTel'];
+  const pf = (k) => $('#pf-' + k);
+  // 保存済みの値を入力欄へ入れる。入力中は、書きかけを消さないよう上書きしない
+  function fillProfile(force){
+    if(!force && $('#pfForm').contains(document.activeElement) && document.activeElement.tagName !== 'BUTTON') return;
+    PF_KEYS.forEach((k) => { const v = state.profile[k]; pf(k).value = (v === null || v === undefined) ? '' : v; });
+  }
+  // ---------- 基準値（設定画面） ----------
+  const RG_UNIT = { temp: '℃', sys: 'mmHg', dia: 'mmHg', pulse: '回/分', weight: 'kg' };
+  $('#rgForm').innerHTML = VITAL_KEYS.map((k) => '<div class="bar"><div class="field"><label for="rg-' + k + '-low">' + VITAL_LABEL[k] + ' 下限（' + RG_UNIT[k] + '）</label><input id="rg-' + k + '-low" type="number" inputmode="decimal" step="any"></div>' +
+    '<div class="field"><label for="rg-' + k + '-high">' + VITAL_LABEL[k] + ' 上限（' + RG_UNIT[k] + '）</label><input id="rg-' + k + '-high" type="number" inputmode="decimal" step="any"></div></div>').join('') +
+    '<div class="err" id="rgErr" role="alert"></div><div class="bar"><button class="primary" type="submit">基準値を保存</button></div>';
+  function fillRanges(force){
+    if(!force && $('#rgForm').contains(document.activeElement) && document.activeElement.tagName !== 'BUTTON') return;
+    VITAL_KEYS.forEach((k) => ['low', 'high'].forEach((s) => { const v = state.settings.ranges[k][s]; $('#rg-' + k + '-' + s).value = v === null ? '' : v; }));
+  }
+  $('#rgForm').addEventListener('input', () => clearInvalid($('#rgForm'), 'rgErr'));
+  $('#rgForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    clearInvalid($('#rgForm'), 'rgErr');
+    const ranges = {};
+    for(const k of VITAL_KEYS){
+      const r = {};
+      for(const s of ['low', 'high']){
+        const el = $('#rg-' + k + '-' + s), n = el.value === '' ? null : Number(el.value);
+        if(el.validity.badInput || (n !== null && !(Number.isFinite(n) && n >= 0 && n <= 1000))) { showErr(el, VITAL_LABEL[k] + 'の' + (s === 'low' ? '下限' : '上限') + 'は 0〜1000 の数字で入力してください。', 'rgErr'); return; }
+        r[s] = n;
+      }
+      if(r.low !== null && r.high !== null && r.low > r.high){ showErr($('#rg-' + k + '-low'), VITAL_LABEL[k] + 'の下限は、上限以下にしてください。', 'rgErr'); return; }
+      ranges[k] = r;
+    }
+    const before = state.settings;
+    if(!setState(Object.assign({}, state, { settings: { ranges } }))){ showErr(null, '保存できませんでした。書き出し（JSON）で保存してください。', 'rgErr'); return; }
+    render();
+    toast('基準値を保存しました', () => { if(setState(Object.assign({}, state, { settings: before }))){ render(); fillRanges(true); } });
+  });
+  // 入力エラーを欄と結び付けて出し、その欄へフォーカスを移す
+  // errId: エラーを出す欄の id（省略するとプロフィール用）
+  function showErr(el, msg, errId){
+    errId = errId || 'pfErr';
+    $('#' + errId).textContent = msg;
+    if(el){ el.setAttribute('aria-invalid', 'true'); el.setAttribute('aria-describedby', errId); el.focus(); }
+  }
+  function clearInvalid(form, errId){
+    form = form || $('#pfForm');
+    $('#' + (errId || 'pfErr')).textContent = '';
+    form.querySelectorAll('[aria-invalid]').forEach((e) => { e.removeAttribute('aria-invalid'); e.removeAttribute('aria-describedby'); });
+  }
+  $('#pfForm').addEventListener('input', () => clearInvalid());
+  // 入力の検証。黙って直さず、問題の欄とメッセージを返す（読み込み用の sanitizeState とは別）
+  function validateProfile(){
+    const p = {};
+    ['name', 'allergy', 'disease', 'history', 'doctor', 'contactName', 'contactTel'].forEach((k) => { p[k] = pf(k).value.trim(); });
+    const b = pf('birth');
+    if(b.validity.badInput || (b.value && !isDate(b.value))) return { el: b, msg: '生年月日が正しくありません。' };
+    if(b.value > todayISO()) return { el: b, msg: '生年月日が未来の日付です。' };
+    p.birth = b.value;
+    p.blood = pf('blood').value;
+    const h = pf('height');
+    if(h.validity.badInput) return { el: h, msg: '身長は数字で入力してください。' };
+    if(h.value === '') p.height = null;
+    else{
+      const n = Number(h.value);
+      if(!Number.isFinite(n) || n <= 0 || n > 300) return { el: h, msg: '身長は 0 より大きく 300 以下で入力してください。' };
+      p.height = n;
+    }
+    if(p.contactTel && !/^[0-9+\-() ]+$/.test(p.contactTel)) return { el: pf('contactTel'), msg: '電話番号は数字・+・-・() で入力してください。' };
+    return { profile: p };
+  }
+  $('#pfForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    clearInvalid();
+    const r = validateProfile();
+    if(r.el){ showErr(r.el, r.msg); return; }
+    const before = state.profile;
+    if(!setState(Object.assign({}, state, { profile: r.profile }))){ showErr(null, '保存できませんでした。書き出し（JSON）で保存してください。'); return; }
+    render();
+    toast('プロフィールを保存しました', () => { if(setState(Object.assign({}, state, { profile: before }))){ render(); fillProfile(true); } });
+  });
+
+  // ---------- 薬・病院・予約・診察記録 ----------
+  // ---------- 一覧の部品（薬・病院・予約・診察記録で共通） ----------
+  const uid = () => Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  const nowISO = () => new Date().toISOString();
+  const hospName = (id) => { const h = alive(state.hospitals).filter((x) => x.id === id)[0]; return h ? h.name : (id ? '（削除済みの病院）' : ''); };
+  const nowLocal = () => { const n = new Date(); return todayISO() + 'T' + pad(n.getHours()) + ':' + pad(n.getMinutes()); };
+  const ymd = (s) => s.replace(/-/g, '/');
+  const ymdhm = (s) => s.replace(/-/g, '/').replace('T', ' ');
+  const yen = (n) => '¥' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const medExpired = (m) => m.active && !!m.end && m.end < todayISO(); // 服用中のまま終了日を過ぎている（自動では終了にしない）
+  const tomorrowISO = () => { const d = new Date(); d.setDate(d.getDate() + 1); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+  const line = (t) => t ? '<div class="soft">' + esc(t) + '</div>' : '';
+  const telLink = (t) => '<a href="tel:' + esc(t.replace(/[^0-9+]/g, '')) + '">' + esc(t) + '</a>';
+  const editBtn = (name) => '<button type="button" data-act="edit" aria-label="' + esc(name) + 'を編集">編集</button>';
+  const card = (kind, id, cls, inner) => '<div class="card' + (cls ? ' ' + cls : '') + '" data-kind="' + kind + '" data-id="' + esc(id) + '">' + inner + '</div>';
+  const addBar = (btns) => '<div class="bar">' + btns.map((b) => '<button type="button" data-add="' + b[0] + '"' + (b[2] ? ' class="primary"' : '') + '>' + b[1] + '</button>').join('') + '</div>';
+
+  function medCard(m){
+    const period = m.start || m.end ? ymd(m.start) + '〜' + ymd(m.end) : '';
+    const status = !m.active ? '<div><span class="tag">服用終了</span></div>' : (medExpired(m) ? '<div class="warn"><span aria-hidden="true">▲</span>期間終了（終了日を過ぎています）</div>' : '');
+    return card('medicines', m.id, m.active ? '' : 'ended',
+      '<div><b class="mn">' + esc(m.name) + '</b>' + (m.dose ? ' ' + esc(m.dose) : '') + '</div>' +
+      line(m.slots.length ? '用法: ' + m.slots.join('・') : '') + line(period ? '期間: ' + period : '') +
+      line(hospName(m.hospitalId) ? '病院: ' + hospName(m.hospitalId) : '') + line(m.purpose ? '目的: ' + m.purpose : '') + status +
+      '<div class="acts">' + editBtn(m.name) +
+      '<button type="button" data-act="toggle" aria-label="' + esc(m.name) + 'の' + (m.active ? '服用を終了する' : '服用中に戻す') + '">' + (m.active ? '服用を終了する' : '服用中に戻す') + '</button></div>');
+  }
+  function renderMedicines(){
+    const all = alive(state.medicines).slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    const on = all.filter((m) => m.active), off = all.filter((m) => !m.active);
+    let h = addBar([['medicines', '薬を追加', 1]]);
+    if(!all.length) h += '<p class="soft empty">まだ薬が登録されていません。「薬を追加」から登録します。</p>';
+    if(on.length) h += '<h3>服用中（' + on.length + '件）</h3>' + on.map(medCard).join('');
+    if(off.length) h += '<h3>服用終了（' + off.length + '件）</h3>' + off.map(medCard).join('');
+    $('#medBody').innerHTML = h;
+  }
+
+  // 予約: これから（近い順）と過去（新しい順）。今日・明日は記号つきで強調（色だけに頼らない）
+  function apCard(a, past){
+    const d = a.at.slice(0, 10), mark = past ? '' : (d === todayISO() ? '今日' : (d === tomorrowISO() ? '明日' : ''));
+    const hn = hospName(a.hospitalId);
+    return card('appointments', a.id, past ? 'ended' : '',
+      (mark ? '<div><span class="tag today"><span aria-hidden="true">▲</span>' + mark + '</span></div>' : '') +
+      '<div><b class="mn">' + esc(ymdhm(a.at)) + '</b></div>' + line(hn ? '病院: ' + hn : '') + line(a.dept ? '診療科: ' + a.dept : '') +
+      line(a.purpose ? '目的: ' + a.purpose : '') + line(a.bring ? '持ち物: ' + a.bring : '') +
+      '<div class="acts">' + editBtn(ymdhm(a.at) + 'の予約') + '</div>');
+  }
+  function visitCard(v){
+    const hn = hospName(v.hospitalId);
+    return card('visits', v.id, '',
+      '<div><b class="mn">' + esc(ymd(v.date)) + '</b>' + (hn ? ' ' + esc(hn) : '') + '</div>' +
+      line(v.diagnosis ? '診断: ' + v.diagnosis : '') + line(v.instruction ? '指示: ' + v.instruction : '') +
+      line(v.prescribed ? '処方: あり' : '') + line(v.next ? '次回予定: ' + ymd(v.next) : '') + line(v.cost !== null ? '費用: ' + yen(v.cost) : '') +
+      '<div class="acts">' + editBtn(ymd(v.date) + 'の診察記録') + '</div>');
+  }
+  function hospCard(h){
+    return card('hospitals', h.id, '',
+      '<div><b class="mn">' + esc(h.name) + '</b></div>' + line(h.dept ? '診療科: ' + h.dept : '') + line(h.address ? '住所: ' + h.address : '') +
+      (h.tel ? '<div class="soft">電話: ' + telLink(h.tel) + '</div>' : '') + line(h.hours ? '診療時間: ' + h.hours : '') +
+      '<div class="acts">' + editBtn(h.name) + '</div>');
+  }
+  function renderVisitTab(){
+    const nowKey = (() => { const n = new Date(); return todayISO() + 'T' + pad(n.getHours()) + ':' + pad(n.getMinutes()); })();
+    const aps = alive(state.appointments);
+    const next = aps.filter((a) => a.at >= nowKey).sort((a, b) => a.at < b.at ? -1 : 1);
+    const past = aps.filter((a) => a.at < nowKey).sort((a, b) => a.at < b.at ? 1 : -1);
+    const vs = alive(state.visits).slice().sort((a, b) => a.date < b.date ? 1 : -1);
+    const hs = alive(state.hospitals).slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    const none = (t) => '<p class="soft empty">' + t + '</p>';
+    $('#visitBody').innerHTML =
+      addBar([['appointments', '予約を追加', 1], ['visits', '診察記録を追加'], ['hospitals', '病院を追加']]) +
+      '<h3>これからの予約（' + next.length + '件）</h3>' + (next.length ? next.map((a) => apCard(a, false)).join('') : none('予定はありません。')) +
+      (past.length ? '<h3>過去の予約（' + past.length + '件）</h3>' + past.map((a) => apCard(a, true)).join('') : '') +
+      '<h3>診察記録（' + vs.length + '件）</h3>' + (vs.length ? vs.map(visitCard).join('') : none('まだありません。')) +
+      '<h3>病院（' + hs.length + '件）</h3>' + (hs.length ? hs.map(hospCard).join('') : none('まだありません。'));
+  }
+  // 記録タブ: 測定と症状メモを、新しい順に並べる。日付で絞り込める
+  let recFrom = '', recTo = '';
+  const vitalText = (x) => [
+    x.temp !== null ? '体温 ' + x.temp + '℃' : '',
+    x.sys !== null || x.dia !== null ? '血圧 ' + (x.sys !== null ? x.sys : '－') + '/' + (x.dia !== null ? x.dia : '－') + ' mmHg' : '',
+    x.pulse !== null ? '脈拍 ' + x.pulse + ' 回/分' : '', x.weight !== null ? '体重 ' + x.weight + ' kg' : ''].filter(Boolean).join('　');
+  // 基準値との比較（未設定なら ''）。外れたら 'high' / 'low'
+  const flagOf = (k, v) => { const r = state.settings.ranges[k]; return v === null ? '' : (r.high !== null && v > r.high ? 'high' : (r.low !== null && v < r.low ? 'low' : '')); };
+  const flagText = (f) => f === 'high' ? '高い' : '低い';
+  const flagsOf = (x) => VITAL_KEYS.filter((k) => flagOf(k, x[k])).map((k) => '▲' + VITAL_LABEL[k] + ' ' + flagText(flagOf(k, x[k])));
+
+  // 折れ線グラフ（SVG）。o: { series:[{ name, pts:[{ t, v }], low, high, dash }], from, to, label }
+  // 基準値の外の点は、色に加えて三角（▲）で示す。点が0個・1個でも崩れない
+  function drawChart(o){
+    const all = o.series.reduce((a, s) => a.concat(s.pts), []);
+    if(!all.length) return '<p class="soft">この期間の測定はありません。</p>';
+    const W = 340, H = 200, L = 40, R = 10, T = 12, B = 26, pw = W - L - R, ph = H - T - B;
+    const vals = all.map((p) => p.v);
+    o.series.forEach((s) => { if(s.low !== null) vals.push(s.low); if(s.high !== null) vals.push(s.high); });
+    let mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    if(mn === mx){ mn -= 1; mx += 1; }
+    const pad = (mx - mn) * 0.12; mn -= pad; mx += pad;
+    const X = (t) => L + (t - o.from) / (o.to - o.from) * pw, Y = (v) => T + ph - (v - mn) / (mx - mn) * ph;
+    const r1 = (v) => Math.round(v * 10) / 10;
+    let g = '';
+    for(let i = 0; i < 4; i++){
+      const v = mn + (mx - mn) * i / 3, y = Y(v).toFixed(1);
+      g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="var(--line)"/><text x="' + (L - 4) + '" y="' + (Number(y) + 3) + '" text-anchor="end" font-size="12" fill="var(--ink-soft)">' + r1(v) + '</text>';
+    }
+    [0, 0.5, 1].forEach((f) => {
+      const d = new Date(o.from + (o.to - o.from) * f);
+      g += '<text x="' + (L + pw * f).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + (f === 0 ? 'start' : f === 1 ? 'end' : 'middle') + '" font-size="12" fill="var(--ink-soft)">' + (d.getMonth() + 1) + '/' + d.getDate() + '</text>';
+    });
+    o.series.forEach((s) => {
+      [['low', '下限'], ['high', '上限']].forEach((b) => {
+        if(s[b[0]] === null) return;
+        const y = Y(s[b[0]]).toFixed(1);
+        g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="var(--ink-soft)" stroke-dasharray="2 3"/><text x="' + (W - R - 2) + '" y="' + (Number(y) - 2) + '" text-anchor="end" font-size="11" fill="var(--ink-soft)">' + (o.series.length > 1 ? s.name : '') + b[1] + ' ' + s[b[0]] + '</text>';
+      });
+    });
+    o.series.forEach((s, si) => {
+      if(s.pts.length > 1) g += '<polyline fill="none" stroke="var(--ink)" stroke-width="1.5"' + (s.dash ? ' stroke-dasharray="5 3"' : '') + ' points="' + s.pts.map((p) => X(p.t).toFixed(1) + ',' + Y(p.v).toFixed(1)).join(' ') + '"/>';
+      s.pts.forEach((p) => {
+        const x = X(p.t), y = Y(p.v);
+        if(p.flag) g += '<polygon points="' + x.toFixed(1) + ',' + (y - 6).toFixed(1) + ' ' + (x - 5.5).toFixed(1) + ',' + (y + 4).toFixed(1) + ' ' + (x + 5.5).toFixed(1) + ',' + (y + 4).toFixed(1) + '" fill="var(--danger)" stroke="var(--danger)"/>';
+        else g += si ? '<rect x="' + (x - 3.5).toFixed(1) + '" y="' + (y - 3.5).toFixed(1) + '" width="7" height="7" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.5"/>'
+          : '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3.5" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.5"/>';
+      });
+    });
+    const legend = o.series.length > 1 ? '<div class="soft">●実線＝' + o.series[0].name + '　■破線＝' + o.series[1].name + '</div>' : '';
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="' + esc(o.label + '（' + all.length + '点）。値は、下の一覧にあります') + '">' + g + '</svg>' + legend +
+      (all.some((p) => p.flag) ? '<div class="warn"><span aria-hidden="true">▲</span>基準値の外の値があります（「高い／低い」の文字でも示します）</div>' : '');
+  }
+  const CHART_ITEMS = [['temp', '体温'], ['bp', '血圧'], ['pulse', '脈拍'], ['weight', '体重']];
+  const CHART_PERIODS = [[7, '1週間'], [30, '1か月'], [90, '3か月'], [365, '1年']];
+  let chartKey = 'temp', chartDays = 30;
+  function renderChart(){
+    const keys = chartKey === 'bp' ? ['sys', 'dia'] : [chartKey];
+    const d0 = new Date(todayISO() + 'T00:00'); d0.setDate(d0.getDate() - (chartDays - 1));
+    const from = d0.getTime(), to = new Date(todayISO() + 'T23:59').getTime();
+    const recs = alive(state.vitals).filter((x) => { const t = new Date(x.at).getTime(); return t >= from && t <= to && keys.some((k) => x[k] !== null); }).sort((a, b) => a.at < b.at ? -1 : 1);
+    const series = keys.map((k, i) => ({ name: VITAL_LABEL[k], dash: i === 1, low: state.settings.ranges[k].low, high: state.settings.ranges[k].high,
+      pts: recs.filter((x) => x[k] !== null).map((x) => ({ t: new Date(x.at).getTime(), v: x[k], flag: !!flagOf(k, x[k]) })) }));
+    const label = CHART_ITEMS.filter((c) => c[0] === chartKey)[0][1] + 'の推移（直近' + CHART_PERIODS.filter((c) => c[0] === chartDays)[0][1] + '）';
+    const sel = (id, lab, opts, cur) => '<div class="field"><label for="' + id + '">' + lab + '</label><select id="' + id + '">' + opts.map((o) => '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select></div>';
+    const rows = recs.slice().reverse().map((x) => {
+      const fl = keys.filter((k) => flagOf(k, x[k])).map((k) => '▲' + (keys.length > 1 ? VITAL_LABEL[k] + ' ' : '') + flagText(flagOf(k, x[k])));
+      return '<tr><td>' + esc(ymdhm(x.at)) + '</td>' + keys.map((k) => '<td>' + (x[k] !== null ? x[k] : '－') + '</td>').join('') + '<td>' + (fl.length ? '<span class="warn">' + fl.join(' ') + '</span>' : '') + '</td></tr>';
+    }).join('');
+    return '<h3>グラフ</h3><div class="bar">' + sel('chKey', '項目', CHART_ITEMS, chartKey) + sel('chDays', '期間', CHART_PERIODS.map((c) => [String(c[0]), c[1]]), String(chartDays)) + '</div>' +
+      drawChart({ series, from, to, label }) +
+      (recs.length ? '<details class="chtab"><summary>値の一覧（' + recs.length + '件）</summary><table><thead><tr><th>日時</th>' + keys.map((k) => '<th>' + VITAL_LABEL[k] + '</th>').join('') + '<th>基準値</th></tr></thead><tbody>' + rows + '</tbody></table></details>' : '');
+  }
+  function vitalCard(x){
+    const fl = flagsOf(x);
+    return card('vitals', x.id, '', '<div><b class="mn">' + esc(ymdhm(x.at)) + '</b>' + (x.timing ? '（' + esc(x.timing) + '）' : '') + '</div>' +
+      '<div>' + esc(vitalText(x)) + '</div>' + (fl.length ? '<div class="warn">' + esc(fl.join('　')) + '</div>' : '') + line(x.memo) + '<div class="acts">' + editBtn(ymdhm(x.at) + 'の測定') + '</div>');
+  }
+  function symptomCard(x){
+    return card('symptoms', x.id, '', '<div><b class="mn">' + esc(ymdhm(x.at)) + '</b> 症状メモ</div>' +
+      '<div>' + esc(x.symptom) + (x.level !== null ? '（程度 ' + x.level + '／5）' : '') + '</div>' + line(x.memo) + '<div class="acts">' + editBtn(ymdhm(x.at) + 'の症状メモ') + '</div>');
+  }
+  function renderRecords(){
+    const inRange = (x) => (!recFrom || x.at.slice(0, 10) >= recFrom) && (!recTo || x.at.slice(0, 10) <= recTo);
+    const vs = alive(state.vitals), ss = alive(state.symptoms);
+    // 最新の値（項目ごとに、測った中で一番新しいもの。絞り込みの影響を受けない）
+    const latest = (pick) => vs.filter((x) => pick(x) !== '').sort((a, b) => a.at < b.at ? 1 : -1)[0];
+    // 数値タイル: 大きな数字＋単位。基準値の外は「▲高い／低い」の文字つき
+    const lt = [['体温', (x) => x.temp !== null ? x.temp : '', '℃', ['temp']], ['血圧', (x) => x.sys !== null || x.dia !== null ? (x.sys !== null ? x.sys : '－') + '/' + (x.dia !== null ? x.dia : '－') : '', 'mmHg', ['sys', 'dia']],
+      ['脈拍', (x) => x.pulse !== null ? x.pulse : '', '回/分', ['pulse']], ['体重', (x) => x.weight !== null ? x.weight : '', 'kg', ['weight']]]
+      .map((p) => {
+        const x = latest(p[1]); if(!x) return '';
+        const fl = p[3].filter((k) => flagOf(k, x[k])).map((k) => (p[3].length > 1 ? VITAL_LABEL[k] + ' ' : '') + flagText(flagOf(k, x[k])));
+        return '<div class="tile"><span class="soft">' + p[0] + '</span><b>' + esc(String(p[1](x))) + '</b><span class="unit">' + p[2] + '</span>' +
+          (fl.length ? '<span class="warn"><span aria-hidden="true">▲</span>' + esc(fl.join(' ／ ')) + '</span>' : '') + '<span class="soft">' + esc(ymdhm(x.at)) + '</span></div>';
+      }).join('');
+    const all = vs.map((x) => ({ at: x.at, html: vitalCard(x), id: x.id })).concat(ss.map((x) => ({ at: x.at, html: symptomCard(x), id: x.id })));
+    const shown = all.filter(inRange).sort((a, b) => a.at < b.at ? 1 : -1);
+    const bad = recFrom && recTo && recFrom > recTo;
+    $('#recBody').innerHTML = addBar([['vitals', '測定を追加', 1], ['symptoms', '症状メモを追加']]) +
+      (lt ? '<h3>最新の測定</h3><div class="tiles">' + lt + '</div>' : '') +
+      renderChart() +
+      '<div class="bar"><div class="field"><label for="recFrom">いつから</label><input id="recFrom" type="date" value="' + esc(recFrom) + '"></div>' +
+      '<div class="field"><label for="recTo">いつまで</label><input id="recTo" type="date" value="' + esc(recTo) + '"></div>' +
+      (recFrom || recTo ? '<button type="button" id="recClear">絞り込みを解除</button>' : '') + '</div>' +
+      '<h3>記録（' + shown.length + '件' + (recFrom || recTo ? '／全' + all.length + '件' : '') + '）</h3>' +
+      (bad ? '<p class="warn"><span aria-hidden="true">▲</span>「いつから」が「いつまで」より後になっています。</p>' :
+        shown.length ? shown.map((s) => s.html).join('') : '<p class="soft">' + (all.length ? 'この期間の記録はありません。' : 'まだ記録がありません。「測定を追加」から登録します。') + '</p>');
+  }
+  $('#recBody').addEventListener('change', (e) => {
+    const id = e.target.id, v = e.target.value;
+    if(id === 'chKey' || id === 'chDays'){
+      if(id === 'chKey') chartKey = v; else chartDays = Number(v);
+      renderRecords(); $('#' + id).focus(); return;
+    }
+    if(id !== 'recFrom' && id !== 'recTo') return;
+    if(v && !isDate(v)) return;
+    if(id === 'recFrom') recFrom = v; else recTo = v;
+    renderRecords(); $('#' + id).focus();
+  });
+  $('#recBody').addEventListener('click', (e) => {
+    if(e.target.id !== 'recClear') return;
+    recFrom = recTo = ''; renderRecords(); $('#recFrom').focus();
+  });
+  // ---------- 検査タブ: 検査値を項目ごとにまとめる ----------
+  // 項目名の候補は、登録済みの検査値から集める
+  const labNames = () => Array.from(new Set(alive(state.labResults).map((x) => x.name))).sort((a, b) => a.localeCompare(b, 'ja'));
+  const labFlag = (x) => x.high !== null && x.value > x.high ? 'high' : (x.low !== null && x.value < x.low ? 'low' : '');
+  const labSort = (a, b) => a.date !== b.date ? (a.date < b.date ? -1 : 1) : (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0);
+  const fmtNum = (n) => String(Math.round(n * 1e6) / 1e6);
+  let labItem = '';
+  function labCard(x, prev, summary){
+    const fl = labFlag(x), hn = hospName(x.hospitalId);
+    const diff = prev ? '前回 ' + fmtNum(prev.value) + (prev.unit ? ' ' + prev.unit : '') + '（' + ymd(prev.date) + '）との差: ' + (x.value - prev.value > 0 ? '+' : '') + fmtNum(x.value - prev.value) : '';
+    return card('labResults', x.id, '',
+      '<div><b class="mn">' + esc(x.name) + ' ' + esc(fmtNum(x.value)) + (x.unit ? ' ' + esc(x.unit) : '') + '</b></div>' +
+      '<div class="soft">' + esc(ymd(x.date)) + (x.checkupId ? '（健診）' : '') + (hn ? ' ' + esc(hn) : '') + '</div>' +
+      (fl ? '<div class="warn"><span aria-hidden="true">▲</span>' + (fl === 'high' ? '高い' : '低い') + '（基準 ' + (x.low !== null ? fmtNum(x.low) : '') + '〜' + (x.high !== null ? fmtNum(x.high) : '') + '）</div>' :
+        (x.low !== null || x.high !== null ? '<div class="soft">基準 ' + (x.low !== null ? fmtNum(x.low) : '') + '〜' + (x.high !== null ? fmtNum(x.high) : '') + '</div>' : '')) +
+      line(diff) +
+      '<div class="acts">' + editBtn(x.name + ' ' + ymd(x.date) + 'の検査値') +
+      (summary ? '<button type="button" data-labitem="' + esc(x.name) + '" aria-label="' + esc(x.name) + 'の推移を見る">推移を見る</button>' : '') + '</div>');
+  }
+  let labMode = 'lab';
+  // 健診の一覧（新しい順）。検査値は、その健診の中に並べる
+  function checkupCard(c){
+    const hn = hospName(c.hospitalId), labs = alive(state.labResults).filter((l) => l.checkupId === c.id).sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    const st = c.issue || c.issueStatus ? (c.issueStatus === 'open' ? '<span class="warn"><span aria-hidden="true">▲</span>未対応</span>' : (c.issueStatus === 'done' ? '対応済み' : '')) : '';
+    const nx = c.next ? '次回の予定日: ' + ymd(c.next) + (c.next < todayISO() ? ' <span class="warn"><span aria-hidden="true">▲</span>過ぎています</span>' : '') : '';
+    return card('checkups', c.id, '',
+      '<div><b class="mn">' + esc(ymd(c.date)) + '</b>' + (c.venue ? ' ' + esc(c.venue) : '') + '</div>' +
+      line([c.kind, hn].filter(Boolean).join('　')) + (c.grade ? '<div>総合判定: <b>' + esc(c.grade) + '</b></div>' : '') +
+      line(c.finding ? '所見: ' + c.finding : '') + (c.issue ? '<div>指摘事項: ' + esc(c.issue) + (st ? '　' + st : '') + '</div>' : (st ? '<div>' + st + '</div>' : '')) +
+      (nx ? '<div class="soft">' + nx + '</div>' : '') + line(c.memo) +
+      '<div class="soft">検査値 ' + labs.length + '件</div>' +
+      (labs.length ? '<ul class="hl">' + labs.map((l) => '<li>' + esc(l.name) + ' ' + esc(fmtNum(l.value)) + (l.unit ? ' ' + esc(l.unit) : '') + (labFlag(l) ? ' <span class="warn"><span aria-hidden="true">▲</span>' + (labFlag(l) === 'high' ? '高い' : '低い') + '</span>' : '') + '</li>').join('') + '</ul>' : '') +
+      '<div class="acts">' + editBtn(ymd(c.date) + 'の健診') + '<button type="button" data-labfor="' + esc(c.id) + '" aria-label="' + esc(ymd(c.date)) + 'の健診に検査値を追加">検査値を追加</button></div>');
+  }
+  function renderLabs(){
+    const mode = (m, l) => '<button type="button" data-labmode="' + m + '" aria-pressed="' + (labMode === m) + '">' + l + '</button>';
+    let h = '<div class="bar">' + mode('lab', '検査値') + mode('checkup', '健康診断') + '</div>';
+    if(labMode === 'checkup'){
+      const cs = alive(state.checkups).slice().sort((a, b) => a.date < b.date ? 1 : -1);
+      h += addBar([['checkups', '健診を追加', 1]]) + (cs.length ? '<h3>健診（' + cs.length + '件）</h3>' + cs.map(checkupCard).join('') : '<p class="soft empty">まだ健診が登録されていません。「健診を追加」から登録します。</p>');
+    }else h += renderLabList();
+    $('#labBody').innerHTML = h;
+  }
+  function renderLabList(){
+    const all = alive(state.labResults), names = labNames();
+    if(labItem && names.indexOf(labItem) < 0) labItem = '';
+    const sel = '<div class="field"><label for="labSel">項目</label><select id="labSel"><option value="">すべて（項目ごとの最新）</option>' +
+      names.map((n) => '<option value="' + esc(n) + '"' + (n === labItem ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select></div>';
+    let h = addBar([['labResults', '検査値を追加', 1]]) + (names.length ? sel : '');
+    if(!all.length) h += '<p class="soft empty">まだ検査値がありません。「検査値を追加」から登録します。</p>';
+    else if(!labItem){
+      h += '<h3>項目ごとの最新（' + names.length + '項目）</h3>' + names.map((n) => {
+        const rs = all.filter((x) => x.name === n).sort(labSort), x = rs[rs.length - 1];
+        return labCard(x, rs.length > 1 ? rs[rs.length - 2] : null, true);
+      }).join('');
+    }else{
+      const rs = all.filter((x) => x.name === labItem).sort(labSort), last = rs[rs.length - 1];
+      let from = new Date(rs[0].date + 'T00:00').getTime(), to = new Date(last.date + 'T00:00').getTime();
+      if(from === to){ from -= 15 * 864e5; to += 15 * 864e5; }
+      h += '<h3>' + esc(labItem) + 'の推移（' + rs.length + '件）</h3>' +
+        drawChart({ series: [{ name: labItem, low: last.low, high: last.high, pts: rs.map((x) => ({ t: new Date(x.date + 'T00:00').getTime(), v: x.value, flag: !!labFlag(x) })) }], from, to, label: labItem + 'の推移' }) +
+        '<p class="soft">グラフの基準線は、一番新しい値の基準です。</p>' +
+        rs.slice().reverse().map((x) => labCard(x, rs[rs.indexOf(x) - 1] || null, false)).join('');
+    }
+    return h;
+  }
+  $('#labBody').addEventListener('change', (e) => {
+    if(e.target.id !== 'labSel') return;
+    labItem = e.target.value; renderLabs(); $('#labSel') && $('#labSel').focus();
+  });
+  $('#labBody').addEventListener('click', (e) => {
+    const m = e.target.closest('button[data-labmode]'), f = e.target.closest('button[data-labfor]');
+    if(m){ labMode = m.dataset.labmode; renderLabs(); const nb = document.querySelector('#labBody button[data-labmode="' + labMode + '"]'); if(nb) nb.focus(); return; }
+    if(f){ const c = findItem('checkups', f.dataset.labfor); if(c && !c.deleted) openEditor('labResults', null, { date: c.date, hospitalId: c.hospitalId, checkupId: c.id }); return; }
+    const b = e.target.closest('button[data-labitem]');
+    if(!b) return;
+    labItem = b.dataset.labitem; renderLabs(); window.scrollTo(0, 0); $('#labSel').focus();
+  });
+  // 操作後、同じ項目のカードへフォーカスを戻す（なければ、その画面の最初のボタン）
+  function focusItem(id){
+    const c = id && Array.from(document.querySelectorAll('.card[data-id]')).filter((x) => x.dataset.id === id)[0];
+    const b = c ? c.querySelector('button') : document.querySelector('#v-' + (view === 'med' || view === 'rec' || view === 'lab' ? view : 'visit') + ' [data-add]');
+    if(b) b.focus();
+  }
+  const findItem = (kind, id) => state[kind].filter((x) => x.id === id)[0];
+  // 1件の追加・置き換え（item）または取り除き（item が null で id 指定）。次の state を返す
+  function putItem(kind, item, id){
+    const key = item ? item.id : id, has = state[kind].some((x) => x.id === key);
+    const list = item ? (has ? state[kind].map((x) => x.id === key ? item : x) : state[kind].concat(item)) : state[kind].filter((x) => x.id !== key);
+    return Object.assign({}, state, { [kind]: list });
+  }
+  // 変更して保存し、元に戻すトーストを出す。prev は変更前の項目（追加なら null）
+  function changeItem(kind, item, prev, msg){
+    if(!setState(putItem(kind, item))) return false;
+    render();
+    toast(msg, () => { if(setState(prev ? putItem(kind, prev) : putItem(kind, null, item.id))){ render(); focusItem(prev && prev.id); } });
+    return true;
+  }
+  // 複数の既存項目をまとめて更新し、1回で元に戻せるようにする。pairs: [種類, 新しい項目, 元の項目]
+  function changeMulti(pairs, msg){
+    const put = (s, kind, item) => Object.assign({}, s, { [kind]: s[kind].map((x) => x.id === item.id ? item : x) });
+    let s = state; pairs.forEach((p) => { s = put(s, p[0], p[1]); });
+    if(!setState(s)) return false;
+    render();
+    toast(msg, () => { let u = state; pairs.forEach((p) => { u = put(u, p[0], p[2]); }); if(setState(u)) render(); });
+    return true;
+  }
+  const nameOf = (kind, x) => ({
+    medicines: () => x.name, hospitals: () => x.name, appointments: () => ymdhm(x.at) + 'の予約', visits: () => ymd(x.date) + 'の診察記録',
+    vitals: () => ymdhm(x.at) + 'の測定', symptoms: () => ymdhm(x.at) + ' ' + x.symptom, labResults: () => ymd(x.date) + ' ' + x.name + ' ' + x.value, checkups: () => ymd(x.date) + 'の健診'
+  }[kind])();
+
+  document.addEventListener('click', (e) => {
+    const add = e.target.closest('button[data-add]');
+    if(add){ openEditor(add.dataset.add, null); return; }
+    const b = e.target.closest('.card button[data-act]'), c = e.target.closest('.card[data-kind]');
+    if(!b || !c) return;
+    const m = findItem(c.dataset.kind, c.dataset.id);
+    if(!m || m.deleted) return;
+    if(b.dataset.act === 'edit') openEditor(c.dataset.kind, m.id);
+    else toggleActive(m);
+  });
+  // 服用中／終了の切り替え。終了した薬も一覧に残る（終了日は自動では変えない）
+  function toggleActive(m){
+    const next = Object.assign({}, m, { active: !m.active, updatedAt: nowISO() });
+    if(changeItem('medicines', next, m, '「' + m.name + '」を' + (next.active ? '服用中に戻しました' : '服用終了にしました'))) focusItem(m.id);
+  }
+
+  // --- 登録・編集ダイアログ（4種類で共通。誤操作防止: 部品集 1） ---
+  // 欄の定義: k=項目名, t=種類(text/tel/date/dt/select/area/slots/check/int), max=文字数, req=必須
+  const LAB_RANGE = [-1e9, 1e9];
+  // 「ふだんの範囲」: 外れていても保存はできるが、確認を出す（VITAL_RANGE の外は保存できない）
+  const VITAL_USUAL = { temp: [34, 42], sys: [80, 200], dia: [40, 130], pulse: [40, 180], weight: [20, 200] };
+  const hospOpts = () => alive(state.hospitals).map((h) => [h.id, h.name]);
+  const EDITORS = {
+    medicines: { label: '薬', fields: [
+      { k:'name', l:'薬名（必須）', t:'text', max:100, req:'薬名を入力してください。' }, { k:'dose', l:'用量', t:'text', max:50, ph:'例: 1錠' },
+      { k:'slots', l:'用法（記録のみ。通知はしません）', t:'slots' }, { k:'start', l:'服用開始日', t:'date' }, { k:'end', l:'服用終了日', t:'date' },
+      { k:'hospitalId', l:'処方した病院', t:'select' }, { k:'purpose', l:'目的（何のための薬か）', t:'text', max:200 }, { k:'memo', l:'メモ', t:'area', max:1000 }],
+      init: () => ({ active: true }),
+      check: (v) => v.start && v.end && v.end < v.start ? ['end', '服用終了日は、開始日以降にしてください。'] : null },
+    hospitals: { label: '病院', fields: [
+      { k:'name', l:'病院名（必須）', t:'text', max:100, req:'病院名を入力してください。' }, { k:'dept', l:'診療科', t:'text', max:100 },
+      { k:'address', l:'住所', t:'text', max:200 }, { k:'tel', l:'電話番号', t:'tel', max:30 }, { k:'hours', l:'診療時間', t:'text', max:200 }, { k:'memo', l:'メモ', t:'area', max:1000 }],
+      init: () => ({}), check: (v) => v.tel && !/^[0-9+\-() ]+$/.test(v.tel) ? ['tel', '電話番号は数字・+・-・() で入力してください。'] : null },
+    appointments: { label: '予約', fields: [
+      { k:'at', l:'日時（必須）', t:'dt', req:'日時を入力してください。' }, { k:'hospitalId', l:'病院', t:'select' }, { k:'dept', l:'診療科', t:'text', max:100 },
+      { k:'purpose', l:'目的', t:'text', max:200 }, { k:'bring', l:'持ち物', t:'text', max:300 }, { k:'memo', l:'メモ', t:'area', max:1000 }],
+      init: () => ({}), check: null },
+    visits: { label: '診察記録', fields: [
+      { k:'date', l:'受診日（必須）', t:'date', req:'受診日を入力してください。' }, { k:'hospitalId', l:'病院', t:'select' },
+      { k:'diagnosis', l:'診断', t:'area', max:500 }, { k:'instruction', l:'医師の指示', t:'area', max:500 }, { k:'prescribed', l:'薬が処方された', t:'check' },
+      { k:'next', l:'次回の予定日', t:'date' }, { k:'cost', l:'費用（円）', t:'int' }, { k:'memo', l:'メモ', t:'area', max:1000 }],
+      init: () => ({}), check: null },
+    vitals: { label: '測定', fields: [
+      { k:'at', l:'日時（必須）', t:'dt', now:true, req:'日時を入力してください。' },
+      { k:'temp', l:'体温（℃）', t:'num', range: VITAL_RANGE.temp }, { k:'sys', l:'最高血圧（mmHg）', t:'num', range: VITAL_RANGE.sys },
+      { k:'dia', l:'最低血圧（mmHg）', t:'num', range: VITAL_RANGE.dia }, { k:'pulse', l:'脈拍（回/分）', t:'num', range: VITAL_RANGE.pulse },
+      { k:'weight', l:'体重（kg）', t:'num', range: VITAL_RANGE.weight },
+      { k:'timing', l:'測定のタイミング', t:'opt', opts: [['', '指定なし'], ['朝', '朝'], ['夜', '夜'], ['その他', 'その他']] }, { k:'memo', l:'メモ', t:'area', max:1000 }],
+      init: () => ({}),
+      check: (v) => VITAL_KEYS.every((k) => v[k] === null) ? ['temp', '測った項目を1つ以上入力してください。'] :
+        (v.sys !== null && v.dia !== null && v.dia >= v.sys ? ['dia', '最低血圧は、最高血圧より低くしてください。'] : null),
+      warn: (v) => { const w = VITAL_KEYS.filter((k) => v[k] !== null && (v[k] < VITAL_USUAL[k][0] || v[k] > VITAL_USUAL[k][1]))
+        .map((k) => VITAL_LABEL[k] + ' ' + v[k] + ' は、ふだんの範囲（' + VITAL_USUAL[k][0] + '〜' + VITAL_USUAL[k][1] + '）から外れています。'); return w.length ? w.join('') : null; } },
+    symptoms: { label: '症状メモ', fields: [
+      { k:'at', l:'日時（必須）', t:'dt', now:true, req:'日時を入力してください。' }, { k:'symptom', l:'症状（必須）', t:'text', max:200, req:'症状を入力してください。' },
+      { k:'level', l:'程度', t:'opt', num:true, opts: [['', '未選択'], ['1', '1（ごく軽い）'], ['2', '2（軽い）'], ['3', '3（ふつう）'], ['4', '4（つらい）'], ['5', '5（とてもつらい）']] },
+      { k:'memo', l:'メモ', t:'area', max:1000 }],
+      init: () => ({}), check: null },
+    labResults: { label: '検査値', fields: [
+      { k:'date', l:'検査日（必須）', t:'date', req:'検査日を入力してください。' }, { k:'hospitalId', l:'病院', t:'select' },
+      { k:'name', l:'項目名（必須）', t:'text', max:100, list: () => labNames(), ph:'例: HbA1c', req:'項目名を入力してください。' },
+      { k:'value', l:'数値（必須）', t:'num', range: LAB_RANGE }, { k:'unit', l:'単位', t:'text', max:30, ph:'例: %' },
+      { k:'low', l:'基準の下限', t:'num', range: LAB_RANGE }, { k:'high', l:'基準の上限', t:'num', range: LAB_RANGE }],
+      init: () => ({ checkupId: '' }),
+      check: (v) => v.value === null ? ['value', '数値を入力してください。'] : (v.low !== null && v.high !== null && v.low > v.high ? ['low', '基準の下限は、上限以下にしてください。'] : null) }
+    ,
+    checkups: { label: '健診', fields: [
+      { k:'date', l:'受診日（必須）', t:'date', req:'受診日を入力してください。' }, { k:'venue', l:'会場・施設', t:'text', max:100 }, { k:'hospitalId', l:'病院（登録済みから選ぶ）', t:'select' },
+      { k:'kind', l:'種類', t:'text', max:50, ph:'例: 定期健診、人間ドック' }, { k:'grade', l:'総合判定（入力のまま保存）', t:'text', max:20, ph:'例: B' },
+      { k:'finding', l:'所見', t:'area', max:1000 }, { k:'issue', l:'指摘事項', t:'area', max:1000 },
+      { k:'issueStatus', l:'指摘事項への対応', t:'opt', opts: [['', '未設定'], ['open', '未対応'], ['done', '対応済み']] },
+      { k:'next', l:'次回の予定日', t:'date' }, { k:'memo', l:'メモ', t:'area', max:1000 }],
+      init: () => ({}), check: (v) => v.next && v.next <= v.date ? ['next', '次回の予定日は、受診日より後にしてください。'] : null }
+  };
+  const edDlg = $('#ed'), edForm = $('#edForm');
+  let edKind = null, editId = null, editBase = '', edOrig = '', allowClose = false, committing = false, downOnBackdrop = false;
+  const fid = (k) => '#ed-' + k;
+  const fieldHtml = (f) => {
+    const id = 'ed-' + f.k, lab = '<label for="' + id + '">' + f.l + '</label>', wrap = (inner) => '<div class="field">' + lab + inner + '</div>';
+    if(f.t === 'slots') return '<fieldset><legend>' + f.l + '</legend><div class="chks" id="' + id + '">' + SLOTS.map((s) => '<label><input type="checkbox" value="' + s + '">' + s + '</label>').join('') + '</div></fieldset>';
+    if(f.t === 'check') return '<div class="chks"><label><input type="checkbox" id="' + id + '">' + f.l + '</label></div>';
+    if(f.t === 'select' || f.t === 'opt') return wrap('<select id="' + id + '"></select>');
+    if(f.t === 'num') return wrap('<input id="' + id + '" type="number" inputmode="decimal" step="any" autocomplete="off">');
+    if(f.t === 'area') return wrap('<textarea id="' + id + '" rows="3" maxlength="' + f.max + '"></textarea>');
+    const type = f.t === 'dt' ? 'datetime-local' : f.t === 'int' ? 'number' : f.t;
+    return wrap('<input id="' + id + '" type="' + type + '"' + (f.list ? ' list="' + id + '-dl"' : '') + (f.max ? ' maxlength="' + f.max + '"' : '') + (f.t === 'int' ? ' inputmode="numeric" min="0" max="1000000000" step="1"' : '') + (f.ph ? ' placeholder="' + f.ph + '"' : '') + ' autocomplete="off">' +
+      (f.list ? '<datalist id="' + id + '-dl">' + f.list().map((n) => '<option value="' + esc(n) + '">').join('') + '</datalist>' : ''));
+  };
+  // 欄の値を読む（空の日付は ''、費用の空は null）
+  function readField(f){
+    const el = $(fid(f.k));
+    if(f.t === 'slots') return Array.from(el.querySelectorAll('input:checked')).map((x) => x.value);
+    if(f.t === 'check') return el.checked;
+    if(f.t === 'int' || f.t === 'num' || (f.t === 'opt' && f.num)) return el.value === '' ? null : Number(el.value);
+    return (f.t === 'date' || f.t === 'dt' || f.t === 'select') ? el.value : el.value.trim();
+  }
+  const edSnapshot = () => JSON.stringify(EDITORS[edKind].fields.map(readField));
+
+  // preset: 新規のときの初期値（健診から検査値を足すとき。checkupId は保存する項目へ引き継ぐ）
+  let edExtra = {};
+  function openEditor(kind, id, preset){
+    const cfg = EDITORS[kind], m = id ? findItem(kind, id) : null;
+    edExtra = !m && preset && preset.checkupId ? { checkupId: preset.checkupId } : {};
+    edKind = kind; editId = m ? m.id : null; editBase = m ? JSON.stringify(m) : '';
+    $('#edTitle').textContent = cfg.label + (m ? 'を編集' : 'を追加');
+    $('#edDel').hidden = !m;
+    $('#edFields').innerHTML = cfg.fields.map(fieldHtml).join('');
+    clearInvalid(edForm, 'edErr');
+    const x = m || (!id && preset) || {};
+    cfg.fields.forEach((f) => {
+      const el = $(fid(f.k)), v = x[f.k];
+      if(f.t === 'slots') el.querySelectorAll('input').forEach((c) => { c.checked = !!v && v.indexOf(c.value) >= 0; });
+      else if(f.t === 'check') el.checked = !!v;
+      else if(f.t === 'select'){
+        // 保存済みの病院が見つからないときも、元の値を失わないよう選択肢に残す
+        const hs = hospOpts();
+        el.innerHTML = '<option value="">未選択</option>' + hs.map((h) => '<option value="' + esc(h[0]) + '">' + esc(h[1]) + '</option>').join('') +
+          (v && !hs.some((h) => h[0] === v) ? '<option value="' + esc(v) + '">（削除済みの病院）</option>' : '');
+        el.value = v || '';
+      }
+      else if(f.t === 'opt'){
+        el.innerHTML = f.opts.map((o) => '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>').join('');
+        el.value = (v === undefined || v === null) ? '' : String(v);
+      }
+      else el.value = (v === undefined || v === null) ? (f.k === 'date' && !m ? todayISO() : (f.now && !m ? nowLocal() : '')) : v;
+    });
+    edOrig = edSnapshot();
+    edDlg.showModal();
+    $(fid(cfg.fields[0].k)).focus();
+  }
+  const edDirty = () => edDlg.open && edSnapshot() !== edOrig;
+  function closeEd(){ allowClose = true; edDlg.close(); }
+  // 入力があるときは、確認してから閉じる（確認の初期フォーカスは「戻る」側）
+  async function askCloseEd(){
+    if(!edDirty()){ closeEd(); return; }
+    if(await askConfirm('入力した内容は保存されません。閉じますか？', '閉じる', '戻る')) closeEd();
+  }
+  edDlg.addEventListener('cancel', (e) => { e.preventDefault(); askCloseEd(); });             // Esc
+  edDlg.addEventListener('close', () => {                                                      // 自分で閉じる以外の close は、入力を残して開き直す
+    if(allowClose){ allowClose = false; return; }
+    if(!edDlg.open) edDlg.showModal();
+  });
+  // 入力欄の中で押し始めて、外側で離したときに閉じない（背景で押し始めたときだけ閉じる）
+  edDlg.addEventListener('pointerdown', (e) => { downOnBackdrop = (e.target === edDlg); }, true);
+  edDlg.addEventListener('click', (e) => { if(e.target === edDlg && downOnBackdrop) askCloseEd(); downOnBackdrop = false; });
+  $('#edCancel').addEventListener('click', askCloseEd);
+  edForm.addEventListener('input', () => clearInvalid(edForm, 'edErr'));
+  // 同期・他タブの更新が来たとき、編集中でなければ閉じる（編集中の入力は消さない）
+  function closeEdIfClean(){ if(edDlg.open && !edDirty()) closeEd(); }
+
+  // 入力の検証。黙って直さず、問題の欄とメッセージを返す（読み込み用の sanitize* とは別）
+  function validateEd(){
+    const cfg = EDITORS[edKind], v = {};
+    for(const f of cfg.fields){
+      const el = $(fid(f.k));
+      if(el.validity && el.validity.badInput) return { el, msg: f.l.replace('（必須）', '') + 'が正しくありません。' };
+      v[f.k] = readField(f);
+      if(f.req && !v[f.k]) return { el, msg: f.req };
+      if(f.t === 'date' && v[f.k] && !isDate(v[f.k])) return { el, msg: f.l.replace('（必須）', '') + 'が正しくありません。' };
+      if(f.t === 'dt' && v[f.k] && !isDateTime(v[f.k])) return { el, msg: f.l.replace('（必須）', '') + 'が正しくありません。' };
+      if(f.t === 'num' && v[f.k] !== null && !(Number.isFinite(v[f.k]) && v[f.k] >= f.range[0] && v[f.k] <= f.range[1])) return { el, msg: f.l + 'は ' + f.range[0] + '〜' + f.range[1] + ' の範囲で入力してください。' };
+      if(f.t === 'int' && v[f.k] !== null && !(Number.isInteger(v[f.k]) && v[f.k] >= 0 && v[f.k] <= 1e9)) return { el, msg: f.l + 'は 0 以上の整数で入力してください。' };
+    }
+    const c = cfg.check && cfg.check(v);
+    if(c) return { el: $(fid(c[0])), msg: c[1] };
+    return { v };
+  }
+  edForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if(committing) return;                       // 確認画面の待ち中に、保存を二重に押させない
+    committing = true;
+    try{
+      clearInvalid(edForm, 'edErr');
+      const r = validateEd();
+      if(r.el){ showErr(r.el, r.msg, 'edErr'); return; }
+      // ふだんの範囲を外れた値は、確認してから保存する（入力ミスに気づけるように）
+      const warn = EDITORS[edKind].warn && EDITORS[edKind].warn(r.v);
+      if(warn && !(await askConfirm(warn + 'このまま保存しますか？', '保存する', '戻る'))) return;
+      const kind = edKind;
+      let prev = editId ? findItem(kind, editId) : null;
+      // 編集中に、他の端末で削除・更新されたとき
+      if(editId && (!prev || prev.deleted)){
+        if(!(await askConfirm('これは、編集中に他で削除されました。新しい項目として保存し直しますか？', '保存し直す', '戻る'))) return;
+        prev = null;
+      }else if(prev && JSON.stringify(prev) !== editBase){
+        if(!(await askConfirm('これは、編集中に他で更新されました。上書きしますか？', '上書きする', '戻る'))) return;
+      }
+      const t = nowISO();
+      const item = prev ? Object.assign({}, prev, r.v, { updatedAt: t }) : Object.assign({ id: uid(), createdAt: t, updatedAt: t, deleted: false }, EDITORS[kind].init(), edExtra, r.v);
+      if(!changeItem(kind, item, prev, '「' + nameOf(kind, item) + '」を' + (prev ? '保存しました' : '追加しました'))){ showErr(null, '保存できませんでした。書き出し（JSON）で保存してください。', 'edErr'); return; }
+      closeEd();
+      focusItem(item.id);
+    }finally{ committing = false; }
+  });
+  // 削除（ごみ箱へ。元に戻せる）
+  $('#edDel').addEventListener('click', () => {
+    const kind = edKind, m = editId && findItem(kind, editId);
+    closeEd();
+    if(m && !m.deleted && kind === 'checkups'){
+      // 健診を削除すると、その健診の検査値も一緒にごみ箱へ入る（同じ時刻で印をつけ、復元で一緒に戻す）
+      const t = nowISO(), labs = alive(state.labResults).filter((l) => l.checkupId === m.id);
+      changeMulti([['checkups', Object.assign({}, m, { deleted: true, updatedAt: t }), m]].concat(labs.map((l) => ['labResults', Object.assign({}, l, { deleted: true, updatedAt: t }), l])),
+        '「' + nameOf(kind, m) + '」を削除しました（' + (labs.length ? '検査値' + labs.length + '件も一緒に、' : '') + 'ごみ箱へ）');
+    }
+    else if(m && !m.deleted) changeItem(kind, Object.assign({}, m, { deleted: true, updatedAt: nowISO() }), m, '「' + nameOf(kind, m) + '」を削除しました（ごみ箱へ）');
+    focusItem(null);
+  });
+
+  // ---------- 緊急情報（読むだけの画面） ----------
+  function ageOf(birth){
+    const a = birth.split('-').map(Number), n = new Date();
+    let age = n.getFullYear() - a[0];
+    if(n.getMonth() + 1 < a[1] || (n.getMonth() + 1 === a[1] && n.getDate() < a[2])) age--;
+    return age;
+  }
+  function renderEmergency(){
+    const p = state.profile;
+    const none = '<span class="soft">（未登録）</span>';
+    const row = (label, html) => '<div class="er"><dt>' + label + '</dt><dd>' + (html || none) + '</dd></div>';
+    const meds = activeMeds().map((m) => '<li>' + esc(m.name) + (m.dose ? ' ' + esc(m.dose) : '') + (m.slots.length ? '（' + esc(m.slots.join('・')) + '）' : '') +
+      (m.end && m.end < todayISO() ? ' <span aria-hidden="true">▲</span>期間終了' : '') + '</li>');
+    const tel = p.contactTel ? '<a href="tel:' + esc(p.contactTel.replace(/[^0-9+]/g, '')) + '">' + esc(p.contactTel) + '</a>' : '';
+    $('#emgBody').innerHTML =
+      row('氏名', esc(p.name)) +
+      row('生年月日', p.birth ? esc(p.birth.replace(/-/g, '/')) + '（' + ageOf(p.birth) + '歳）' : '') +
+      row('血液型', p.blood ? esc(p.blood) + '型' : '') +
+      row('身長', p.height ? esc(p.height) + ' cm' : '') +
+      row('アレルギー', esc(p.allergy)) + row('持病', esc(p.disease)) + row('既往歴', esc(p.history)) +
+      '<div class="er"><dt>服用中の薬</dt><dd>' + (meds.length ? '<ul>' + meds.join('') + '</ul>' : '<span class="soft">（なし）</span>') + '</dd></div>' +
+      row('かかりつけ医', esc(p.doctor)) +
+      row('緊急連絡先', esc(p.contactName) + (p.contactName && tel ? '　' : '') + tel);
+  }
+  function openEmergency(){
+    renderEmergency();
+    $('#emg').showModal();
+    $('#emgTitle').focus(); // 先頭から読めるよう、見出しにフォーカス（末尾のボタンではスクロールが下に飛ぶ）
+  }
+  $('#emgBtn').addEventListener('click', openEmergency);
+
+  // ---------- 診察用の要約（読むだけの画面。印刷は段階4） ----------
+  let sumDays = 30;
+  const SUM_MAX = 10; // 記録・症状メモは新しい順にこの件数まで（残りは件数だけ示す）
+  function renderSummary(){
+    const p = state.profile, none = '<span class="soft">（未登録）</span>';
+    const row = (label, html) => '<div class="er"><dt>' + label + '</dt><dd>' + (html || none) + '</dd></div>';
+    const d0 = new Date(todayISO() + 'T00:00'); d0.setDate(d0.getDate() - (sumDays - 1));
+    const from = d0.getTime(), to = new Date(todayISO() + 'T23:59').getTime();
+    const inP = (x) => { const t = new Date(x.at).getTime(); return t >= from && t <= to; };
+    const more = (n) => n > SUM_MAX ? '<div class="soft">ほか' + (n - SUM_MAX) + '件（「記録」タブで見られます）</div>' : '';
+    const sec = (title, html) => '<h3>' + title + '</h3>' + html;
+    // 薬
+    const meds = activeMeds().map((m) => '<li>' + esc(m.name) + (m.dose ? ' ' + esc(m.dose) : '') + (m.slots.length ? '（' + esc(m.slots.join('・')) + '）' : '') + '</li>');
+    // 健康記録
+    const vs = alive(state.vitals).filter(inP).sort((a, b) => a.at < b.at ? 1 : -1);
+    const vl = vs.slice(0, SUM_MAX).map((x) => { const fl = flagsOf(x); return '<li>' + esc(ymdhm(x.at)) + (x.timing ? '（' + esc(x.timing) + '）' : '') + ' ' + esc(vitalText(x)) + (fl.length ? ' <span class="warn">' + esc(fl.join('　')) + '</span>' : '') + '</li>'; });
+    // 検査値（項目ごとの最新）
+    const labs = alive(state.labResults), ln = labNames().map((n) => {
+      const rs = labs.filter((x) => x.name === n).sort(labSort), x = rs[rs.length - 1], f = labFlag(x);
+      return '<li>' + esc(n) + ' ' + esc(fmtNum(x.value)) + (x.unit ? ' ' + esc(x.unit) : '') + ' <span class="soft">（' + esc(ymd(x.date)) + '）</span>' +
+        (f ? ' <span class="warn"><span aria-hidden="true">▲</span>' + (f === 'high' ? '高い' : '低い') + '</span>' : '') + '</li>';
+    });
+    // 症状メモ
+    const ss = alive(state.symptoms).filter(inP).sort((a, b) => a.at < b.at ? 1 : -1);
+    const sl = ss.slice(0, SUM_MAX).map((x) => '<li>' + esc(ymdhm(x.at)) + ' ' + esc(x.symptom) + (x.level !== null ? '（程度 ' + x.level + '／5）' : '') + '</li>');
+    // 直近の健診
+    const c = alive(state.checkups).slice().sort((a, b) => a.date < b.date ? 1 : -1)[0];
+    const ck = c ? '<div class="er"><dd><b>' + esc(ymd(c.date)) + '</b>' + (c.venue ? ' ' + esc(c.venue) : '') + (c.kind ? '（' + esc(c.kind) + '）' : '') +
+      (c.grade ? '<div>総合判定: <b>' + esc(c.grade) + '</b></div>' : '') + (c.finding ? '<div>所見: ' + esc(c.finding) + '</div>' : '') +
+      (c.issue ? '<div>指摘事項: ' + esc(c.issue) + (c.issueStatus === 'open' ? ' <span class="warn"><span aria-hidden="true">▲</span>未対応</span>' : (c.issueStatus === 'done' ? '（対応済み）' : '')) + '</div>' : '') +
+      (c.next ? '<div class="soft">次回の予定日: ' + esc(ymd(c.next)) + '</div>' : '') + '</dd></div>' : '<p class="soft">（健診の登録はありません）</p>';
+    const list = (items, empty) => items.length ? '<ul>' + items.join('') + '</ul>' : '<p class="soft">' + empty + '</p>';
+    $('#sumBody').innerHTML =
+      sec('基本情報', '<dl>' + row('氏名', esc(p.name)) + row('生年月日', p.birth ? esc(ymd(p.birth)) + '（' + ageOf(p.birth) + '歳）' : '') +
+        row('血液型', p.blood ? esc(p.blood) + '型' : '') + row('身長', p.height ? esc(p.height) + ' cm' : '') +
+        row('アレルギー', esc(p.allergy)) + row('持病', esc(p.disease)) + row('既往歴', esc(p.history)) + row('かかりつけ医', esc(p.doctor)) + '</dl>') +
+      sec('服用中の薬', list(meds, '（なし）')) +
+      sec('健康記録（直近' + CHART_PERIODS.filter((q) => q[0] === sumDays)[0][1] + '・' + vs.length + '件）', list(vl, 'この期間の記録はありません。') + more(vs.length)) +
+      sec('検査値（項目ごとの最新）', list(ln, '（検査値の登録はありません）')) +
+      sec('症状メモ（直近' + CHART_PERIODS.filter((q) => q[0] === sumDays)[0][1] + '・' + ss.length + '件）', list(sl, 'この期間の症状メモはありません。') + more(ss.length)) +
+      sec('直近の健診', ck);
+  }
+  function openSummary(){
+    $('#sumDays').innerHTML = CHART_PERIODS.map((q) => '<option value="' + q[0] + '"' + (q[0] === sumDays ? ' selected' : '') + '>' + q[1] + '</option>').join('');
+    renderSummary();
+    $('#sum').showModal();
+    $('#sumTitle').focus();
+  }
+  $('#sumBtn').addEventListener('click', openSummary);
+  $('#sumDays').addEventListener('change', (e) => { sumDays = Number(e.target.value); renderSummary(); });
+
+  // ---------- 元に戻す（トースト） ----------
+  let toastTimer = null;
+  const toastEl = $('#toast');
+  function hideToast(){
+    toastEl.classList.remove('show');
+    try{ if(toastEl.hidePopover && toastEl.matches(':popover-open')) toastEl.hidePopover(); }catch(e){}
+  }
+  // important: 警告など、読む時間が要るメッセージ（長く出す）。<dialog> を使うアプリでも隠れないよう、popover の最前面の層に出す
+  function toast(msg, undo, important){
+    $('#toastMsg').textContent = msg;
+    $('#live').textContent = ''; setTimeout(() => { $('#live').textContent = msg; }, 50); // display:none から出る通知は読まれにくいため、常設の領域にも入れる
+    undoFn = undo || null;
+    $('#toastUndo').style.display = undo ? '' : 'none';
+    toastEl.classList.add('show');
+    try{ if(toastEl.showPopover && !toastEl.matches(':popover-open')) toastEl.showPopover(); }catch(e){}
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, important ? 30000 : 6000);
+  }
+  // 外部の更新（他タブ・クラウド）が入ったら、古い「元に戻す」は使えなくする
+  function clearUndo(){
+    if(undoFn){ undoFn = null; hideToast(); }
+  }
+  $('#toastUndo').addEventListener('click', () => {
+    if(undoFn) undoFn();
+    undoFn = null;
+    hideToast();
+  });
+  toastEl.addEventListener('click', (e) => { if(!e.target.closest('button')) hideToast(); });
+  $('#toastClose').addEventListener('click', () => { undoFn = null; hideToast(); });
+
+  // ---------- 確認画面（標準の confirm の代わり） ----------
+  // 押したボタンが ok なら true。安全な方（戻る）に初期フォーカスを置く
+  function askConfirm(msg, okLabel, noLabel){
+    return new Promise((resolve) => {
+      const d = $('#cfm');
+      $('#cfmMsg').textContent = msg; $('#cfmOk').textContent = okLabel; $('#cfmNo').textContent = noLabel || 'キャンセル';
+      d.returnValue = 'no';
+      d.addEventListener('close', () => resolve(d.returnValue === 'ok'), { once: true });
+      d.showModal(); $('#cfmNo').focus();
+    });
+  }
+
+  // ---------- 書き出し・読み込み（バックアップ用） ----------
+  function exportJson(prefix){
+    const blob = new Blob([JSON.stringify({ app: APP_NAME, data: state })], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'medical-' + (prefix || '') + todayISO() + '.json';
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  $('#exportBtn').addEventListener('click', () => exportJson());
+  $('#importBtn').addEventListener('click', () => $('#importFile').click());
+  // 壊れたデータの退避（-corrupt）と、取り込み前の退避（-prev-）を、読み込める形のJSONで書き出す
+  $('#rescueBtn').addEventListener('click', () => {
+    let keys = [];
+    try{ keys = Object.keys(localStorage).filter((k) => k.indexOf(STORAGE_KEY + '-') === 0).sort(); }catch(e){}
+    if(!keys.length){ toast('退避されたデータはありません'); return; }
+    keys.forEach((k, n) => setTimeout(() => {
+      let text = localStorage.getItem(k) || '';
+      try{ const o = JSON.parse(text); if(o && typeof o === 'object' && !Array.isArray(o)) text = JSON.stringify({ app: APP_NAME, data: o }); }catch(e){ /* 壊れたデータは、そのまま書き出す */ }
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+      link.download = 'medical-退避' + k.slice(STORAGE_KEY.length) + '.json';
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }, n * 400));
+    toast(keys.length + '件の退避データを書き出します');
+  });
+  $('#importFile').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    try{
+      const d = JSON.parse(await file.text());
+      if(!d || typeof d.data !== 'object' || !d.data || Array.isArray(d.data)) throw new Error('形式が違います');
+      // 他のアプリのバックアップや、別形式のファイルを取り込まない
+      if(d.app !== undefined && d.app !== APP_NAME) throw new Error('このアプリのバックアップではありません');
+      if(!LISTS.concat('profile').some((k) => k in d.data)) throw new Error('形式が違います');
+      const r = sanitizeState(d.data);
+      const next = r.state;
+      const cur = countItems(state), nn = countItems(next);
+      let msg = '現在のデータ（' + cur + '件）を、読み込んだ ' + nn + ' 件に置き換えます。よろしいですか？';
+      if(r.bad) msg = '読み込めない項目が' + r.bad + '件ありました（取り除きます）。 ' + msg;
+      if(!nn && cur) msg = '【注意】ファイルは0件です。現在の' + cur + '件がすべて消えます。 ' + msg;
+      else if(cur >= 5 && nn < cur / 2) msg = '【注意】ファイルの件数が現在の半分未満です。 ' + msg;
+      if(!(await askConfirm(msg, '置き換える', 'やめる'))) return;
+      // 置き換える前のデータを退避する（日時つきで3世代まで）。あわせてJSONも自動で保存する
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(raw){
+          localStorage.setItem(STORAGE_KEY + '-prev-' + Date.now(), raw);
+          Object.keys(localStorage).filter((k) => k.indexOf(STORAGE_KEY + '-prev-') === 0).sort().slice(0, -3).forEach((k) => localStorage.removeItem(k));
+        }
+      }catch(e2){ /* 退避できなくても、JSONの自動保存で守る */ }
+      exportJson('取り込み前-');
+      const before = state;
+      if(!setState(next)) return;
+      render();
+      toast('読み込みました', () => { if(setState(before)) render(); });
+    }catch(err){
+      toast('読み込めませんでした: ' + err.message);
+    }
+  });
+
+  // ---------- 表示の切り替え（自動 → ライト → ダーク） ----------
+  const THEME_NEXT = { auto:'light', light:'dark', dark:'auto' };
+  const THEME_LABEL = { auto:'◐ 自動', light:'☀ ライト', dark:'☾ ダーク' };
+  function getTheme(){
+    try{ const t = localStorage.getItem(THEME_KEY); return (t === 'light' || t === 'dark') ? t : 'auto'; }
+    catch(e){ return 'auto'; }
+  }
+  function applyTheme(t){
+    if(t === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', t);
+    $('#themeBtn').textContent = THEME_LABEL[t];
+    $('#themeBtn').setAttribute('aria-label', '表示の切り替え（現在: ' + THEME_LABEL[t].slice(2) + '。押すと' + THEME_LABEL[THEME_NEXT[t]].slice(2) + '）');
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+      const dark = (m.getAttribute('media') || '').indexOf('dark') >= 0;
+      m.setAttribute('content', t === 'light' ? '#F4F7F6' : (t === 'dark' ? '#0F1514' : (dark ? '#0F1514' : '#F4F7F6')));
+    });
+  }
+  $('#themeBtn').addEventListener('click', () => {
+    const next = THEME_NEXT[getTheme()];
+    try{ localStorage.setItem(THEME_KEY, next); }catch(e){ /* 保存できなくても表示は切り替える */ }
+    applyTheme(next);
+  });
+  applyTheme(getTheme());
+
+  // ---------- オフライン対応（PWA） ----------
+  if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
+    navigator.serviceWorker.register('medical-sw.js').catch(() => {});
+  }
+
+  load();
+  render();
+
+  // ---------- クラウド同期（cloud-sync.js） ----------
+  function startCloud(){
+    if(!window.CloudSync) return;
+    cloud = CloudSync.init({
+      appName: APP_NAME,
+      key: SYNC_KEY,
+      getData: function(){ return { data: state }; },
+      trustEmpty: function(){ return !loadFailed; }, // 破損で空になっただけなら、空をクラウドへ送らない
+      hasData: function(){ return !isEmptyState(state); },
+      applyData: function(d){
+        if(!d || typeof d.data !== 'object' || !d.data) throw new Error('データ形式が違います');
+        const next = sanitizeState(d.data).state;
+        // 先に端末へ保存する。失敗したら画面も古いままにして、次回の同期でやり直す
+        try{ const s = JSON.stringify(next); localStorage.setItem(STORAGE_KEY, s); lastRaw = s; }
+        catch(e){ notice('クラウドのデータを端末に保存できませんでした。'); throw e; }
+        state = next;
+        loadFailed = false;
+        clearUndo();
+        closeEdIfClean();
+        render();
+      }
+    });
+  }
+  // 同期スクリプトは defer で後から読むため、読み込みが終わってから始める（CDNが遅くても、画面は先に出る）
+  if(document.readyState === 'complete') startCloud(); else window.addEventListener('load', startCloud);
+})();
+</script>
+</body>
+</html>
