@@ -349,9 +349,10 @@
     if(!x || typeof x !== 'object') return null;
     const name = str(x.name, 100); if(!name) return null;
     const start = dateOrEmpty(x.start), end = dateOrEmpty(x.end);
-    if(start === null || end === null || (start && end && end < start)) return null;
+    const stock = intOrNull(x.stock, 1e9); // 残り錠数（未入力は null）
+    if(start === null || end === null || (start && end && end < start) || stock === undefined) return null;
     return Object.assign(base(x), { name, dose: str(x.dose, 50), slots: Array.isArray(x.slots) ? SLOTS.filter((s) => x.slots.indexOf(s) >= 0) : [],
-      start, end, active: x.active !== false, hospitalId: str(x.hospitalId, 60), purpose: str(x.purpose, 200), memo: str(x.memo, 1000) });
+      stock, start, end, active: x.active !== false, hospitalId: str(x.hospitalId, 60), purpose: str(x.purpose, 200), memo: str(x.memo, 1000) });
   }
   function sanitizeHospital(x){
     if(!x || typeof x !== 'object') return null;
@@ -758,7 +759,7 @@
     const status = !m.active ? '<div><span class="tag">服用終了</span></div>' : (medExpired(m) ? '<div class="warn"><span aria-hidden="true">▲</span>期間終了（終了日を過ぎています）</div>' : '');
     return card('medicines', m.id, m.active ? '' : 'ended',
       '<div><b class="mn">' + esc(m.name) + '</b>' + (m.dose ? ' ' + esc(m.dose) : '') + '</div>' +
-      line(m.slots.length ? '用法: ' + m.slots.join('・') : '') + line(period ? '期間: ' + period : '') +
+      line(m.slots.length ? '用法: ' + m.slots.join('・') : '') + line(m.stock !== null ? '残り: ' + m.stock + '錠' : '') + line(period ? '期間: ' + period : '') +
       line(hospName(m.hospitalId) ? '病院: ' + hospName(m.hospitalId) : '') + line(m.purpose ? '目的: ' + m.purpose : '') + status +
       '<div class="acts">' + editBtn(m.name) +
       '<button type="button" data-act="toggle" aria-label="' + esc(m.name) + 'の' + (m.active ? '服用を終了する' : '服用中に戻す') + '">' + (m.active ? '服用を終了する' : '服用中に戻す') + '</button></div>');
@@ -1108,7 +1109,7 @@
   const EDITORS = {
     medicines: { label: '薬', fields: [
       { k:'name', l:'薬名（必須）', t:'text', max:100, req:'薬名を入力してください。' }, { k:'dose', l:'用量', t:'text', max:50, ph:'例: 1錠' },
-      { k:'slots', l:'用法（記録のみ。通知はしません）', t:'slots' }, { k:'start', l:'服用開始日', t:'date' }, { k:'end', l:'服用終了日', t:'date' },
+      { k:'slots', l:'用法（記録のみ。通知はしません）', t:'slots' }, { k:'stock', l:'残り錠数（錠）', t:'int' }, { k:'start', l:'服用開始日', t:'date' }, { k:'end', l:'服用終了日', t:'date' },
       { k:'hospitalId', l:'処方した病院', t:'select' }, { k:'purpose', l:'目的（何のための薬か）', t:'text', max:200 }, { k:'memo', l:'メモ', t:'area', max:1000 }],
       init: () => ({ active: true }),
       check: (v) => v.start && v.end && v.end < v.start ? ['end', '服用終了日は、開始日以降にしてください。'] : null },
