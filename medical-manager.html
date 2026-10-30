@@ -137,6 +137,7 @@
   .card.attn{ border-left:5px solid var(--danger); }
   /* お薬手帳・通院・設定: 見出しの左線、薬名・日時を大きく、設定の入力欄を面にまとめる */
   #v-med h3, #v-visit h3, #v-set h3{ padding-left:8px; border-left:4px solid var(--accent); }
+  h4.grp{ margin:14px 0 6px; font-size:1rem; color:var(--ink-soft); }
   .card .mn{ font-size:1.15rem; }
   .card.ended .mn{ color:var(--ink-soft); }
   #pfForm, #rgForm{ padding:var(--sp-3); background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); }
@@ -783,13 +784,48 @@
       '<div class="acts">' + editBtn(ymdhm(a.at) + 'の予約') + '</div>');
   }
   function visitCard(v){
-    const hn = hospName(v.hospitalId);
     return card('visits', v.id, '',
-      '<div><b class="mn">' + esc(ymd(v.date)) + '</b>' + (hn ? ' ' + esc(hn) : '') + '</div>' +
+      '<div><b class="mn">' + esc(ymd(v.date)) + '</b></div>' +
       line(v.diagnosis ? '診断: ' + v.diagnosis : '') + line(v.instruction ? '指示: ' + v.instruction : '') +
       line(v.prescribed ? '処方: あり' : '') + line(v.next ? '次回予定: ' + ymd(v.next) : '') + line(v.cost !== null ? '費用: ' + yen(v.cost) : '') +
       '<div class="acts">' + editBtn(ymd(v.date) + 'の診察記録') + '</div>');
   }
+  // 診察記録を病院ごとにまとめる（新しい日付順に並んだ vs を受け取る。最近行った病院が上）
+  // 病院が2つ以上あるときは、病院で絞り込むボタンを上に出す。1つのまとまりは最新5件まで、残りは「さらに見る」で開く
+  const VISIT_LIMIT = 5;
+  let visitSel = '*';          // 絞り込み中の病院id（'*'＝すべて、''＝病院の指定なし）。保存しない
+  const visitMore = new Set(); // 「さらに見る」で全件開いた病院id
+  function visitGroups(vs){
+    const groups = [], idx = new Map();
+    vs.forEach((v) => {
+      const k = v.hospitalId || '';
+      if(!idx.has(k)){ idx.set(k, groups.length); groups.push({ key: k, name: hospName(k) || '', list: [] }); }
+      groups[idx.get(k)].list.push(v);
+    });
+    if(visitSel !== '*' && !idx.has(visitSel)) visitSel = '*';
+    const gname = (g) => g.name || '病院の指定なし';
+    const chip = (k, l) => '<button type="button" data-vsel="' + esc(k) + '" aria-pressed="' + (visitSel === k) + '">' + esc(l) + '</button>';
+    const chips = groups.length > 1 ? '<div class="bar" role="group" aria-label="病院で絞り込む">' + chip('*', 'すべて（' + vs.length + '）') +
+      groups.map((g) => chip(g.key, gname(g) + '（' + g.list.length + '）')).join('') + '</div>' : '';
+    return chips + groups.filter((g) => visitSel === '*' || g.key === visitSel).map((g) => {
+      const list = visitMore.has(g.key) ? g.list : g.list.slice(0, VISIT_LIMIT), rest = g.list.length - list.length;
+      return '<h4 class="grp">' + esc(gname(g)) + '（' + g.list.length + '件）</h4>' + list.map(visitCard).join('') +
+        (rest > 0 ? '<div class="bar"><button type="button" data-vmore="' + esc(g.key) + '">さらに' + rest + '件を見る</button></div>' : '');
+    }).join('');
+  }
+  $('#visitBody').addEventListener('click', (e) => {
+    const s = e.target.closest('button[data-vsel]'), m = e.target.closest('button[data-vmore]');
+    if(s){
+      visitSel = s.dataset.vsel; renderVisitTab();
+      const nb = Array.from(document.querySelectorAll('#visitBody button[data-vsel]')).filter((x) => x.dataset.vsel === visitSel)[0]; if(nb) nb.focus();
+    }else if(m){
+      // 開く前の最後のカードを覚えておき、開いた後はその次（新しく出た最初のカード）へフォーカスを移す
+      const last = m.closest('.bar').previousElementSibling, lastId = last && last.dataset.id;
+      visitMore.add(m.dataset.vmore); renderVisitTab();
+      const lc = Array.from(document.querySelectorAll('#visitBody .card[data-kind=visits]')).filter((x) => x.dataset.id === lastId)[0];
+      const fb = lc && lc.nextElementSibling && lc.nextElementSibling.querySelector('button'); if(fb) fb.focus();
+    }
+  });
   function hospCard(h){
     return card('hospitals', h.id, '',
       '<div><b class="mn">' + esc(h.name) + '</b></div>' + line(h.dept ? '診療科: ' + h.dept : '') + line(h.address ? '住所: ' + h.address : '') +
@@ -808,7 +844,7 @@
       addBar([['appointments', '予約を追加', 1], ['visits', '診察記録を追加'], ['hospitals', '病院を追加']]) +
       '<h3>これからの予約（' + next.length + '件）</h3>' + (next.length ? next.map((a) => apCard(a, false)).join('') : none('予定はありません。')) +
       (past.length ? '<h3>過去の予約（' + past.length + '件）</h3>' + past.map((a) => apCard(a, true)).join('') : '') +
-      '<h3>診察記録（' + vs.length + '件）</h3>' + (vs.length ? vs.map(visitCard).join('') : none('まだありません。')) +
+      '<h3>診察記録（' + vs.length + '件）</h3>' + (vs.length ? visitGroups(vs) : none('まだありません。')) +
       '<h3>病院（' + hs.length + '件）</h3>' + (hs.length ? hs.map(hospCard).join('') : none('まだありません。'));
   }
   // 記録タブ: 測定と症状メモを、新しい順に並べる。日付で絞り込める
