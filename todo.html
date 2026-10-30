@@ -143,7 +143,11 @@
   .tabs::-webkit-scrollbar{display:none;}
   .tabs button{flex:none;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;cursor:pointer;white-space:nowrap;}
   .tabs button{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;}
-  .tabs button.tab-drag{box-shadow:var(--shadow-pop);transform:scale(1.06);cursor:grabbing;}
+  .tabs button[hidden]{display:none;}
+  .tabs button.tc::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gc);margin-right:6px;vertical-align:1px;}
+  .tabs button.tc.active{background:var(--gc);border-color:var(--gc);}
+  .tabs button.tc.active::before{background:var(--paper);}
+  .tabs button.tab-drag,.gbar button.tab-drag{box-shadow:var(--shadow-pop);transform:scale(1.06);cursor:grabbing;}
   .tabs button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
   /* グループの切り替え帯 */
   .gbar{display:flex;gap:8px;overflow-x:auto;padding:0 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
@@ -481,6 +485,18 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   </div>
 </dialog>
 
+<!-- タブの管理 -->
+<dialog class="sheet" id="tabDlg" aria-labelledby="tabTitle">
+  <h3 id="tabTitle" tabindex="-1" autofocus>タブの管理</h3>
+  <div class="hint">「すべて」「今日」などの並び順と、表示するかどうか、色を選べます。タブをドラッグしても並べ替えられます。この端末だけの設定です（タスクは消えません）。</div>
+  <ul class="st-list" id="tabList"></ul>
+  <div class="row">
+    <button type="button" class="btn" id="tabResetBtn">初期の並びに戻す</button>
+    <span class="grow"></span>
+    <button type="button" class="btn primary" data-close>閉じる</button>
+  </div>
+</dialog>
+
 <!-- 確認 -->
 <dialog class="sheet" id="confirmDlg" aria-labelledby="confirmMsg">
   <p id="confirmMsg" style="font-size:15px;line-height:1.6;"></p>
@@ -513,6 +529,12 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   let statuses = defaultStatuses();
   let groups = [];                    // グループ（リスト）: { id, name, color }
   let currentTab = 'all';
+  const TABHIDDEN_KEY = 'todo-tab-hidden'; // 隠すタブ（この端末だけ）
+  const TABCOLOR_KEY = 'todo-tab-colors'; // タブの色 { タブ名: 色名 }（この端末だけ）
+  let tabColors = {};
+  try{ const c = JSON.parse(localStorage.getItem(TABCOLOR_KEY) || '{}'); if(c && typeof c==='object' && !Array.isArray(c)) Object.keys(c).forEach(k=>{ if(Object.prototype.hasOwnProperty.call(COLORS, c[k])) tabColors[k] = c[k]; }); }catch(e){}
+  const tabHidden = new Set();
+  try{ const h = JSON.parse(localStorage.getItem(TABHIDDEN_KEY) || '[]'); if(Array.isArray(h)) h.forEach(k=>tabHidden.add(String(k))); }catch(e){}
   let statusFilter = null;
   let groupFilter = null;             // null=すべて、'__none'=グループなし、それ以外=グループID
   let sortMode = 'dateDesc';
@@ -749,6 +771,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     openMenu($id('topMenuBtn'), [
       { label:'状態の管理', run:()=>openStatusMgr() },
       { label:'グループの管理', run:()=>openGroupMgr() },
+      { label:'タブの管理', run:()=>openTabMgr() },
       { label:'完了をすべてアーカイブ（'+archivable+'件）', run:()=>archiveAllDone() },
       { label:'データ（バックアップ）', run:()=>openDlg($id('dataDlg')) },
       { label:'テーマ：'+THEME_LABEL[cur]+'（タップで切替）', run:()=>setTheme(next) }
@@ -1503,6 +1526,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const labels = { all:'すべて', open:'未完了', today:'今日', overdue:'期限切れ', done:'完了', archive:'アーカイブ', trash:'ごみ箱' };
     document.querySelectorAll('#tabs button[data-tab]').forEach(b=>{
       b.textContent = labels[b.dataset.tab]+' ('+counts[b.dataset.tab]+')';
+      b.hidden = tabHidden.has(b.dataset.tab);
+      const tcol = tabColors[b.dataset.tab];
+      b.classList.toggle('tc', !!tcol);
+      if(tcol) b.style.setProperty('--gc', 'var(--c-'+tcol+'-fg)'); else b.style.removeProperty('--gc');
       const on = b.dataset.tab===currentTab;
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -2003,6 +2030,107 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     bar.addEventListener('pointercancel', end);
     bar.addEventListener('click', function(e){ if(Date.now()-justDragged < 300){ e.stopImmediatePropagation(); e.preventDefault(); } }, true);
     bar.addEventListener('contextmenu', function(e){ if(td && td.on) e.preventDefault(); });
+  })();
+  // ---- タブの管理（並び順・表示/非表示）。グループの管理と同じ作り ----
+  const TAB_DEFAULT = ['all','open','today','overdue','done','archive','trash'];
+  const TAB_LABEL = { all:'すべて', open:'未完了', today:'今日', overdue:'期限切れ', done:'完了', archive:'アーカイブ', trash:'ごみ箱' };
+  const tabKeys = ()=>Array.from($id('tabs').children).map(b=>b.dataset.tab);
+  function saveTabPrefs(){
+    try{ localStorage.setItem(TABORDER_KEY, JSON.stringify(tabKeys())); localStorage.setItem(TABHIDDEN_KEY, JSON.stringify(Array.from(tabHidden))); localStorage.setItem(TABCOLOR_KEY, JSON.stringify(tabColors)); }catch(e){}
+  }
+  function ensureTab(){ // 表示中のタブがなくならないようにし、選択中のタブが隠れたら先頭の表示タブへ移る
+    if(tabKeys().every(k=>tabHidden.has(k))) tabHidden.delete('all');
+    if(tabHidden.has(currentTab)) currentTab = tabKeys().find(k=>!tabHidden.has(k)) || 'all';
+  }
+  function openTabMgr(){ renderTabMgr(); openDlg($id('tabDlg')); }
+  function renderTabMgr(){
+    const keys = tabKeys();
+    $id('tabList').innerHTML = keys.map((k,i)=>
+      '<li class="st-row" data-tab="'+k+'"><div class="st-bot">'+
+        '<label class="chk-l"><input type="checkbox" class="tab-show"'+(tabHidden.has(k)?'':' checked')+'> 表示</label>'+
+        '<strong>'+TAB_LABEL[k]+'</strong>'+
+        '<div class="st-ops">'+
+          '<button type="button" class="icon-btn" data-op="up" aria-label="上へ"'+(i===0?' disabled':'')+'>↑</button>'+
+          '<button type="button" class="icon-btn" data-op="down" aria-label="下へ"'+(i===keys.length-1?' disabled':'')+'>↓</button>'+
+        '</div></div>'+
+        '<div class="swatches" role="group" aria-label="色（もう一度押すと色なし）">'+Object.keys(COLORS).map(c=>'<button type="button" class="swc" data-color="'+c+'" style="--gc:var(--c-'+c+'-fg)" aria-pressed="'+(tabColors[k]===c)+'" aria-label="'+COLORS[c]+'"></button>').join('')+'</div></li>'
+    ).join('');
+  }
+  $id('tabList').addEventListener('change', function(e){
+    const row = e.target.closest('.st-row'); if(!row || !e.target.classList.contains('tab-show')) return;
+    if(e.target.checked) tabHidden.delete(row.dataset.tab); else tabHidden.add(row.dataset.tab);
+    ensureTab(); saveTabPrefs(); renderTabMgr(); render();
+  });
+  $id('tabList').addEventListener('click', function(e){
+    const sc = e.target.closest('[data-color]');
+    if(sc){
+      const k = sc.closest('.st-row').dataset.tab;
+      if(!Object.prototype.hasOwnProperty.call(COLORS, sc.dataset.color)) return;
+      if(tabColors[k]===sc.dataset.color) delete tabColors[k]; else tabColors[k] = sc.dataset.color;
+      saveTabPrefs(); renderTabMgr(); render();
+      return;
+    }
+    const b = e.target.closest('[data-op]'); if(!b) return;
+    const bar = $id('tabs'), btn = bar.querySelector('[data-tab="'+CSS.escape(b.closest('.st-row').dataset.tab)+'"]'); if(!btn) return;
+    if(b.dataset.op==='up' && btn.previousElementSibling) bar.insertBefore(btn, btn.previousElementSibling);
+    else if(b.dataset.op==='down' && btn.nextElementSibling) bar.insertBefore(btn.nextElementSibling, btn);
+    else return;
+    saveTabPrefs(); renderTabMgr(); render();
+  });
+  $id('tabResetBtn').addEventListener('click', function(){
+    const bar = $id('tabs');
+    TAB_DEFAULT.forEach(k=>{ const b = bar.querySelector('[data-tab="'+k+'"]'); if(b) bar.appendChild(b); });
+    tabHidden.clear(); tabColors = {}; saveTabPrefs(); renderTabMgr(); render();
+  });
+  ensureTab(); render();
+
+  // グループ帯の並び順: タブと同じくドラッグ（スマホは長押し）で入れ替え。「すべて」「なし」は動かさず、グループ本体の順番を保存する
+  (function(){
+    const bar = $id('groupBar');
+    const isGrp = b=>!!b && !!b.dataset.gf && b.dataset.gf!=='__none';
+    let gd = null, gHold = null, justDragged = 0;
+    const start = ()=>{ gd.on = true; gd.btn.classList.add('tab-drag'); closeMenu(false); };
+    bar.addEventListener('pointerdown', function(e){
+      const btn = e.target.closest('button[data-gf]');
+      if(!isGrp(btn) || e.button>0) return;
+      gd = { btn, x:e.clientX, y:e.clientY, on:false, touch:e.pointerType==='touch', id:e.pointerId };
+      if(gd.touch) gHold = setTimeout(function(){ if(gd && !gd.on){ start(); if(navigator.vibrate) navigator.vibrate(10); } }, 400);
+    });
+    bar.addEventListener('pointermove', function(e){
+      if(!gd) return;
+      if(!gd.on){
+        if(Math.hypot(e.clientX-gd.x, e.clientY-gd.y) <= 8) return;
+        if(gd.touch){ clearTimeout(gHold); gd = null; return; } // 長押し前に動かしたら通常のスクロール
+        start();
+      }
+      try{ gd.btn.setPointerCapture(gd.id); }catch(_){}
+      const others = Array.from(bar.children).filter(x=>x!==gd.btn && isGrp(x));
+      const next = others.find(s=>{ const r = s.getBoundingClientRect(); return e.clientX < r.left + r.width/2; });
+      if(next){ if(gd.btn.nextElementSibling!==next) bar.insertBefore(gd.btn, next); }
+      else {
+        const none = bar.querySelector('[data-gf="__none"]'); // 末尾でも「なし」の手前に置く
+        if(none){ if(gd.btn.nextElementSibling!==none) bar.insertBefore(gd.btn, none); }
+        else if(bar.lastElementChild!==gd.btn) bar.appendChild(gd.btn);
+      }
+    });
+    // 長押し成立後は、ページのスクロールを止める
+    bar.addEventListener('touchmove', function(e){ if(gd && gd.on) e.preventDefault(); }, { passive:false });
+    function end(){
+      clearTimeout(gHold);
+      if(!gd) return;
+      const d = gd; gd = null;
+      if(!d.on) return;
+      d.btn.classList.remove('tab-drag'); justDragged = Date.now();
+      const order = Array.from(bar.children).filter(isGrp).map(b=>b.dataset.gf);
+      const byId = new Map(groups.map(g=>[g.id, g]));
+      const next = order.map(id=>byId.get(id)).filter(Boolean);
+      if(next.length !== groups.length || next.every((g,i)=>g===groups[i])){ render(); return; }
+      groups = next; save(); renderGroupFilter(); render();
+    }
+    bar.addEventListener('pointerup', end);
+    bar.addEventListener('pointercancel', end);
+    bar.addEventListener('click', function(e){ if(Date.now()-justDragged < 300){ e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+    bar.addEventListener('contextmenu', function(e){ if(gd && gd.on) e.preventDefault(); });
   })();
   document.querySelectorAll('.stat[data-go]').forEach(b=>b.addEventListener('click', function(){
     setTab(b.dataset.go);
