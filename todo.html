@@ -386,6 +386,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     <button type="button" data-tab="all">すべて</button>
     <button type="button" data-tab="open">未完了</button>
     <button type="button" data-tab="today">今日</button>
+    <button type="button" data-tab="tomorrow">明日</button>
+    <button type="button" data-tab="week">1週間以内</button>
     <button type="button" data-tab="overdue">期限切れ</button>
     <button type="button" data-tab="done">完了</button>
     <button type="button" data-tab="archive">アーカイブ</button>
@@ -1479,7 +1481,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   // ---- 一覧の描画 ----
   const EMPTY_TEXT = {
-    all:'タスクはありません。', open:'未完了のタスクはありません。', today:'今日のタスクはありません。', overdue:'期限切れのタスクはありません。',
+    all:'タスクはありません。', open:'未完了のタスクはありません。', today:'今日のタスクはありません。', tomorrow:'明日のタスクはありません。', week:'1週間以内のタスクはありません。', overdue:'期限切れのタスクはありません。',
     done:'完了したタスクはありません。', archive:'アーカイブしたタスクはありません。', trash:'ごみ箱は空です。'
   };
   // 再描画のあとも、キーボードのフォーカスを同じ行の同じ操作に戻す
@@ -1510,6 +1512,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const open = live.filter(i=>!isDone(i));
     const todayList = open.filter(i=>i.date===today);
     const overList = live.filter(isOverdue);
+    const tomorrow = addDaysISO(1), weekEnd = addDaysISO(7);
+    const inWeek = i=>!!i.date && i.date>=today && i.date<=weekEnd; // 今日〜7日後
+    const tomorrowList = open.filter(i=>i.date===tomorrow);
+    const weekList = open.filter(inWeek);
     $id('statToday').textContent = todayList.length;
     $id('statOver').textContent = overList.length;
     $id('statOpen').textContent = open.length;
@@ -1521,9 +1527,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
 
-    const counts = { all:live.length, open:open.length, today:todayList.length, overdue:overList.length,
+    const counts = { all:live.length, open:open.length, today:todayList.length, tomorrow:tomorrowList.length, week:weekList.length, overdue:overList.length,
       done:live.length-open.length, archive:items.filter(i=>i.archived && !i.deleted).length, trash:items.filter(i=>i.deleted).length };
-    const labels = { all:'すべて', open:'未完了', today:'今日', overdue:'期限切れ', done:'完了', archive:'アーカイブ', trash:'ごみ箱' };
+    const labels = { all:'すべて', open:'未完了', today:'今日', tomorrow:'明日', week:'1週間以内', overdue:'期限切れ', done:'完了', archive:'アーカイブ', trash:'ごみ箱' };
     document.querySelectorAll('#tabs button[data-tab]').forEach(b=>{
       b.textContent = labels[b.dataset.tab]+' ('+counts[b.dataset.tab]+')';
       b.hidden = tabHidden.has(b.dataset.tab);
@@ -1544,6 +1550,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         if(it.archived) return false;
         if(currentTab==='open' && isDone(it)) return false;
         if(currentTab==='today' && (isDone(it) || it.date!==today)) return false;
+        if(currentTab==='tomorrow' && (isDone(it) || it.date!==tomorrow)) return false;
+        if(currentTab==='week' && (isDone(it) || !inWeek(it))) return false;
         if(currentTab==='overdue' && !isOverdue(it)) return false;
         if(currentTab==='done' && !isDone(it)) return false;
         if(currentTab==='all' && !showDone && isDone(it)) return false;
@@ -1993,7 +2001,12 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const bar = $id('tabs');
     try{
       const saved = JSON.parse(localStorage.getItem(TABORDER_KEY) || '[]');
-      if(Array.isArray(saved)) saved.forEach(k=>{ const b = bar.querySelector('button[data-tab="'+CSS.escape(String(k))+'"]'); if(b) bar.appendChild(b); });
+      if(Array.isArray(saved)){
+        const init = Array.from(bar.children).map(b=>b.dataset.tab);
+        saved.forEach(k=>{ const b = bar.querySelector('button[data-tab="'+CSS.escape(String(k))+'"]'); if(b) bar.appendChild(b); });
+        // あとから増えたタブは、本来の並びで1つ前のタブの次に入れる
+        init.forEach((k,i)=>{ if(i && saved.indexOf(k)<0){ const p = bar.querySelector('[data-tab="'+init[i-1]+'"]'), b = bar.querySelector('[data-tab="'+k+'"]'); if(p && b) bar.insertBefore(b, p.nextSibling); } });
+      }
     }catch(e){}
     let td = null, tHold = null, justDragged = 0;
     const start = ()=>{ td.on = true; td.btn.classList.add('tab-drag'); closeMenu(false); };
@@ -2032,8 +2045,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     bar.addEventListener('contextmenu', function(e){ if(td && td.on) e.preventDefault(); });
   })();
   // ---- タブの管理（並び順・表示/非表示）。グループの管理と同じ作り ----
-  const TAB_DEFAULT = ['all','open','today','overdue','done','archive','trash'];
-  const TAB_LABEL = { all:'すべて', open:'未完了', today:'今日', overdue:'期限切れ', done:'完了', archive:'アーカイブ', trash:'ごみ箱' };
+  const TAB_DEFAULT = ['all','open','today','tomorrow','week','overdue','done','archive','trash'];
+  const TAB_LABEL = { all:'すべて', open:'未完了', today:'今日', tomorrow:'明日', week:'1週間以内', overdue:'期限切れ', done:'完了', archive:'アーカイブ', trash:'ごみ箱' };
   const tabKeys = ()=>Array.from($id('tabs').children).map(b=>b.dataset.tab);
   function saveTabPrefs(){
     try{ localStorage.setItem(TABORDER_KEY, JSON.stringify(tabKeys())); localStorage.setItem(TABHIDDEN_KEY, JSON.stringify(Array.from(tabHidden))); localStorage.setItem(TABCOLOR_KEY, JSON.stringify(tabColors)); }catch(e){}
