@@ -809,7 +809,7 @@ let nights = '', nrange = [];
       h += '<li><button type="button" class="day' + (r ? ' k-' + r.kind : '') + (w === 6 ? ' sat' : '') + (w === 0 ? ' sun' : '') + (ds === tdy ? ' today' : '') + (r ? hcls(r.type) : '') + '"' + (r ? hsty(r.type) : '') + ' data-date="' + ds + '" aria-label="' + dayLabel(ds) + (r ? ' ' + (r.type || KINDS[r.kind]) : ' 未入力') + '">' +
         '<span class="d num">' + d + '<small>' + WD[w] + '</small></span>' +
         '<span class="mid">' + (r ? badgeHtml(r) : '') + (r && c.has ? '<span class="tm num">' + r.clockIn + '–' + r.clockOut + '</span>' : '') + (r && r.locked ? '<span aria-hidden="true">🔒</span>' : '') +
-        (r && r.plan ? '<span class="rm pl">' + esc(r.plan) + '</span>' : '') + + '</span>' +
+        (r && r.plan ? '<span class="rm pl">' + esc(r.plan) + '</span>' : '') + '</span>' +
         '<span class="r">' + right + '</span></button></li>';
     }
     $('#pgMonth').innerHTML = h + '</ul>';
