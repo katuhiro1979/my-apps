@@ -696,7 +696,7 @@
     const body = shown.map((t) => '<span class="ln' + (t.done ? ' done' : '') + '"><span aria-hidden="true">' + (t.done ? '✓ ' : '・') + '</span><span class="vh">' + (t.done ? '完了：' : '未完了：') + '</span>' +
       (t.time ? '<span class="num">' + esc(t.time) + '</span> ' : '') + esc(t.text) + '</span>').join('') +
       (rest ? '<span class="ln mute">ほか ' + rest + '件</span>' : '') + (list.length ? '' : '<span class="ln mute">この日はありません</span>') +
-      (link ? '<a href="todo.html"' + (link === 'edit' ? ' target="_blank" rel="noopener">ToDoアプリで編集 ›' : '>ToDoを開く ›') + '</a>' : '');
+      (link ? '<a href="todo.html"' + (link === 'edit' ? ' target="app:todo">ToDoアプリで編集 ›' : '>ToDoを開く ›') + '</a>' : '');
     return secHtml('todo', '☑ ToDo', body);
   }
   const todoCount = (list) => list && list.length ? ' ToDo' + list.length + '件' + (list.some((t) => t.done) ? '（未完了' + list.filter((t) => !t.done).length + '件）' : '') : '';
