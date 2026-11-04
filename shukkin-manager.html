@@ -619,7 +619,7 @@
       toast('別のタブでデータが更新されたため、最新の内容に更新しました。');
     }catch(err){ /* 壊れた値は無視 */ }
   }
-  window.addEventListener('storage', (e) => { if(e.key === STORAGE_KEY) adoptStored(e.newValue); });
+  window.addEventListener('storage', (e) => { if(e.key === STORAGE_KEY) adoptStored(e.newValue); if(e.key === 'todo-app-data') refreshTodo(); });
   function checkStale(){
     let cur = null;
     try{ cur = localStorage.getItem(STORAGE_KEY); }catch(e){ return; }
@@ -675,9 +675,10 @@
       (Array.isArray(d.statuses) ? d.statuses : []).forEach((s) => { if(s && s.id) done[s.id] = !!s.done; });
       d.items.forEach((it) => {
         if(!it || typeof it.date !== 'string' || it.deleted || it.archived || typeof it.text !== 'string') return;
-        (out[it.date] = out[it.date] || []).push({ text: it.text, time: typeof it.time === 'string' ? it.time : '', done: !!done[it.status] });
+        (out[it.date] = out[it.date] || []).push({ text: it.text, time: typeof it.time === 'string' ? it.time : '', done: !!done[it.status], ord: typeof it.ord === 'number' ? it.ord : Infinity, at: typeof it.createdAt === 'string' ? it.createdAt : '' });
       });
-      Object.keys(out).forEach((k) => out[k].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99')));
+      // ToDoアプリと同じ並び: 未完了→完了、手動の並び（ord）→時刻→登録順
+      Object.keys(out).forEach((k) => out[k].sort((a, b) => (Number(a.done) - Number(b.done)) || (a.ord === b.ord ? 0 : a.ord < b.ord ? -1 : 1) || a.time.localeCompare(b.time) || a.at.localeCompare(b.at)));
     }catch(e){ return {}; }
     return out;
   }
@@ -700,6 +701,8 @@
     return secHtml('todo', '☑ ToDo', body);
   }
   const todoCount = (list) => list && list.length ? ' ToDo' + list.length + '件' + (list.some((t) => t.done) ? '（未完了' + list.filter((t) => !t.done).length + '件）' : '') : '';
+  // ToDoアプリ側で変わったとき、画面と開いている詳細シートの表示を描き直す（入力中の欄には触らない）
+  function refreshTodo(){ render(); if(typeof dateEdit === 'string' && dlg.open) $('#dTodo').innerHTML = todoSec(todoByDate()[dateEdit], 'edit'); }
   const presetOf = (name) => st.presets.filter((p) => p.name === name)[0] || null;
 
   // 1日の記録を更新する（ロック中は変更しない）。空になった記録は消す。undoMsg があれば「元に戻す」を出す
