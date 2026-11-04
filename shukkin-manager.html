@@ -127,12 +127,14 @@
   .stats > div:nth-child(3) b{ font-size:1.65rem; }
   .stats .hot{ background:var(--warn-bg); } .stats .hot small, .stats .hot b{ color:var(--warn); }
   .sec{ display:flex; align-items:flex-start; gap:8px; flex-basis:100%; margin:6px 0 0; font-size:.85rem; }
-  .sec-l{ flex:none; min-width:3.4em; padding:1px 0; border-radius:6px; text-align:center; font-size:.72rem; font-weight:700; color:var(--ink-soft); border:1px solid var(--line-strong); }
+  .sec-l{ flex:none; min-width:4.2em; padding:1px 2px; border-radius:6px; text-align:center; font-size:.78rem; font-weight:700; color:var(--ink); border:1px solid var(--ink-soft); background:rgba(128,128,128,.14); }
   .sec.plan .sec-l{ color:var(--c-work); border-color:var(--c-work); }
   .sec-b{ flex:1; min-width:0; }
   .sec .ln{ display:block; white-space:pre-wrap; overflow-wrap:anywhere; padding:1px 0; }
   .sec .ln.done{ color:var(--ink-soft); text-decoration:line-through; }
-  .sec a{ display:inline-block; padding:10px 0; font-size:.8rem; }
+  .sec .ln.mute{ color:var(--ink-soft); }
+  .day .sec.plan .ln{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .sec a{ display:inline-flex; align-items:center; min-height:44px; font-size:.85rem; text-decoration:underline; text-underline-offset:3px; }
   #dTodo .sec{ margin:0 0 12px; }
   .hint{ font-size:.85rem; color:var(--ink-soft); margin:4px 0 10px; }
   .row-act{ display:flex; gap:8px; margin-top:12px; }
@@ -293,7 +295,7 @@
       <div class="fld"><label for="dDeem">みなし勤務（分。空なら、足りない分を自動で）</label><input type="number" id="dDeem" min="0" max="450" inputmode="numeric" placeholder="自動"></div>
       <div id="dTl"></div>
       <div class="pv" id="dPv" aria-live="polite"></div>
-      <div class="fld"><label for="dPlan">予定（Enterで改行）</label><textarea id="dPlan" maxlength="500" rows="3"></textarea></div>
+      <div class="fld"><label for="dPlan">予定</label><textarea id="dPlan" maxlength="500" rows="3" placeholder="例：午後は外出"></textarea></div>
       <div id="dTodo"></div>
       <p class="err" id="dErr" role="alert"></p>
     </div>
@@ -682,11 +684,22 @@
   // 予定・ToDoの見出しつきブロック（ボタンの中でも使えるよう span だけで作る）
   const secHtml = (cls, label, body) => '<span class="sec ' + cls + '"><span class="sec-l">' + label + '</span><span class="sec-b">' + body + '</span></span>';
   const planSec = (r) => r && r.plan ? secHtml('plan', '予定', '<span class="ln">' + esc(r.plan) + '</span>') : '';
-  function todoSec(list, link){
-    if(!list || !list.length) return '';
-    return secHtml('todo', 'ToDo', list.map((t) => '<span class="ln' + (t.done ? ' done' : '') + '">' + (t.done ? '✓ ' : '・') +
-      (t.time ? '<span class="num">' + t.time + '</span> ' : '') + esc(t.text) + '</span>').join('') + (link ? '<a href="todo.html">ToDoを開く ›</a>' : ''));
+  // ToDoのブロック。link: ''=リンクなし（月の一覧）、'open'=今日画面、'edit'=詳細シート（入力中の内容を残すため別タブ）。max: 表示件数の上限（未完了を先に出す）
+  function todoSec(list, link, max){
+    list = list || [];
+    if(!list.length && !link) return '';
+    let shown = list, rest = 0;
+    if(max && list.length > max){
+      shown = list.filter((t) => !t.done).concat(list.filter((t) => t.done)).slice(0, max);
+      rest = list.length - shown.length;
+    }
+    const body = shown.map((t) => '<span class="ln' + (t.done ? ' done' : '') + '"><span aria-hidden="true">' + (t.done ? '✓ ' : '・') + '</span><span class="vh">' + (t.done ? '完了：' : '未完了：') + '</span>' +
+      (t.time ? '<span class="num">' + esc(t.time) + '</span> ' : '') + esc(t.text) + '</span>').join('') +
+      (rest ? '<span class="ln mute">ほか ' + rest + '件</span>' : '') + (list.length ? '' : '<span class="ln mute">この日はありません</span>') +
+      (link ? '<a href="todo.html"' + (link === 'edit' ? ' target="_blank" rel="noopener">ToDoアプリで編集 ›' : '>ToDoを開く ›') + '</a>' : '');
+    return secHtml('todo', '☑ ToDo', body);
   }
+  const todoCount = (list) => list && list.length ? ' ToDo' + list.length + '件' + (list.some((t) => t.done) ? '（未完了' + list.filter((t) => !t.done).length + '件）' : '') : '';
   const presetOf = (name) => st.presets.filter((p) => p.name === name)[0] || null;
 
   // 1日の記録を更新する（ロック中は変更しない）。空になった記録は消す。undoMsg があれば「元に戻す」を出す
@@ -799,7 +812,7 @@ let nights = '', nrange = [];
       '<div class="times"><div class="fld"><label for="tIn">出勤</label><input type="time" id="tIn" value="' + (r ? r.clockIn : '') + '"' + (locked || leave ? ' disabled' : '') + '></div>' +
       '<div class="fld"><label for="tOut">退勤</label><input type="time" id="tOut" value="' + (r ? r.clockOut : '') + '"' + (locked || leave ? ' disabled' : '') + '></div></div>' +
       stats + timelineHtml(r, c, true) +
-      planSec(r) + todoSec(todoByDate()[ds], true) +
+      planSec(r) + todoSec(todoByDate()[ds], 'open') +
       '<div class="row-act"><button type="button" data-act="detail">詳細・予定・ロック</button></div></div>' +
       '<div class="card">' + meterHtml(tm.ot, Number(ds.slice(5, 7)) + '月の時間外') + '</div>' +
       '<div class="card"><div class="meter-line"><span>' + yr + '年の有給</span><span><b class="num">残 ' + left + '日</b> / ' + st.settings.leaveTotal + '日</span></div></div>';
@@ -815,10 +828,10 @@ let nights = '', nrange = [];
     for(let d = 1; d <= dim(mv.y, mv.m); d++){
       const ds = mv.y + '-' + pad(mv.m) + '-' + pad(d), r = st.records[ds] || null, c = calc(r), w = toDate(ds).getDay();
       const right = r ? (c.has ? '<b class="num">' + hm(c.work) + '</b>' + (c.ot > 0 ? '<div class="ot num">残 ' + hm(c.ot) + '</div>' : '') + (c.night > 0 ? '<div class="num">深 ' + hm(c.night) + '</div>' : '') : (r.otManual ? '<div class="ot num">残 ' + hm(r.otManual) + '</div>' : '')) : '';
-      h += '<li><button type="button" class="day' + (r ? ' k-' + r.kind : '') + (w === 6 ? ' sat' : '') + (w === 0 ? ' sun' : '') + (ds === tdy ? ' today' : '') + (r ? hcls(r.type) : '') + '"' + (r ? hsty(r.type) : '') + ' data-date="' + ds + '" aria-label="' + dayLabel(ds) + (r ? ' ' + (r.type || KINDS[r.kind]) : ' 未入力') + '">' +
+      h += '<li><button type="button" class="day' + (r ? ' k-' + r.kind : '') + (w === 6 ? ' sat' : '') + (w === 0 ? ' sun' : '') + (ds === tdy ? ' today' : '') + (r ? hcls(r.type) : '') + '"' + (r ? hsty(r.type) : '') + ' data-date="' + ds + '" aria-label="' + dayLabel(ds) + (r ? ' ' + (r.type || KINDS[r.kind]) : ' 未入力') + (r && r.plan ? ' 予定あり' : '') + todoCount(tdMap[ds]) + '">' +
         '<span class="d num">' + d + '<small>' + WD[w] + '</small></span>' +
         '<span class="mid">' + (r ? badgeHtml(r) : '') + (r && c.has ? '<span class="tm num">' + r.clockIn + '–' + r.clockOut + '</span>' : '') + (r && r.locked ? '<span aria-hidden="true">🔒</span>' : '') +
-        planSec(r) + todoSec(tdMap[ds], false) + '</span>' +
+        planSec(r) + todoSec(tdMap[ds], '', 2) + '</span>' +
         '<span class="r">' + right + '</span></button></li>';
     }
     $('#pgMonth').innerHTML = h + '</ul>';
@@ -956,7 +969,7 @@ let nights = '', nrange = [];
     $('#dOt').value = r && r.otManual !== null ? hm(r.otManual) : '';
     $('#dPlan').value = r ? r.plan : '';
     $('#dDeem').value = r && r.deem !== null ? r.deem : '';
-    $('#dTodo').innerHTML = todoSec(todoByDate()[dateEdit], true);
+    $('#dTodo').innerHTML = todoSec(todoByDate()[dateEdit], 'edit');
     $('#dLock').checked = !!(r && r.locked);
     setDayDisabled(!!(r && r.locked));
     $('#dErr').textContent = '';
