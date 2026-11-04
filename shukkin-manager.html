@@ -126,10 +126,14 @@
   .stats b{ font-size:1.3rem; line-height:1.3; }
   .stats > div:nth-child(3) b{ font-size:1.65rem; }
   .stats .hot{ background:var(--warn-bg); } .stats .hot small, .stats .hot b{ color:var(--warn); }
-  .chips-lbl a{ display:inline-block; padding:13px 8px; margin:-13px 0; }
-  .todo{ list-style:none; margin:0 0 10px; padding:0; font-size:.9rem; }
-  .todo li{ white-space:pre-wrap; padding:2px 0; }
-  .todo li.done{ color:var(--ink-soft); text-decoration:line-through; }
+  .sec{ display:flex; align-items:flex-start; gap:8px; flex-basis:100%; margin:6px 0 0; font-size:.85rem; }
+  .sec-l{ flex:none; min-width:3.4em; padding:1px 0; border-radius:6px; text-align:center; font-size:.72rem; font-weight:700; color:var(--ink-soft); border:1px solid var(--line-strong); }
+  .sec.plan .sec-l{ color:var(--c-work); border-color:var(--c-work); }
+  .sec-b{ flex:1; min-width:0; }
+  .sec .ln{ display:block; white-space:pre-wrap; overflow-wrap:anywhere; padding:1px 0; }
+  .sec .ln.done{ color:var(--ink-soft); text-decoration:line-through; }
+  .sec a{ display:inline-block; padding:10px 0; font-size:.8rem; }
+  #dTodo .sec{ margin:0 0 12px; }
   .hint{ font-size:.85rem; color:var(--ink-soft); margin:4px 0 10px; }
   .row-act{ display:flex; gap:8px; margin-top:12px; }
   .row-act button{ flex:1; }
@@ -186,7 +190,6 @@
   .day .mid{ flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; }
   .day .tm{ font-size:.9rem; color:var(--ink-soft); }
   .day .rm{ font-size:.8rem; color:var(--ink-soft); flex-basis:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .day .rm.pl{ white-space:pre-wrap; text-align:left; }
   .day .r{ text-align:right; font-size:.8rem; color:var(--ink-soft); line-height:1.3; flex-shrink:0; }
   .day .r b{ color:var(--ink); font-size:.9rem; }
   .day .r .ot{ color:var(--warn); font-weight:700; }
@@ -289,9 +292,10 @@
       </div>
       <div class="fld"><label for="dDeem">みなし勤務（分。空なら、足りない分を自動で）</label><input type="number" id="dDeem" min="0" max="450" inputmode="numeric" placeholder="自動"></div>
       <div id="dTl"></div>
-      <div id="dTodo"></div>
       <div class="pv" id="dPv" aria-live="polite"></div>
-      <div class="fld"><label for="dPlan">予定（Enterで改行）</label><textarea id="dPlan" maxlength="500" rows="3"></textarea></div>      <p class="err" id="dErr" role="alert"></p>
+      <div class="fld"><label for="dPlan">予定（Enterで改行）</label><textarea id="dPlan" maxlength="500" rows="3"></textarea></div>
+      <div id="dTodo"></div>
+      <p class="err" id="dErr" role="alert"></p>
     </div>
     <div class="sheet-foot">
       <button type="button" class="danger" id="dClear">この日を空にする</button>
@@ -660,22 +664,28 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 
   // ToDoアプリ（todo-app-data）のその日のタスクを読む。読み取り専用。同じ場所で開いたときだけ読める
-  function todoOf(ds){
+  function todoByDate(){
+    const out = {};
     try{
       const d = JSON.parse(localStorage.getItem('todo-app-data') || 'null');
-      if(!d || !Array.isArray(d.items)) return [];
+      if(!d || !Array.isArray(d.items)) return out;
       const done = {};
       (Array.isArray(d.statuses) ? d.statuses : []).forEach((s) => { if(s && s.id) done[s.id] = !!s.done; });
-      return d.items.filter((it) => it && it.date === ds && !it.deleted && !it.archived && typeof it.text === 'string')
-        .map((it) => ({ text: it.text, time: typeof it.time === 'string' ? it.time : '', done: !!done[it.status] }))
-        .sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
-    }catch(e){ return []; }
+      d.items.forEach((it) => {
+        if(!it || typeof it.date !== 'string' || it.deleted || it.archived || typeof it.text !== 'string') return;
+        (out[it.date] = out[it.date] || []).push({ text: it.text, time: typeof it.time === 'string' ? it.time : '', done: !!done[it.status] });
+      });
+      Object.keys(out).forEach((k) => out[k].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99')));
+    }catch(e){ return {}; }
+    return out;
   }
-  function todoHtml(ds){
-    const l = todoOf(ds);
-    if(!l.length) return '';
-    return '<div class="chips-lbl">その日のToDo（読み取り専用）　<a href="todo.html">ToDoを開く ›</a></div><ul class="todo">' + l.map((t) =>
-      '<li' + (t.done ? ' class="done"' : '') + '>' + (t.done ? '✓ ' : '・') + (t.time ? '<span class="num">' + t.time + '</span> ' : '') + esc(t.text) + '</li>').join('') + '</ul>';
+  // 予定・ToDoの見出しつきブロック（ボタンの中でも使えるよう span だけで作る）
+  const secHtml = (cls, label, body) => '<span class="sec ' + cls + '"><span class="sec-l">' + label + '</span><span class="sec-b">' + body + '</span></span>';
+  const planSec = (r) => r && r.plan ? secHtml('plan', '予定', '<span class="ln">' + esc(r.plan) + '</span>') : '';
+  function todoSec(list, link){
+    if(!list || !list.length) return '';
+    return secHtml('todo', 'ToDo', list.map((t) => '<span class="ln' + (t.done ? ' done' : '') + '">' + (t.done ? '✓ ' : '・') +
+      (t.time ? '<span class="num">' + t.time + '</span> ' : '') + esc(t.text) + '</span>').join('') + (link ? '<a href="todo.html">ToDoを開く ›</a>' : ''));
   }
   const presetOf = (name) => st.presets.filter((p) => p.name === name)[0] || null;
 
@@ -789,8 +799,7 @@ let nights = '', nrange = [];
       '<div class="times"><div class="fld"><label for="tIn">出勤</label><input type="time" id="tIn" value="' + (r ? r.clockIn : '') + '"' + (locked || leave ? ' disabled' : '') + '></div>' +
       '<div class="fld"><label for="tOut">退勤</label><input type="time" id="tOut" value="' + (r ? r.clockOut : '') + '"' + (locked || leave ? ' disabled' : '') + '></div></div>' +
       stats + timelineHtml(r, c, true) +
-      (r && r.plan ? '<p class="hint" style="white-space:pre-wrap">予定: ' + esc(r.plan) + '</p>' : '') +
-      todoHtml(ds) +
+      planSec(r) + todoSec(todoByDate()[ds], true) +
       '<div class="row-act"><button type="button" data-act="detail">詳細・予定・ロック</button></div></div>' +
       '<div class="card">' + meterHtml(tm.ot, Number(ds.slice(5, 7)) + '月の時間外') + '</div>' +
       '<div class="card"><div class="meter-line"><span>' + yr + '年の有給</span><span><b class="num">残 ' + left + '日</b> / ' + st.settings.leaveTotal + '日</span></div></div>';
@@ -801,7 +810,7 @@ let nights = '', nrange = [];
   }
   function renderMonth(){
     const tdy = todayISO(); let h = monthNav();
-    const tm = calcMonth(mv.y, mv.m);
+    const tm = calcMonth(mv.y, mv.m), tdMap = todoByDate();
     h += '<p class="hint">時間外 <b class="num">' + hm(tm.ot) + '</b>　深夜 <b class="num">' + hm(tm.night) + '</b>　勤務 ' + tm.days + '日</p><ul class="days">';
     for(let d = 1; d <= dim(mv.y, mv.m); d++){
       const ds = mv.y + '-' + pad(mv.m) + '-' + pad(d), r = st.records[ds] || null, c = calc(r), w = toDate(ds).getDay();
@@ -809,7 +818,7 @@ let nights = '', nrange = [];
       h += '<li><button type="button" class="day' + (r ? ' k-' + r.kind : '') + (w === 6 ? ' sat' : '') + (w === 0 ? ' sun' : '') + (ds === tdy ? ' today' : '') + (r ? hcls(r.type) : '') + '"' + (r ? hsty(r.type) : '') + ' data-date="' + ds + '" aria-label="' + dayLabel(ds) + (r ? ' ' + (r.type || KINDS[r.kind]) : ' 未入力') + '">' +
         '<span class="d num">' + d + '<small>' + WD[w] + '</small></span>' +
         '<span class="mid">' + (r ? badgeHtml(r) : '') + (r && c.has ? '<span class="tm num">' + r.clockIn + '–' + r.clockOut + '</span>' : '') + (r && r.locked ? '<span aria-hidden="true">🔒</span>' : '') +
-        (r && r.plan ? '<span class="rm pl">' + esc(r.plan) + '</span>' : '') + '</span>' +
+        planSec(r) + todoSec(tdMap[ds], false) + '</span>' +
         '<span class="r">' + right + '</span></button></li>';
     }
     $('#pgMonth').innerHTML = h + '</ul>';
@@ -947,7 +956,7 @@ let nights = '', nrange = [];
     $('#dOt').value = r && r.otManual !== null ? hm(r.otManual) : '';
     $('#dPlan').value = r ? r.plan : '';
     $('#dDeem').value = r && r.deem !== null ? r.deem : '';
-    $('#dTodo').innerHTML = todoHtml(dateEdit);
+    $('#dTodo').innerHTML = todoSec(todoByDate()[dateEdit], true);
     $('#dLock').checked = !!(r && r.locked);
     setDayDisabled(!!(r && r.locked));
     $('#dErr').textContent = '';
