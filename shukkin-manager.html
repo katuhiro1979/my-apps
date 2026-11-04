@@ -126,6 +126,10 @@
   .stats b{ font-size:1.3rem; line-height:1.3; }
   .stats > div:nth-child(3) b{ font-size:1.65rem; }
   .stats .hot{ background:var(--warn-bg); } .stats .hot small, .stats .hot b{ color:var(--warn); }
+  .chips-lbl a{ display:inline-block; padding:13px 8px; margin:-13px 0; }
+  .todo{ list-style:none; margin:0 0 10px; padding:0; font-size:.9rem; }
+  .todo li{ white-space:pre-wrap; padding:2px 0; }
+  .todo li.done{ color:var(--ink-soft); text-decoration:line-through; }
   .hint{ font-size:.85rem; color:var(--ink-soft); margin:4px 0 10px; }
   .row-act{ display:flex; gap:8px; margin-top:12px; }
   .row-act button{ flex:1; }
@@ -182,6 +186,7 @@
   .day .mid{ flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; }
   .day .tm{ font-size:.9rem; color:var(--ink-soft); }
   .day .rm{ font-size:.8rem; color:var(--ink-soft); flex-basis:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .day .rm.pl{ white-space:pre-wrap; text-align:left; }
   .day .r{ text-align:right; font-size:.8rem; color:var(--ink-soft); line-height:1.3; flex-shrink:0; }
   .day .r b{ color:var(--ink); font-size:.9rem; }
   .day .r .ot{ color:var(--warn); font-weight:700; }
@@ -284,9 +289,9 @@
       </div>
       <div class="fld"><label for="dDeem">みなし勤務（分。空なら、足りない分を自動で）</label><input type="number" id="dDeem" min="0" max="450" inputmode="numeric" placeholder="自動"></div>
       <div id="dTl"></div>
+      <div id="dTodo"></div>
       <div class="pv" id="dPv" aria-live="polite"></div>
-      <div class="fld"><label for="dRemark">備考</label><input type="text" id="dRemark" maxlength="200"></div>
-      <p class="err" id="dErr" role="alert"></p>
+      <div class="fld"><label for="dPlan">予定（Enterで改行）</label><textarea id="dPlan" maxlength="500" rows="3"></textarea></div>      <p class="err" id="dErr" role="alert"></p>
     </div>
     <div class="sheet-foot">
       <button type="button" class="danger" id="dClear">この日を空にする</button>
@@ -475,6 +480,7 @@
         clockIn: timeOrEmpty(r.clockIn), clockOut: timeOrEmpty(r.clockOut),
         otManual: (r.otManual === null || r.otManual === undefined || r.otManual === '' || !Number.isFinite(ot) || ot < 0) ? null : Math.min(Math.round(ot), 1440),
         remark: typeof r.remark === 'string' ? r.remark.trim().slice(0, 200) : '',
+        plan: typeof r.plan === 'string' ? r.plan.replace(/\r\n?/g, '\n').trim().slice(0, 500) : '',
         deem: (typeof r.deem === 'number' && r.deem >= 0) ? Math.min(Math.round(r.deem), 450) : (r.deem === false ? 0 : null), // みなし（分）。null は自動（足りない分）
         ots: (typeof r.ots === 'number' && r.ots >= 1 && r.ots <= 1440) ? Math.round(r.ots) : null, // 時間外が始まる時数（分）。null は所定7:30
         locked: !!r.locked
@@ -652,14 +658,33 @@
   const t0 = new Date();
   let mv = { y: t0.getFullYear(), m: t0.getMonth() + 1 };
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+  // ToDoアプリ（todo-app-data）のその日のタスクを読む。読み取り専用。同じ場所で開いたときだけ読める
+  function todoOf(ds){
+    try{
+      const d = JSON.parse(localStorage.getItem('todo-app-data') || 'null');
+      if(!d || !Array.isArray(d.items)) return [];
+      const done = {};
+      (Array.isArray(d.statuses) ? d.statuses : []).forEach((s) => { if(s && s.id) done[s.id] = !!s.done; });
+      return d.items.filter((it) => it && it.date === ds && !it.deleted && !it.archived && typeof it.text === 'string')
+        .map((it) => ({ text: it.text, time: typeof it.time === 'string' ? it.time : '', done: !!done[it.status] }))
+        .sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+    }catch(e){ return []; }
+  }
+  function todoHtml(ds){
+    const l = todoOf(ds);
+    if(!l.length) return '';
+    return '<div class="chips-lbl">その日のToDo（読み取り専用）　<a href="todo.html">ToDoを開く ›</a></div><ul class="todo">' + l.map((t) =>
+      '<li' + (t.done ? ' class="done"' : '') + '>' + (t.done ? '✓ ' : '・') + (t.time ? '<span class="num">' + t.time + '</span> ' : '') + esc(t.text) + '</li>').join('') + '</ul>';
+  }
   const presetOf = (name) => st.presets.filter((p) => p.name === name)[0] || null;
 
   // 1日の記録を更新する（ロック中は変更しない）。空になった記録は消す。undoMsg があれば「元に戻す」を出す
   function patchRec(ds, patch, undoMsg){
-    const cur = st.records[ds] || { type:'', kind:'work', brk:null, deem:null, ots:null, clockIn:'', clockOut:'', otManual:null, remark:'', locked:false };
+    const cur = st.records[ds] || { type:'', kind:'work', brk:null, deem:null, ots:null, clockIn:'', clockOut:'', otManual:null, remark:'', plan:'', locked:false };
     if(cur.locked && !('locked' in patch)){ toast('この日は確定（ロック）されています。詳細から解除してください。'); return false; }
     const next = Object.assign({}, cur, patch);
-    const empty = !next.type && !next.clockIn && !next.clockOut && !next.remark && next.otManual === null && !next.locked;
+    const empty = !next.type && !next.clockIn && !next.clockOut && !next.remark && !next.plan && next.otManual === null && !next.locked;
     const recs = Object.assign({}, st.records);
     if(empty) delete recs[ds]; else recs[ds] = next;
     const before = st;
@@ -764,8 +789,9 @@ let nights = '', nrange = [];
       '<div class="times"><div class="fld"><label for="tIn">出勤</label><input type="time" id="tIn" value="' + (r ? r.clockIn : '') + '"' + (locked || leave ? ' disabled' : '') + '></div>' +
       '<div class="fld"><label for="tOut">退勤</label><input type="time" id="tOut" value="' + (r ? r.clockOut : '') + '"' + (locked || leave ? ' disabled' : '') + '></div></div>' +
       stats + timelineHtml(r, c, true) +
-      (r && r.remark ? '<p class="hint">備考: ' + esc(r.remark) + '</p>' : '') +
-      '<div class="row-act"><button type="button" data-act="detail">詳細・備考・ロック</button></div></div>' +
+      (r && r.plan ? '<p class="hint" style="white-space:pre-wrap">予定: ' + esc(r.plan) + '</p>' : '') +
+      todoHtml(ds) +
+      '<div class="row-act"><button type="button" data-act="detail">詳細・予定・ロック</button></div></div>' +
       '<div class="card">' + meterHtml(tm.ot, Number(ds.slice(5, 7)) + '月の時間外') + '</div>' +
       '<div class="card"><div class="meter-line"><span>' + yr + '年の有給</span><span><b class="num">残 ' + left + '日</b> / ' + st.settings.leaveTotal + '日</span></div></div>';
   }
@@ -783,7 +809,7 @@ let nights = '', nrange = [];
       h += '<li><button type="button" class="day' + (r ? ' k-' + r.kind : '') + (w === 6 ? ' sat' : '') + (w === 0 ? ' sun' : '') + (ds === tdy ? ' today' : '') + (r ? hcls(r.type) : '') + '"' + (r ? hsty(r.type) : '') + ' data-date="' + ds + '" aria-label="' + dayLabel(ds) + (r ? ' ' + (r.type || KINDS[r.kind]) : ' 未入力') + '">' +
         '<span class="d num">' + d + '<small>' + WD[w] + '</small></span>' +
         '<span class="mid">' + (r ? badgeHtml(r) : '') + (r && c.has ? '<span class="tm num">' + r.clockIn + '–' + r.clockOut + '</span>' : '') + (r && r.locked ? '<span aria-hidden="true">🔒</span>' : '') +
-        (r && r.remark ? '<span class="rm">' + esc(r.remark) + '</span>' : '') + '</span>' +
+        (r && r.plan ? '<span class="rm pl">' + esc(r.plan) + '</span>' : '') + + '</span>' +
         '<span class="r">' + right + '</span></button></li>';
     }
     $('#pgMonth').innerHTML = h + '</ul>';
@@ -887,7 +913,7 @@ let nights = '', nrange = [];
   // ---------- 1日の詳細シート ----------
   const dlg = $('#dlg');
   let dateEdit = null, dOrig = '', allowClose = false;
-  const dSnap = () => JSON.stringify([$('#dType').value, $('#dIn').value, $('#dOut').value, $('#dBrk').value, $('#dOt').value, $('#dRemark').value, $('#dLock').checked, $('#dDeem').value]);
+  const dSnap = () => JSON.stringify([$('#dType').value, $('#dIn').value, $('#dOut').value, $('#dBrk').value, $('#dOt').value, $('#dPlan').value, $('#dLock').checked, $('#dDeem').value]);
   function parseOt(s){
     s = s.trim(); if(!s) return null;
     const m = /^(\d{1,2}):(\d{2})$/.exec(s);
@@ -899,7 +925,7 @@ let nights = '', nrange = [];
     const type = $('#dType').value, p = presetOf(type);
     const brk = $('#dBrk').value === '' ? null : Number($('#dBrk').value);
     const cur = st.records[dateEdit];
-    return { type:type, kind: p ? p.kind : (cur && cur.type === type ? cur.kind : 'work'), brk: brk, clockIn:$('#dIn').value, clockOut:$('#dOut').value, otManual: parseOt($('#dOt').value), deem: $('#dDeem').value === '' ? null : Number($('#dDeem').value), ots: cur && cur.type === type ? cur.ots : (p ? p.ots : null), remark:$('#dRemark').value.trim().slice(0, 200), locked:$('#dLock').checked };
+    return { type:type, kind: p ? p.kind : (cur && cur.type === type ? cur.kind : 'work'), brk: brk, clockIn:$('#dIn').value, clockOut:$('#dOut').value, otManual: parseOt($('#dOt').value), deem: $('#dDeem').value === '' ? null : Number($('#dDeem').value), ots: cur && cur.type === type ? cur.ots : (p ? p.ots : null), remark: cur ? cur.remark : '', plan:$('#dPlan').value.replace(/\r\n?/g, '\n').trim().slice(0, 500), locked:$('#dLock').checked };
   }
   function updatePv(){
     const r = readDay(); const ot = r.otManual; r.otManual = Number.isNaN(ot) ? null : ot;
@@ -907,7 +933,7 @@ let nights = '', nrange = [];
     $('#dTl').innerHTML = r.brk !== null && !(r.brk >= 0 && r.brk <= 480) ? '' : timelineHtml(r, c); // 休憩が範囲外のときは帯を出さない
     $('#dPv').textContent = c.has ? '勤務 ' + hm(c.work) + (hideBrk(r) ? '' : '（休憩 ' + c.brk + '分）') + '　みなし ' + hm(c.deemed) + '　時間外 ' + hm(c.ot) + (r.otManual !== null ? '（手入力）' : '') + '　深夜 ' + hm(c.night) + (c.otFrom ? '　時間外は ' + c.otFrom + ' から' : '') + (r.kind === 'work' && r.deem !== null && r.deem > c.deemed ? '\n※みなしは、所定7:30に足りない分までです（入力 ' + r.deem + '分 → ' + hm(c.deemed) + '）。' : '') : '出勤・退勤を入れると、ここに計算結果が出ます。';
   }
-  function setDayDisabled(on){ ['#dType', '#dIn', '#dOut', '#dBrk', '#dOt', '#dDeem', '#dRemark', '#dClear'].forEach((s) => { $(s).disabled = on; }); }
+  function setDayDisabled(on){ ['#dType', '#dIn', '#dOut', '#dBrk', '#dOt', '#dDeem', '#dPlan', '#dClear'].forEach((s) => { $(s).disabled = on; }); }
   function openDay(ds){
     dateEdit = ds; allowClose = false;
     const r = st.records[ds] || null;
@@ -919,8 +945,9 @@ let nights = '', nrange = [];
     $('#dIn').value = r ? r.clockIn : ''; $('#dOut').value = r ? r.clockOut : '';
     $('#dBrk').value = r && r.brk !== null ? r.brk : '';
     $('#dOt').value = r && r.otManual !== null ? hm(r.otManual) : '';
-    $('#dRemark').value = r ? r.remark : '';
+    $('#dPlan').value = r ? r.plan : '';
     $('#dDeem').value = r && r.deem !== null ? r.deem : '';
+    $('#dTodo').innerHTML = todoHtml(dateEdit);
     $('#dLock').checked = !!(r && r.locked);
     setDayDisabled(!!(r && r.locked));
     $('#dErr').textContent = '';
@@ -932,7 +959,7 @@ let nights = '', nrange = [];
     if(p){ const leave = p.kind === 'leave'; $('#dIn').value = leave ? '' : p.start; $('#dOut').value = leave ? '' : p.end; $('#dBrk').value = leave ? '' : p.brk; $('#dOt').value = ''; $('#dDeem').value = leave ? '' : p.deem; }
     updatePv();
   });
-  ['#dIn', '#dOut', '#dBrk', '#dOt', '#dDeem', '#dRemark'].forEach((s) => $(s).addEventListener('input', updatePv));
+  ['#dIn', '#dOut', '#dBrk', '#dOt', '#dDeem', '#dPlan'].forEach((s) => $(s).addEventListener('input', updatePv));
   $('#dLock').addEventListener('change', () => { setDayDisabled($('#dLock').checked); updatePv(); });
   function closeDlg(){ allowClose = true; dlg.close(); }
   dlg.addEventListener('close', () => {
