@@ -1514,8 +1514,6 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const overList = live.filter(isOverdue);
     const tomorrow = addDaysISO(1), weekEnd = addDaysISO(7);
     const inWeek = i=>!!i.date && i.date>=today && i.date<=weekEnd; // 今日〜7日後
-    const tomorrowList = open.filter(i=>i.date===tomorrow);
-    const weekList = open.filter(inWeek);
     $id('statToday').textContent = todayList.length;
     $id('statOver').textContent = overList.length;
     $id('statOpen').textContent = open.length;
@@ -1527,7 +1525,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
 
-    const counts = { all:live.length, open:open.length, today:todayList.length, tomorrow:tomorrowList.length, week:weekList.length, overdue:overList.length,
+    const counts = { all:live.length, open:open.length, today:live.filter(i=>i.date===today).length, tomorrow:live.filter(i=>i.date===tomorrow).length, week:live.filter(inWeek).length, overdue:overList.length,
       done:live.length-open.length, archive:items.filter(i=>i.archived && !i.deleted).length, trash:items.filter(i=>i.deleted).length };
     const labels = { all:'すべて', open:'未完了', today:'今日', tomorrow:'明日', week:'1週間以内', overdue:'期限切れ', done:'完了', archive:'アーカイブ', trash:'ごみ箱' };
     document.querySelectorAll('#tabs button[data-tab]').forEach(b=>{
@@ -1549,9 +1547,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       else {
         if(it.archived) return false;
         if(currentTab==='open' && isDone(it)) return false;
-        if(currentTab==='today' && (isDone(it) || it.date!==today)) return false;
-        if(currentTab==='tomorrow' && (isDone(it) || it.date!==tomorrow)) return false;
-        if(currentTab==='week' && (isDone(it) || !inWeek(it))) return false;
+        if(currentTab==='today' && it.date!==today) return false; // 今日・明日・1週間以内は完了済みも出す
+        if(currentTab==='tomorrow' && it.date!==tomorrow) return false;
+        if(currentTab==='week' && !inWeek(it)) return false;
         if(currentTab==='overdue' && !isOverdue(it)) return false;
         if(currentTab==='done' && !isDone(it)) return false;
         if(currentTab==='all' && !showDone && isDone(it)) return false;
