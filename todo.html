@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>ToDo</title>
+<meta name="theme-color" content="#F4F5F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121513" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ToDo">
+<link rel="manifest" href="todo-manifest.json">
+<link rel="icon" href="todo-icon-192.png">
+<link rel="apple-touch-icon" href="todo-icon-192.png">
 <style>
   :root{
     --paper:#f4f5f2;
@@ -2437,6 +2445,11 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     .then(()=>loadScript('cloud-sync.js'))
     .then(startCloud)
     .catch(()=>{ /* 同期を読み込めないときは、端末内だけで使う */ });
+
+  // アプリとしてインストール・オフラインで開けるようにする
+  if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
+    navigator.serviceWorker.register('todo-sw.js').catch(()=>{});
+  }
 })();
 </script>
 </body>
