@@ -3,7 +3,7 @@
   "short_name": "掃除タスク",
   "description": "家族の掃除タスクをまとめて管理",
   "start_url": "soji-manager.html",
-  "scope": "./",
+  "scope": "soji-manager.html",
   "display": "standalone",
   "background_color": "#F4F5F7",
   "theme_color": "#1B2333",

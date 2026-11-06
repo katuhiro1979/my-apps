@@ -3,7 +3,7 @@
   "short_name": "衣服管理",
   "description": "持っている衣服と購入予定、品目ごとの目標数を管理",
   "start_url": "clothes-manager.html",
-  "scope": "./",
+  "scope": "clothes-manager.html",
   "display": "standalone",
   "background_color": "#F4F5F7",
   "theme_color": "#1B2333",

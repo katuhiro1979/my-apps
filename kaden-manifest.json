@@ -3,7 +3,7 @@
   "short_name": "家電管理",
   "description": "家電の買い替え時期と費用を管理する",
   "start_url": "kaden-manager.html",
-  "scope": "./",
+  "scope": "kaden-manager.html",
   "display": "standalone",
   "background_color": "#F4F5F7",
   "theme_color": "#1B2333",

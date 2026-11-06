@@ -3,7 +3,7 @@
   "short_name": "車両管理",
   "description": "車検・保険・税の期限と整備記録の管理",
   "start_url": "vehicle_manager.html",
-  "scope": "./",
+  "scope": "vehicle_manager.html",
   "display": "standalone",
   "background_color": "#f4f5f2",
   "theme_color": "#f4f5f2",

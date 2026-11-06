@@ -3,7 +3,7 @@
   "short_name": "医療管理",
   "description": "自分の医療情報（お薬手帳・通院・予約）を管理するアプリ",
   "start_url": "medical-manager.html",
-  "scope": "./",
+  "scope": "medical-manager.html",
   "display": "standalone",
   "background_color": "#F4F7F6",
   "theme_color": "#F4F7F6",

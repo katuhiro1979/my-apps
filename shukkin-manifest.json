@@ -3,7 +3,7 @@
   "short_name": "出勤簿",
   "description": "出勤・退勤と時間外・深夜・有給を記録する",
   "start_url": "shukkin-manager.html",
-  "scope": "./",
+  "scope": "shukkin-manager.html",
   "display": "standalone",
   "background_color": "#F4F5F7",
   "theme_color": "#1B2333",

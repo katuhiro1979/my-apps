@@ -3,7 +3,7 @@
   "short_name": "ToDo",
   "description": "日付・グループ・状態で管理できるToDoリスト",
   "start_url": "todo.html",
-  "scope": "./",
+  "scope": "todo.html",
   "display": "standalone",
   "background_color": "#F4F5F2",
   "theme_color": "#2F6F5E",
