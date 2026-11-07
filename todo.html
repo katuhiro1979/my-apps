@@ -138,6 +138,9 @@
   .dp-inputs{display:flex;gap:6px;}
   .dp-inputs input{min-height:40px;padding:4px 8px;font-size:15px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-weight:400;}
   .dp-inputs input:disabled{opacity:.5;}
+  .dp-sep{align-self:center;color:var(--ink-soft);}
+  .dp-roll{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-soft);min-height:32px;}
+  .dp-roll input:disabled+*{opacity:.5;}
   .chip-btn{min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;cursor:pointer;white-space:nowrap;color:var(--ink);font-weight:500;}
   .chip-btn[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600;}
 
@@ -794,7 +797,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   function isDone(it){ return !!statusOf(it).done; }
   const firstOpenId = ()=>(statuses.find(s=>!s.done) || statuses[0]).id;
   const firstDoneId = ()=>(statuses.find(s=>s.done) || statuses[0]).id;
-  function isOverdue(it){ return !it.deleted && !it.archived && !isDone(it) && !!it.date && it.date < todayISO(); }
+  function isOverdue(it){ return !it.deleted && !it.archived && !isDone(it) && !!it.date && (it.until || it.date) < todayISO(); }
+  // 日付〜終了日（なければ日付だけ）が、a〜b の日と重なるか
+  function spans(it, a, b){ return !!it.date && it.date <= b && (it.until || it.date) >= a; }
 
   // ---- 読み込みデータを安全な形に揃える ----
   function normalizeStatuses(list){
@@ -841,6 +846,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         doneAt: isDate(it.doneAt) ? it.doneAt : ''
       };
       if(rec.date && isTime(it.time)) rec.time = it.time;
+      if(rec.date && it.roll === true) rec.roll = true; // 完了しなかったら、日付が変わったときに今日へ繰り越す
+      if(rec.date && isDate(it.until) && it.until > rec.date) rec.until = it.until; // 終了日（任意）。日付〜終了日の間は、完了するまで毎日出る
       if(typeof it.group==='string' && gset.has(it.group)) rec.group = it.group;
       if(typeof it.prev==='string' && ids.has(it.prev)) rec.prev = it.prev;
       if(typeof it.ord==='number' && isFinite(it.ord)) rec.ord = it.ord; // 手動の並び順（同じ日付の中）
@@ -918,8 +925,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         '<button type="button" class="chip-btn" data-q="7">1週間後</button>'+
         '<button type="button" class="chip-btn" data-q="none">日付なし</button>'+
       '</div>'+
-      '<div class="dp-inputs"><input type="date" class="dp-date" aria-label="日付"><input type="time" class="dp-time" aria-label="時刻（任意）"></div>';
-    const dEl = root.querySelector('.dp-date'), tEl = root.querySelector('.dp-time');
+      '<div class="dp-inputs"><input type="date" class="dp-date" aria-label="日付"><input type="time" class="dp-time" aria-label="時刻（任意）"><span class="dp-sep" aria-hidden="true">〜</span><input type="date" class="dp-until" aria-label="終了日（任意）"></div>'+
+      '<label class="dp-roll"><input type="checkbox" class="dp-roll-c"> 完了しなかったら、翌日に繰り越す</label>';
+    const dEl = root.querySelector('.dp-date'), tEl = root.querySelector('.dp-time'), uEl = root.querySelector('.dp-until'), rEl = root.querySelector('.dp-roll-c');
     const btns = Array.from(root.querySelectorAll('[data-q]'));
     function sync(){
       const d = dEl.value;
@@ -927,8 +935,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         const q = b.dataset.q;
         b.setAttribute('aria-pressed', String(q==='none' ? !d : d===addDaysISO(Number(q))));
       });
-      tEl.disabled = !d;
-      if(!d) tEl.value = '';
+      tEl.disabled = !d; uEl.disabled = !d; rEl.disabled = !d;
+      if(!d){ tEl.value = ''; uEl.value = ''; rEl.checked = false; }
+      uEl.min = d || '';
     }
     root.querySelector('.dp-quick').addEventListener('click', function(e){
       const b = e.target.closest('[data-q]'); if(!b) return;
@@ -937,10 +946,13 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     });
     dEl.addEventListener('input', sync);
     dEl.addEventListener('change', sync);
-    dEl.value = init.date || ''; tEl.value = init.time || '';
+    dEl.value = init.date || ''; tEl.value = init.time || ''; uEl.value = init.until || ''; rEl.checked = !!init.roll;
     sync();
     return {
-      get(){ return { date: isDate(dEl.value) ? dEl.value : '', time: (isDate(dEl.value) && isTime(tEl.value)) ? tEl.value : '' }; }
+      get(){
+        const d = isDate(dEl.value) ? dEl.value : '';
+        return { date: d, time: (d && isTime(tEl.value)) ? tEl.value : '', until: (d && isDate(uEl.value) && uEl.value > d) ? uEl.value : '', roll: !!(d && rEl.checked) };
+      }
     };
   }
   let addDp = mountDatePicker($id('addDp'), { date: todayISO(), time:'' });
@@ -1037,6 +1049,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const st = statusById(addStatusId) || statuses[0];
     const it = { id:newId(), text:q.text, date, time, status:st.id, createdAt:new Date().toISOString(), doneAt: st.done ? todayISO() : '' };
     if(groupById(addGroupId)) it.group = addGroupId;
+    if(date && dp.until && dp.until > date) it.until = dp.until;
+    if(date && dp.roll) it.roll = true;
     items.push(it);
     placeInDay(it);
     flashId = it.id;
@@ -1173,7 +1187,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const it = items.find(i=>i.id===id && !i.deleted); if(!it) return;
     editingId = id; editOrig = it.text;
     $id('editText').value = it.text;
-    editDp = mountDatePicker($id('editDp'), { date: it.date, time: it.time });
+    editDp = mountDatePicker($id('editDp'), { date: it.date, time: it.time, until: it.until, roll: it.roll });
     const sel = $id('editStatus');
     sel.innerHTML = statuses.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+(s.done ? '（完了扱い）' : '')+'</option>').join('');
     sel.value = statusOf(it).id;
@@ -1205,6 +1219,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const dp = editDp.get();
     const dateChanged = (it.date||'') !== (dp.date||''), wasDone = isDone(it);
     it.text = text; it.date = dp.date; it.time = dp.time;
+    if(dp.until) it.until = dp.until; else delete it.until;
+    if(dp.roll) it.roll = true; else delete it.roll;
     const gv = $id('editGroup').value;
     if(groupById(gv)) it.group = gv; else delete it.group;
     const st = statusById($id('editStatus').value);
@@ -1510,6 +1526,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const fk = focusKey();
     lastRenderDay = todayISO();
     const today = lastRenderDay;
+    // 繰り越しを設定した未完了タスクは、日付（終了日）が過ぎたら今日の日付にする
+    let rolled = false;
+    items.forEach(it=>{ if(it.roll && !it.deleted && !it.archived && !isDone(it) && it.date && (it.until || it.date) < today){ it.date = today; delete it.until; rolled = true; } });
+    if(rolled) save();
     const fId = flashId, pId = popId; flashId = popId = null;
     if(statusFilter && !statusById(statusFilter)) statusFilter = null;
     if(groupFilter && groupFilter!=='__none' && !groupById(groupFilter)) groupFilter = null;
@@ -1518,10 +1538,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const live = items.filter(i=>!i.deleted && !i.archived);
     renderGroupBar(live);
     const open = live.filter(i=>!isDone(i));
-    const todayList = open.filter(i=>i.date===today);
+    const todayList = open.filter(i=>spans(i, today, today));
     const overList = live.filter(isOverdue);
     const tomorrow = addDaysISO(1), weekEnd = addDaysISO(7);
-    const inWeek = i=>!!i.date && i.date>=today && i.date<=weekEnd; // 今日〜7日後
+    const inWeek = i=>spans(i, today, weekEnd); // 今日〜7日後
     $id('statToday').textContent = todayList.length;
     $id('statOver').textContent = overList.length;
     $id('statOpen').textContent = open.length;
@@ -1533,7 +1553,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
 
-    const counts = { all:live.length, open:open.length, today:live.filter(i=>i.date===today).length, tomorrow:live.filter(i=>i.date===tomorrow).length, week:live.filter(inWeek).length, overdue:overList.length,
+    const counts = { all:live.length, open:open.length, today:live.filter(i=>spans(i, today, today)).length, tomorrow:live.filter(i=>spans(i, tomorrow, tomorrow)).length, week:live.filter(inWeek).length, overdue:overList.length,
       done:live.length-open.length, archive:items.filter(i=>i.archived && !i.deleted).length, trash:items.filter(i=>i.deleted).length };
     const labels = { all:'すべて', open:'未完了', today:'今日', tomorrow:'明日', week:'1週間以内', overdue:'期限切れ', done:'完了', archive:'アーカイブ', trash:'ごみ箱' };
     document.querySelectorAll('#tabs button[data-tab]').forEach(b=>{
@@ -1555,8 +1575,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       else {
         if(it.archived) return false;
         if(currentTab==='open' && isDone(it)) return false;
-        if(currentTab==='today' && it.date!==today) return false; // 今日・明日・1週間以内は完了済みも出す
-        if(currentTab==='tomorrow' && it.date!==tomorrow) return false;
+        if(currentTab==='today' && !spans(it, today, today)) return false; // 今日・明日・1週間以内は完了済みも出す
+        if(currentTab==='tomorrow' && !spans(it, tomorrow, tomorrow)) return false;
         if(currentTab==='week' && !inWeek(it)) return false;
         if(currentTab==='overdue' && !isOverdue(it)) return false;
         if(currentTab==='done' && !isDone(it)) return false;
@@ -1731,7 +1751,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         meta = '<div class="task-meta"><button type="button" class="chip date'+cls+'" data-act="edit" aria-label="日付を変更">'+escapeHtml((over ? '期限切れ・' : '')+(rel || fmtMD(it.date))+(it.time ? ' '+it.time : ''))+'</button></div>';
       } else meta = '<div class="task-meta"><button type="button" class="chip date" data-act="edit" aria-label="日付を設定">日付なし</button></div>';
     }
-    const gt = c.hideGroup ? '' : groupTag(it);
+    const gt = (c.hideGroup ? '' : groupTag(it)) + (it.until ? '<span class="chip static c-gray">'+escapeHtml('〜'+fmtMD(it.until))+'</span>' : '') + (it.roll ? '<span class="chip static c-gray">繰越</span>' : '');
     if(gt) meta = meta ? meta.replace('</div>', gt+'</div>') : '<div class="task-meta">'+gt+'</div>';
     const hasTime = !c.showDate && it.time;
     const time = hasTime ? '<span class="task-time s">'+escapeHtml(it.time)+'</span>' : '';
