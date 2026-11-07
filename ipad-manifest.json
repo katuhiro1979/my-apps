@@ -5,6 +5,7 @@
   "start_url": "ipad_manager.html",
   "scope": "ipad_manager.html",
   "display": "standalone",
+  "launch_handler": { "client_mode": "focus-existing" },
   "background_color": "#f2f2f7",
   "theme_color": "#3d5a73",
   "icons": [

@@ -5,6 +5,7 @@
   "start_url": "kaden-manager.html",
   "scope": "kaden-manager.html",
   "display": "standalone",
+  "launch_handler": { "client_mode": "focus-existing" },
   "background_color": "#F4F5F7",
   "theme_color": "#1B2333",
   "icons": [

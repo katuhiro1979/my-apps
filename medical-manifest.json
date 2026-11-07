@@ -5,6 +5,7 @@
   "start_url": "medical-manager.html",
   "scope": "medical-manager.html",
   "display": "standalone",
+  "launch_handler": { "client_mode": "focus-existing" },
   "background_color": "#F4F7F6",
   "theme_color": "#F4F7F6",
   "icons": [

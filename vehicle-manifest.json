@@ -5,6 +5,7 @@
   "start_url": "vehicle_manager.html",
   "scope": "vehicle_manager.html",
   "display": "standalone",
+  "launch_handler": { "client_mode": "focus-existing" },
   "background_color": "#f4f5f2",
   "theme_color": "#f4f5f2",
   "icons": [

@@ -5,6 +5,7 @@
   "start_url": "todo.html",
   "scope": "todo.html",
   "display": "standalone",
+  "launch_handler": { "client_mode": "focus-existing" },
   "background_color": "#F4F5F2",
   "theme_color": "#2F6F5E",
   "icons": [
