@@ -224,9 +224,9 @@
   li.task{position:relative;scroll-margin-top:calc(var(--top-h,56px) + var(--tabs-h,0px) + 56px);scroll-margin-bottom:96px;}
   .task-in{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:0 4px;align-items:center;min-height:58px;padding:4px 2px;background:var(--surface);touch-action:pan-y;}
   .task-in.back{transition:transform .2s ease;}
-  li.task.hasg .task-in{box-shadow:inset 4px 0 0 var(--gb);} /* グループの色の帯 */
+  li.task.hasg .task-in{box-shadow:inset 8px 0 0 var(--gb);} /* グループの色の帯 */
   li.task.over .task-in{box-shadow:inset 5px 0 0 var(--danger);}
-  li.task.over.hasg .task-in{box-shadow:inset 5px 0 0 var(--danger),inset 9px 0 0 var(--gb);}
+  li.task.over.hasg .task-in{box-shadow:inset 5px 0 0 var(--danger),inset 13px 0 0 var(--gb);}
   li.task.done .task-text .tt{color:var(--ink-soft);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--ink-soft) 60%,transparent);}
   li.task.plain .task-in{grid-template-columns:minmax(0,1fr) auto;padding:8px 6px 8px 14px;}
   li.task.flash .task-in{animation:flash 1.4s ease-out;}
