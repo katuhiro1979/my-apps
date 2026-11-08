@@ -1085,6 +1085,12 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     day.splice(at, 0, it);
     day.forEach((i,n)=>{ i.ord = n; });
   }
+  // 状態の管理で一番上にある状態（初期は「要」）にしたタスクを、同じ日の未完了の一番上へ移す
+  function moveToTopIfNeed(it){
+    if(!statuses.length || it.status !== statuses[0].id ||it.deleted || it.archived || isDone(it)) return;
+    const day = items.filter(i=>i!==it && !i.deleted && !i.archived && !isDone(i) && (i.date||'')===(it.date||'')).sort(byTime);
+    [it].concat(day).forEach((i,n)=>{ i.ord = n; });
+  }
   // 画面に出ている未完了タスクの新しい並び(ids)を、同じ日の全体の並びに反映する
   function reorderDay(key, ids){
     const all = items.filter(i=>!i.deleted && !i.archived && !isDone(i) && (i.date||'')===key).sort(byTime);
@@ -1113,6 +1119,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(!st.done){ it.doneAt = ''; delete it.prev; }
     it.status = stId;
     if(wasDone && !st.done) placeInDay(it);
+    moveToTopIfNeed(it);
     commit();
   }
   // 状態まわりの変更を元に戻すための控え
@@ -1217,7 +1224,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const text = $id('editText').value.trim();
     if(!text){ $id('editText').focus(); return; }
     const dp = editDp.get();
-    const dateChanged = (it.date||'') !== (dp.date||''), wasDone = isDone(it);
+    const dateChanged = (it.date||'') !== (dp.date||''), wasDone = isDone(it), prevStatus = it.status;
     it.text = text; it.date = dp.date; it.time = dp.time;
     if(dp.until) it.until = dp.until; else delete it.until;
     if(dp.roll) it.roll = true; else delete it.roll;
@@ -1230,6 +1237,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       it.status = st.id;
     }
     if(dateChanged || (wasDone && !isDone(it))) placeInDay(it);
+    if(st && st.id !== prevStatus) moveToTopIfNeed(it);
     closeDlg($id('editDlg'));
     commit();
   });
