@@ -224,7 +224,9 @@
   li.task{position:relative;scroll-margin-top:calc(var(--top-h,56px) + var(--tabs-h,0px) + 56px);scroll-margin-bottom:96px;}
   .task-in{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:0 4px;align-items:center;min-height:58px;padding:4px 2px;background:var(--surface);touch-action:pan-y;}
   .task-in.back{transition:transform .2s ease;}
+  li.task.hasg .task-in{box-shadow:inset 4px 0 0 var(--gb);} /* グループの色の帯 */
   li.task.over .task-in{box-shadow:inset 5px 0 0 var(--danger);}
+  li.task.over.hasg .task-in{box-shadow:inset 5px 0 0 var(--danger),inset 9px 0 0 var(--gb);}
   li.task.done .task-text .tt{color:var(--ink-soft);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--ink-soft) 60%,transparent);}
   li.task.plain .task-in{grid-template-columns:minmax(0,1fr) auto;padding:8px 6px 8px 14px;}
   li.task.flash .task-in{animation:flash 1.4s ease-out;}
@@ -1769,7 +1771,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     }
     const chip = '<button type="button" class="chip c-'+st.color+'" data-act="status" aria-haspopup="menu" aria-label="状態：'+escapeHtml(st.name)+'、変更">'+escapeHtml(st.name)+'</button>';
     const grip = (c.drag && !done) ? '<button type="button" class="drag" data-drag="1" aria-label="並べ替え：'+escapeHtml(it.text)+'（ドラッグ、または上下キー）"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.8"/><circle cx="15" cy="6" r="1.8"/><circle cx="9" cy="12" r="1.8"/><circle cx="15" cy="12" r="1.8"/><circle cx="9" cy="18" r="1.8"/><circle cx="15" cy="18" r="1.8"/></svg></button>' : '';
-    return '<li class="task'+(done?' done':'')+(over?' over':'')+(c.fId===it.id?' flash':'')+(grip?' can-drag':'')+'" data-id="'+id+'">'+
+    return '<li class="task'+(done?' done':'')+(over?' over':'')+(c.fId===it.id?' flash':'')+(grip?' can-drag':'')+(groupById(it.group)?' hasg':'')+'" data-id="'+id+'"'+(groupById(it.group)?' style="--gb:var(--c-'+groupById(it.group).color+'-fg)"':'')+'>'+
       '<div class="sw sw-l" aria-hidden="true">'+(done ? '↩ 未完了に戻す' : '✓ 完了にする')+'</div><div class="sw sw-r" aria-hidden="true">ごみ箱へ 🗑</div>'+
       '<div class="task-in">'+
         '<button type="button" class="chk'+(c.pId===it.id?' pop':'')+'" role="checkbox" aria-checked="'+done+'" aria-label="'+(done?'未完了に戻す：':'完了にする：')+escapeHtml(it.text)+'" data-act="toggle"><span class="box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span></button>'+
