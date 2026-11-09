@@ -253,6 +253,7 @@
         <div class="fld"><label for="rCost">費用（円）</label><input id="rCost" type="number" inputmode="numeric" min="0" max="10000000" step="1" placeholder="例: 8000"></div>
         <div class="fld wide"><label for="rNote">内容</label><input id="rNote" maxlength="60" placeholder="例: 部品交換" autocomplete="off"></div>
         <button class="wide" id="rAdd" type="button">修理を追加</button>
+        <button class="wide" id="rCancel" type="button" hidden>修理の編集をやめる</button>
       </div>
     </div>
 
@@ -592,6 +593,7 @@
   const F = { name:'#fName', place:'#fPlace', bought:'#fBought', price:'#fPrice', life:'#fLife', warranty:'#fWarranty', maker:'#fMaker', model:'#fModel', url:'#fUrl', memo:'#fMemo', replacedAt:'#fReplaced' };
   let editId = null;      // 編集中の家電の id（追加のときは null）
   let draftRepairs = [];  // 編集中の修理履歴
+  let repEditId = null;   // 修理履歴のうち、入力欄で編集中の1件の id
   let editOrig = '';      // 開いた時点の内容（変更の有無の判定用）
   let editBaseJson = '';  // 開いた時点の、保存済みの1台ぶん（他で更新されたかの判定用）
   let editStatus = 'using'; // 開いた時点の状態（編集中に削除されても、同じ状態で保存し直すため）
@@ -637,6 +639,7 @@
   function renderRepairs(){
     $('#repList').innerHTML = draftRepairs.length ? draftRepairs.map((r) =>
       '<li><span>' + esc(r.date) + ' ' + esc(r.note || '修理') + (r.cost ? '（' + yen(r.cost) + '）' : '') + '</span>' +
+      '<button type="button" data-eid="' + esc(r.id) + '" aria-label="' + esc(r.date + ' ' + (r.note || '修理')) + 'の記録を編集">編集</button>' +
       '<button type="button" data-rid="' + esc(r.id) + '" aria-label="' + esc(r.date + ' ' + (r.note || '修理')) + 'の記録を削除">削除</button></li>').join('')
       : '<li style="color:var(--ink-soft)">修理の記録はありません</li>';
   }
@@ -649,6 +652,7 @@
     Object.keys(F).forEach((k) => { $(F[k]).value = it ? (it[k] === 0 ? '' : it[k]) : ''; });
     draftRepairs = it ? it.repairs.map((r) => Object.assign({}, r)) : [];
     $('#rDate').value = todayISO(); $('#rCost').value = ''; $('#rNote').value = '';
+    setRepairEditing(null);
     $('#err').textContent = '';
     $('#delBtn').hidden = !it;
     $('#replBox').hidden = !it;
@@ -679,24 +683,52 @@
   $('#closeBtn').addEventListener('click', askClose);
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); askClose(); });
   // 入力中の修理を下書きへ足す。足せなければ false（理由は #err に出す）
+  // 修理の編集状態を切り替える（id があればその1件を編集中、null なら追加モード）
+  function setRepairEditing(id){
+    repEditId = id;
+    $('#rAdd').textContent = id ? '修理を更新' : '修理を追加';
+    $('#rCancel').hidden = !id;
+  }
   function addRepair(){
     const date = $('#rDate').value;
     if(!date || !isDate(date)){ showErr('#rDate', '修理した日を正しく入力してください。'); return false; }
-    if(draftRepairs.length >= 50){ showErr(null, '修理の記録は50件までです。'); return false; }
-    draftRepairs.push({ id: String(Date.now() + Math.random()), date: date, note: $('#rNote').value.trim().slice(0, 60), cost: num($('#rCost').value, 10000000) });
+    const rec = { id: repEditId || String(Date.now() + Math.random()), date: date, note: $('#rNote').value.trim().slice(0, 60), cost: num($('#rCost').value, 10000000) };
+    const idx = repEditId ? draftRepairs.findIndex((r) => r.id === repEditId) : -1;
+    if(idx >= 0) draftRepairs[idx] = rec; // 編集中の1件を置き換える
+    else{
+      if(draftRepairs.length >= 50){ showErr(null, '修理の記録は50件までです。'); return false; }
+      draftRepairs.push(rec);
+    }
     draftRepairs.sort((a, b) => (a.date < b.date ? 1 : -1));
-    $('#rCost').value = ''; $('#rNote').value = ''; $('#err').textContent = ''; clearInvalid();
+    setRepairEditing(null);
+    $('#rDate').value = todayISO(); $('#rCost').value = ''; $('#rNote').value = ''; $('#err').textContent = ''; clearInvalid();
     renderRepairs();
     return true;
   }
   $('#rAdd').addEventListener('click', addRepair);
+  $('#rCancel').addEventListener('click', () => {
+    setRepairEditing(null);
+    $('#rDate').value = todayISO(); $('#rCost').value = ''; $('#rNote').value = ''; $('#err').textContent = ''; clearInvalid();
+  });
   // 修理欄で Enter を押したときは、全体を保存せず、修理を追加する
   ['#rDate', '#rCost', '#rNote'].forEach((s) => $(s).addEventListener('keydown', (e) => {
     if(e.key === 'Enter'){ e.preventDefault(); addRepair(); }
   }));
   $('#repList').addEventListener('click', (e) => {
+    const eb = e.target.closest('button[data-eid]');
+    if(eb){ // 編集: 入力欄へ読み込む（「修理を更新」で反映）
+      const r = draftRepairs.find((x) => x.id === eb.dataset.eid);
+      if(!r) return;
+      $('#rDate').value = r.date; $('#rCost').value = r.cost || ''; $('#rNote').value = r.note;
+      setRepairEditing(r.id); clearInvalid(); $('#err').textContent = '';
+      $('#rNote').focus();
+      return;
+    }
     const b = e.target.closest('button[data-rid]');
     if(!b) return;
+    if(b.dataset.rid === repEditId){ // 編集中の1件を消したら、追加モードに戻す
+      setRepairEditing(null); $('#rDate').value = todayISO(); $('#rCost').value = ''; $('#rNote').value = '';
+    }
     draftRepairs = draftRepairs.filter((r) => r.id !== b.dataset.rid);
     renderRepairs();
   });
@@ -739,7 +771,7 @@
       editId = null; gone = true;
     }
     // 「修理を追加」を押し忘れた入力は、保存時に取り込む
-    if($('#rCost').value || $('#rNote').value.trim()){ if(!addRepair()) return; }
+    if(repEditId || $('#rCost').value || $('#rNote').value.trim()){ if(!addRepair()) return; }
     const v = validateForm();
     if(v){ showErr(v.sel, v.msg); return; }
     const next = readForm(base);
