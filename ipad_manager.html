@@ -253,7 +253,7 @@
     <div class="seg" id="fltSeg" role="group" aria-label="状態で絞り込み"></div>
     <label class="search"><span aria-hidden="true">🔍</span><input id="q" type="search" placeholder="呼び名・型番・場所で検索" aria-label="検索"></label>
     <label class="sort">並び順
-      <select id="sortSel"><option value="warranty">保証が近い順</option><option value="name">呼び名順</option><option value="added">登録順</option><option value="oldest">購入が古い順</option></select>
+      <select id="sortSel"><option value="warranty">保証が近い順</option><option value="name">呼び名順</option><option value="added">登録順</option><option value="oldest">購入が古い順</option><option value="charge">チャージ期限が近い順</option></select>
     </label>
   </div>
   <div id="list" class="grid"></div>
@@ -640,6 +640,10 @@
       // 保証が近い（期限切れを含む）順。期限なしは後ろ、売却済みは最後
       var key=function(v){var n=warrantyOf(v);return n!==null?n:(v.status==='売却済み'?2e6:1e6);};
       list.sort(function(a,b){return key(a)-key(b);});
+    }else if(view.sort==='charge'){
+      // チャージの有効期限が近い（切れを含む）順。ポケットWi-Fi以外・期限なしは後ろ
+      var ckey=function(v){var e=lastExpire(v);return e?daysLeft(e):1e6;};
+      list.sort(function(a,b){return ckey(a)-ckey(b);});
     }else if(view.sort==='oldest'){
       // 購入日が古い順。購入日なしは最後
       list.sort(function(a,b){return (a.buyDate||'9999').localeCompare(b.buyDate||'9999');});
@@ -766,6 +770,12 @@
     return h+'</div>';
   }
 
+  // ポケットWi-Fiの最新のチャージ有効期限（なければ空）
+  function lastExpire(v){
+    if(v.kind!=='ポケットWi-Fi')return '';
+    var last='';(v.charges||[]).forEach(function(c){if(c.expire&&c.expire>last)last=c.expire;});
+    return last;
+  }
   function findC(v,id){
     var a=v.charges||[];
     for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];
