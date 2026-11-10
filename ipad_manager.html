@@ -293,7 +293,7 @@
         <div class="sec">基本</div>
         <div class="form-grid">
           <label class="f">種別
-            <select id="fKind"><option>iPad</option><option>iPhone</option></select>
+            <select id="fKind"><option>iPad</option><option>iPhone</option><option>Android</option><option>ポケットWi-Fi</option></select>
           </label>
           <label class="f">呼び名（必須）<input id="fName" maxlength="30" placeholder="例：リビング用"></label>
           <label class="f">機種
@@ -309,7 +309,7 @@
           </label>
           <label class="f">色<input id="fColor" maxlength="20" placeholder="例：シルバー"></label>
           <label class="f">回線
-            <select id="fNetwork"><option>Wi-Fi</option><option>Wi-Fi + Cellular</option></select>
+            <select id="fNetwork"><option>Wi-Fi</option><option>Wi-Fi + Cellular</option><option>モバイル回線</option></select>
           </label>
           <label class="f">状態
             <select id="fStatus"><option>使用中</option><option>予備</option><option>修理中</option><option>売却済み</option></select>
@@ -329,7 +329,7 @@
           <label class="f">購入店<input id="fShop" maxlength="30" placeholder="例：Apple Store"></label>
           <label class="f">購入金額（円）<input type="number" min="0" inputmode="numeric" id="fPrice"></label>
           <label class="f">保証期限<input type="date" id="fWarranty"></label>
-          <label class="f">AppleCare+
+          <label class="f"><span id="careLbl">AppleCare+</span>
             <select id="fCare"><option>未加入</option><option>加入</option></select>
           </label>
         </div>
@@ -348,6 +348,11 @@
 <script>
 (function(){
   var KEY='ipad-manager-data';
+  // 種別（追加するときはここと MODELS に足す）。Apple製以外は OS名・補償名を切り替える
+  var KIND_LIST=['iPad','iPhone','Android','ポケットWi-Fi'];
+  var OS_NAME={'iPad':'iPadOS','iPhone':'iOS','Android':'Android','ポケットWi-Fi':'ファームウェア'};
+  function osName(k){return OS_NAME[k]||'iPadOS';}
+  function careName(k){return k==='iPad'||k==='iPhone'?'AppleCare+':'延長保証・補償';}
   // [フォームのID, データのキー, 初期値]
   var FIELDS=[
     ['fKind','kind','iPad'],['fName','name',''],['fModel','model',''],['fGen','gen',''],['fModelNo','modelNo',''],
@@ -373,7 +378,7 @@
       FIELDS.forEach(function(p){o[p[1]]=str(v[p[1]]);});
       if(!DATE_RE.test(o.buyDate))o.buyDate='';
       if(!DATE_RE.test(o.warranty))o.warranty='';
-      if(o.kind!=='iPhone')o.kind='iPad'; // 種別のない（以前の）データは iPad として扱う
+      if(KIND_LIST.indexOf(o.kind)<0)o.kind='iPad'; // 種別のない（以前の）データは iPad として扱う
       o.image=(typeof v.image==='string'&&/^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(v.image))?v.image:'';
       var aseen={};
       o.accessories=(Array.isArray(v.accessories)?v.accessories:[]).filter(function(a){return a&&typeof a==='object';}).map(function(a){
@@ -400,7 +405,7 @@
   var VIEW_KEY='ipad-manager-view';
   var view=(function(){
     var d={filter:'all',sort:'warranty',kind:'all'};
-    try{var s=JSON.parse(localStorage.getItem(VIEW_KEY));if(s){d.filter=s.filter||d.filter;d.sort=s.sort||d.sort;d.kind=s.kind==='iPad'||s.kind==='iPhone'?s.kind:'all';}}catch(e){}
+    try{var s=JSON.parse(localStorage.getItem(VIEW_KEY));if(s){d.filter=s.filter||d.filter;d.sort=s.sort||d.sort;d.kind=KIND_LIST.indexOf(s.kind)>=0?s.kind:'all';}}catch(e){}
     return d;
   })();
   function saveView(){try{localStorage.setItem(VIEW_KEY,JSON.stringify(view));}catch(e){}}
@@ -410,9 +415,11 @@
   // 種別ごとの機種の選択肢
   var MODELS={
     iPad:['iPad','iPad Air','iPad mini','iPad Pro','その他'],
-    iPhone:['iPhone','iPhone Plus','iPhone Pro','iPhone Pro Max','iPhone SE','iPhone mini','その他']
+    iPhone:['iPhone','iPhone Plus','iPhone Pro','iPhone Pro Max','iPhone SE','iPhone mini','その他'],
+    'Android':['Galaxy','Pixel','Xperia','AQUOS','arrows','OPPO','Xiaomi','Redmi','HUAWEI','Fire タブレット','その他'],
+    'ポケットWi-Fi':['Pocket WiFi','Speed Wi-Fi','Aterm','WiMAX','Wi-Fi ルーター','その他']
   };
-  var KINDS=[['all','すべて'],['iPad','iPad'],['iPhone','iPhone']];
+  var KINDS=[['all','すべて']].concat(KIND_LIST.map(function(k){return [k,k];}));
   // 種別に合わせて機種の選択肢とOSの名前を切り替える。keep は選んだままにしたい機種（以前の値が選択肢にないときも残す）
   function fillModels(keep){
     var list=MODELS[$('fKind').value]||MODELS.iPad;
@@ -420,7 +427,8 @@
     if(keep&&list.indexOf(keep)<0)opts.push('<option>'+esc(keep)+'</option>');
     $('fModel').innerHTML=opts.join('');
     $('fModel').value=keep||'';
-    $('osLbl').textContent=($('fKind').value==='iPhone'?'iOS':'iPadOS')+'のバージョン';
+    $('osLbl').textContent=osName($('fKind').value)+'のバージョン';
+    $('careLbl').textContent=careName($('fKind').value);
   }
   $('fKind').onchange=function(){fillModels('');};
   var FILTERS=[['all','すべて'],['使用中','使用中'],['予備','予備'],['other','その他']];
@@ -553,7 +561,7 @@
   function startEdit(id){
     var v=find(id);if(!v)return;
     editId=id;imgData=v.image||'';
-    $('fKind').value=v.kind==='iPhone'?'iPhone':'iPad';fillModels(v.model);
+    $('fKind').value=KIND_LIST.indexOf(v.kind)>=0?v.kind:'iPad';fillModels(v.model);
     FIELDS.forEach(function(p){$(p[0]).value=v[p[1]]!=null&&v[p[1]]!==''?v[p[1]]:p[2];});
     showImg();
     $('formTitle').textContent='端末を編集する';
@@ -624,7 +632,7 @@
 
   function badgeOf(v){
     var n=warrantyOf(v);
-    if(n!==null)return '<span class="badge '+level(n)+'">'+(v.care==='加入'?'AppleCare+ ':'保証 ')+'：'+leftText(n)+'</span>';
+    if(n!==null)return '<span class="badge '+level(n)+'">'+(v.care==='加入'?careName(v.kind)+' ':'保証 ')+'：'+leftText(n)+'</span>';
     if(v.status==='売却済み')return '<span class="badge none">売却済み</span>';
     return '<span class="badge none">保証期限の登録なし</span>';
   }
@@ -632,7 +640,7 @@
     var c=[v.model,v.gen,v.capacity,v.color,v.network].filter(Boolean).map(function(c){return '<span class="chip">'+esc(c)+'</span>';}).join('');
     return c?'<div class="chips">'+c+'</div>':'';
   }
-  function mediaOf(v){return v.image?'<img src="'+esc(v.image)+'" alt="">':'<span aria-hidden="true">📱</span>';}
+  function mediaOf(v){return v.image?'<img src="'+esc(v.image)+'" alt="">':'<span aria-hidden="true">'+(v.kind==='ポケットWi-Fi'?'📶':'📱')+'</span>';}
 
   // 一覧のカード（押すと詳細シートが開く）
   function deviceHtml(v){
@@ -654,10 +662,10 @@
       +'<div class="c-groups">'
       +'<div class="group"><h3>端末</h3>'
       +row('状態',v.status)+row('回線',v.network)+row('置き場所・用途',v.place)
-      +row('型番',v.modelNo)+row('シリアル番号',v.serial)+row(v.kind==='iPhone'?'iOS':'iPadOS',v.os)+'</div>'
+      +row('型番',v.modelNo)+row('シリアル番号',v.serial)+row(osName(v.kind),v.os)+'</div>'
       +'<div class="group"><h3>購入・保証</h3>'
       +row('購入日',v.buyDate)+row('購入店',v.shop)+row('金額',v.price?Number(v.price).toLocaleString()+'円':'')
-      +row('保証期限',v.warranty)+row('AppleCare+',v.care)+'</div></div>'
+      +row('保証期限',v.warranty)+row(careName(v.kind),v.care)+'</div></div>'
       +(v.note?'<div class="d-note">'+esc(v.note)+'</div>':'')
       +(forPrint?'':'<div class="d-actions"><button class="small" data-act="edit" data-d="'+v.id+'">編集</button>'
         +'<button class="ghost small" data-act="print" data-d="'+v.id+'">この端末を印刷</button>'
