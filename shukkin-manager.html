@@ -667,10 +667,44 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 
   // ToDoアプリ（todo-app-data）のその日のタスクを読む。読み取り専用。同じ場所で開いたときだけ読める
+  // ---- クラウドのToDoを読む（読み取り専用）。ホーム画面アプリ同士は保存領域が別なので、端末内のToDoが無い・古いときの代わりに使う ----
+  const TODO_CLOUD = { url: 'https://kcadsiwjxlmhzremgzet.supabase.co', anon: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjYWRzaXdqeGxtaHpyZW1nemV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4ODgzNzAsImV4cCI6MjEwNTQ2NDM3MH0.ZOm5zNFazsLKFl8N-oLhBeUxZcYscPNdOpYPOwq8d9M', session: 'sb-kcadsiwjxlmhzremgzet-auth-token', cache: 'shukkin-todo-cloud-v1' };
+  let todoCloud = null, todoFetchAt = 0;
+  try{ const c = JSON.parse(localStorage.getItem(TODO_CLOUD.cache) || 'null'); if(c && typeof c.at === 'string' && Array.isArray(c.items)) todoCloud = c; }catch(e){ todoCloud = null; }
+  async function fetchTodoCloud(force){
+    if(Date.now() - todoFetchAt < (force ? 2000 : 10000)) return;
+    todoFetchAt = Date.now();
+    try{
+      // 同期モジュールがログイン中の印を端末内に残している。ここでは読むだけで、更新や書き込みはしない
+      const ses = JSON.parse(localStorage.getItem(TODO_CLOUD.session) || 'null');
+      if(!ses || !ses.access_token || (ses.expires_at && ses.expires_at * 1000 < Date.now())) return;
+      const res = await fetch(TODO_CLOUD.url + '/rest/v1/app_kv?select=value,updated_at&app_name=eq.ToDo&key=eq.data-v1', { headers: { apikey: TODO_CLOUD.anon, Authorization: 'Bearer ' + ses.access_token } });
+      if(!res.ok) return;
+      const rows = await res.json();
+      if(!Array.isArray(rows) || !rows.length) return;
+      const d = JSON.parse(rows[0].value);
+      if(!d || !Array.isArray(d.items) || typeof rows[0].updated_at !== 'string') return;
+      if(todoCloud && todoCloud.at === rows[0].updated_at) return;
+      todoCloud = { at: rows[0].updated_at, items: d.items, statuses: Array.isArray(d.statuses) ? d.statuses : [] };
+      try{ localStorage.setItem(TODO_CLOUD.cache, JSON.stringify(todoCloud)); }catch(e){ /* 容量不足などは無視 */ }
+      refreshTodo();
+    }catch(e){ /* 通信できないときは、前回読んだ内容か端末内のToDoを使う */ }
+  }
+  // 端末内のToDoとクラウドのToDoのうち、新しいほうを使う（端末内が無い、またはクラウドのほうが新しいとき、クラウド）
+  function todoSource(){
+    let local = null, meta = null;
+    try{ local = JSON.parse(localStorage.getItem('todo-app-data') || 'null'); }catch(e){ local = null; }
+    if(!local || !Array.isArray(local.items)) local = null;
+    if(!todoCloud) return local;
+    if(!local) return todoCloud;
+    try{ meta = JSON.parse(localStorage.getItem('cloudsync-meta::ToDo::data-v1') || 'null'); }catch(e){ meta = null; }
+    if(meta && typeof meta.at === 'string' && Date.parse(todoCloud.at) > Date.parse(meta.at)) return todoCloud;
+    return local;
+  }
   function todoByDate(){
     const out = {};
     try{
-      const d = JSON.parse(localStorage.getItem('todo-app-data') || 'null');
+      const d = todoSource();
       if(!d || !Array.isArray(d.items)) return out;
       const done = {};
       (Array.isArray(d.statuses) ? d.statuses : []).forEach((s) => { if(s && s.id) done[s.id] = !!s.done; });
@@ -979,6 +1013,7 @@ let nights = '', nrange = [];
     $('#dErr').textContent = '';
     dOrig = dSnap(); updatePv();
     dlg.showModal(); $('#dTitle').focus();
+    fetchTodoCloud(true);
   }
   $('#dType').addEventListener('change', () => {
     const p = presetOf($('#dType').value);
@@ -1209,6 +1244,9 @@ let nights = '', nrange = [];
   }
   // 同期スクリプトは defer で後から読むため、読み込みが終わってから始める（CDNが遅くても、画面は先に出る）
   if(document.readyState === 'complete') startCloud(); else window.addEventListener('load', startCloud);
+  // クラウドのToDo: 開いたとき・アプリに戻ったときに読む（ログイン直後は期限切れのことがあるので、少し後にもう1回）
+  fetchTodoCloud(true); setTimeout(() => fetchTodoCloud(true), 4000);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) fetchTodoCloud(); });
 })();
 </script>
 </body>
