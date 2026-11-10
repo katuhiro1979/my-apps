@@ -58,6 +58,8 @@
   }
 
   *{ box-sizing:border-box; }
+  /* 画面を横にずらせない（iPadで、文字を大きくしたときなどに左右へ動くため）。縦のスクロールと拡大・縮小はそのまま */
+  html{ overflow-x:hidden; overflow-x:clip; touch-action:pan-y pinch-zoom; }
   body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); line-height:1.6; padding:env(safe-area-inset-top) 16px calc(88px + env(safe-area-inset-bottom)); }
   main{ max-width:720px; margin:0 auto; }
   .hbtns{ display:flex; gap:4px; flex:none; }
