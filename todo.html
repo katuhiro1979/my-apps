@@ -782,7 +782,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   const FS_KEY = 'todo-font-size';
   const FS_LIST = ['s','m','l','xl'];
   const FS_LABEL = { s:'小', m:'標準', l:'大', xl:'特大' };
-  const FS_SCALE = { s:0.9, m:1, l:1.2, xl:1.4 };
+  const FS_SCALE = { s:0.8, m:0.9, l:1.05, xl:1.1 };
   function getFontSize(){
     try{ const t = localStorage.getItem(FS_KEY); if(FS_LIST.includes(t)) return t; }catch(e){}
     return 'm';
