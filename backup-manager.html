@@ -111,7 +111,7 @@
     <ul class="log" id="backupLog"></ul>
 
     <h3 style="font-size:1rem;margin:16px 0 4px">簡易バックアップ(暗号化なし)</h3>
-    <p class="note">鍵なしで、全データを1つのJSONファイルにして、指定したフォルダの「SupabaseBackup/_簡易」へ保存します。中身は暗号化されないので、ドライブの共有設定に注意してください。</p>
+    <p class="note">鍵なしで、アプリごとにJSONファイルを作り、指定したフォルダの「SupabaseBackup/_簡易/アプリ名」へ保存します。中身は暗号化されないので、ドライブの共有設定に注意してください。</p>
     <div class="row"><button id="btnSimple" disabled>簡易バックアップを実行</button></div>
     <ul class="log" id="simpleLog"></ul>
   </section>
@@ -452,13 +452,20 @@
       if (dirHandle && (await dirPerm(true)) !== 'granted') throw new Error('フォルダへの書き込みが許可されていません');
       add('dim', '取得中…');
       const data = await fetchAll();                         // 1つでも失敗したら全体を中止
-      const counts = {}; let total = 0;
-      for (const t of ALL_TABLES) { counts[t] = data[t].length; total += data[t].length; }
-      if (!total) throw new Error('バックアップするデータがありません');
-      const now = new Date();
-      const body = { format: FORMAT + '-plain', version: 1, createdAt: now.toISOString(), counts, tables: data };
-      const res = await saveFile(['_簡易'], `supabase-backup_${stamp(now)}.json`, JSON.stringify(body, null, 1));
-      add('ok', `✓ ${total}件を保存しました: ${res.name}(${res.mode === 'folder' ? '検証済み' : 'ダウンロード'})`);
+      const groups = groupRows(data);
+      if (!groups.length) throw new Error('バックアップするデータがありません');
+      const now = new Date(); let okN = 0, ngN = 0;
+      for (const g of groups) {                              // アプリごとに別ファイルで保存
+        const folder = g.app === COMMON ? '_' + COMMON : safeName(g.app);
+        try {
+          const payload = buildPayload(g, now);
+          const res = await saveFile(['_簡易', folder], `${safeName(g.app)}_${stamp(now)}.json`, JSON.stringify(payload, null, 1));
+          const total = Object.values(payload.counts).reduce((a, b) => a + b, 0);
+          add('ok', `✓ ${g.app}: ${total}件を保存(${res.mode === 'folder' ? '検証済み' : 'ダウンロード'})`);
+          okN++;
+        } catch (e) { add('ng', `✗ ${g.app}: ${e.message}`); ngN++; }
+      }
+      add(ngN ? 'ng' : 'ok', ngN ? `完了: 成功${okN}件 / 失敗${ngN}件` : `完了: ${okN}件すべて成功`);
     } catch (e) { add('ng', '簡易バックアップを中止しました: ' + e.message); }
     refresh();
   }
