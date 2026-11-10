@@ -131,7 +131,15 @@
   .stats .hot{ background:var(--warn-bg); } .stats .hot small, .stats .hot b{ color:var(--warn); }
   .sec{ display:flex; align-items:flex-start; gap:8px; flex-basis:100%; margin:6px 0 0; font-size:.85rem; }
   .sec-l{ flex:none; min-width:4.2em; padding:1px 2px; border-radius:6px; text-align:center; font-size:.78rem; font-weight:700; color:var(--ink); border:1px solid var(--ink-soft); background:rgba(128,128,128,.14); }
-  .sec.plan .sec-l{ color:var(--c-work); border-color:var(--c-work); }
+  /* 予定＝青、ToDo＝オレンジ（文字・枠・薄い背景。ダークは明るい色） */
+  .sec.plan .sec-l{ color:#1D5FC4; border-color:#1D5FC4; background:#F1F6FD; }
+  .sec.todo .sec-l{ color:#9A4A06; border-color:#C26A00; background:#FEF5E9; }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]) .sec.plan .sec-l{ color:#7FB0FF; border-color:#7FB0FF; background:#131E30; }
+    :root:not([data-theme="light"]) .sec.todo .sec-l{ color:#F0A040; border-color:#F0A040; background:#2A2010; }
+  }
+  :root[data-theme="dark"] .sec.plan .sec-l{ color:#7FB0FF; border-color:#7FB0FF; background:#131E30; }
+  :root[data-theme="dark"] .sec.todo .sec-l{ color:#F0A040; border-color:#F0A040; background:#2A2010; }
   .sec-b{ flex:1; min-width:0; }
   .sec .ln{ display:block; white-space:pre-wrap; overflow-wrap:anywhere; padding:1px 0; }
   .sec .ln.done{ color:var(--ink-soft); text-decoration:line-through; }
