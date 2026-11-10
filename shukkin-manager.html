@@ -227,8 +227,8 @@
   dialog{ color:var(--ink); background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:0; max-width:none; }
   dialog::backdrop{ background:rgba(0,0,0,.45); }
   .sheet{ width:min(560px,100%); max-height:92vh; max-height:92dvh; margin:auto auto 0; border-radius:16px 16px 0 0; flex-direction:column; overflow:hidden; }
-  .sheet[open]{ display:flex; animation:sheetUp .24s cubic-bezier(.2,.8,.2,1); }
-  @keyframes sheetUp{ from{ transform:translateY(32px); opacity:0; } to{ transform:none; opacity:1; } }
+  /* シート本体にはアニメーションを付けない（iPadOS 26 の Safari で、透明のまま止まって見えなくなったため） */
+  .sheet[open]{ display:flex; }
   dialog[open]::backdrop{ animation:fadeOnly .2s ease-out; }
   @keyframes fadeOnly{ from{ opacity:0; } to{ opacity:1; } }
   @media (min-width:640px){ .sheet{ margin:auto; border-radius:16px; } }
@@ -253,7 +253,7 @@
   .toast{ top:auto; right:auto; margin:0; border:0; overflow:visible; } /* popover（最前面の層）の既定の見た目を打ち消す */
   .toast.show{ display:flex; width:max-content; }
   .toast button{ white-space:nowrap; min-height:44px; background:transparent; color:inherit; border-color:currentColor; }
-  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; } .page:not([hidden]), .sheet[open], dialog[open]::backdrop{ animation:fadeOnly .1s !important; } }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; } .page:not([hidden]), dialog[open]::backdrop{ animation:fadeOnly .1s !important; } }
 </style>
 </head>
 <body>
