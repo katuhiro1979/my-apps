@@ -109,6 +109,11 @@
     <p class="note">全アプリのデータを取得し、アプリごとに暗号化して保存します。クラウドのデータは変更しません。</p>
     <div class="row"><button class="primary" id="btnBackup" disabled>バックアップを実行</button></div>
     <ul class="log" id="backupLog"></ul>
+
+    <h3 style="font-size:1rem;margin:16px 0 4px">簡易バックアップ(暗号化なし)</h3>
+    <p class="note">鍵なしで、全データを1つのJSONファイルにして、指定したフォルダの「SupabaseBackup/_簡易」へ保存します。中身は暗号化されないので、ドライブの共有設定に注意してください。</p>
+    <div class="row"><button id="btnSimple" disabled>簡易バックアップを実行</button></div>
+    <ul class="log" id="simpleLog"></ul>
   </section>
 
   <section class="card" id="cardHistory">
@@ -268,8 +273,9 @@
   async function exists(dir, name) { try { await dir.getFileHandle(name); return true; } catch (e) { return false; } }
   async function uniqueName(dir, name) {
     if (!(await exists(dir, name))) return name;
-    const base = name.replace(/\.json\.enc$/, '');
-    for (let i = 2; i < 1000; i++) { const n = `${base}_${i}.json.enc`; if (!(await exists(dir, n))) return n; }
+    const ext = /\.json\.enc$/.test(name) ? '.json.enc' : '.json';
+    const base = name.slice(0, name.length - ext.length);
+    for (let i = 2; i < 1000; i++) { const n = `${base}_${i}${ext}`; if (!(await exists(dir, n))) return n; }
     throw new Error('ファイル名を決められません');
   }
   async function writeText(dir, name, text) { const fh = await dir.getFileHandle(name, { create: true }); const w = await fh.createWritable(); await w.write(text); await w.close(); return fh; }
@@ -346,6 +352,7 @@
     $('dirUnsupported').hidden = hasFS;
     $('btnDir').hidden = !hasFS;
     $('btnBackup').disabled = !(loggedIn && pub);
+    $('btnSimple').disabled = !loggedIn;
     $('btnHistory').disabled = !hasFS || !dirHandle;
     $('btnPreview').disabled = !loggedIn;
     updateDirState();
@@ -433,6 +440,26 @@
       }
       add(ngN ? 'ng' : 'ok', ngN ? `完了: 成功${okN}件 / 失敗${ngN}件` : `完了: ${okN}件すべて成功`);
     } catch (e) { add('ng', 'バックアップを中止しました: ' + e.message); }
+    refresh();
+  }
+
+  // 簡易バックアップ: 暗号化せず、全テーブルを1つのJSONにして保存する
+  async function doSimpleBackup() {
+    const log = $('simpleLog'); log.replaceChildren();
+    const add = (cls, text) => log.append(h('li', { class: cls }, text));
+    const btn = $('btnSimple'); btn.disabled = true;
+    try {
+      if (dirHandle && (await dirPerm(true)) !== 'granted') throw new Error('フォルダへの書き込みが許可されていません');
+      add('dim', '取得中…');
+      const data = await fetchAll();                         // 1つでも失敗したら全体を中止
+      const counts = {}; let total = 0;
+      for (const t of ALL_TABLES) { counts[t] = data[t].length; total += data[t].length; }
+      if (!total) throw new Error('バックアップするデータがありません');
+      const now = new Date();
+      const body = { format: FORMAT + '-plain', version: 1, createdAt: now.toISOString(), counts, tables: data };
+      const res = await saveFile(['_簡易'], `supabase-backup_${stamp(now)}.json`, JSON.stringify(body, null, 1));
+      add('ok', `✓ ${total}件を保存しました: ${res.name}(${res.mode === 'folder' ? '検証済み' : 'ダウンロード'})`);
+    } catch (e) { add('ng', '簡易バックアップを中止しました: ' + e.message); }
     refresh();
   }
 
@@ -563,7 +590,7 @@
     $('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
     $('btnDir').onclick = doDir; $('btnDirPerm').onclick = doDirPerm;
     $('btnKeyGen').onclick = doKeyGen; $('keyFile').onchange = doKeyImport;
-    $('btnBackup').onclick = doBackup; $('btnHistory').onclick = doHistory;
+    $('btnBackup').onclick = doBackup; $('btnSimple').onclick = doSimpleBackup; $('btnHistory').onclick = doHistory;
     $('btnPreview').onclick = doPreview; $('btnRestore').onclick = doRestore;
     refresh();
     // supabase-js は defer 読み込みなので、読み込み完了を待つ
