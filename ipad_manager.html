@@ -387,6 +387,14 @@
         if(!DATE_RE.test(r.buyDate))r.buyDate='';
         return r;
       });
+      // チャージ履歴（ポケットWi-Fi用）: 日付・金額・容量(GB)・有効期限
+      var cseen={};
+      o.charges=(Array.isArray(v.charges)?v.charges:[]).filter(function(c){return c&&typeof c==='object';}).map(function(c){
+        var r={id:safeId(c.id,cseen),date:str(c.date),amount:str(c.amount),gb:str(c.gb),expire:str(c.expire)};
+        if(!DATE_RE.test(r.date))r.date='';
+        if(!DATE_RE.test(r.expire))r.expire='';
+        return r;
+      });
       return o;
     });
   }
@@ -395,6 +403,7 @@
   var imgData='';    // フォーム上の写真
   var cloud=null;    // 同期モジュール（cloud-sync.js）
   var openA={};      // アクセサリーのフォーム（true=追加 / 記録ID=編集）
+  var openC={};      // チャージ履歴のフォーム（同上）
   var ATYPES=['ケース・カバー','保護フィルム','Apple Pencil','キーボード','充電器・ケーブル','スタンド','イヤホン・ヘッドホン','その他'];
   var ASTATUS=['使用中','故障','廃棄'];
   // アクセサリーの折りたたみ状態（この端末の表示設定のみ）
@@ -447,11 +456,11 @@
   }
   // 他の端末からの変更（編集中は保留し、保存したら捨て、やめたら反映する）
   var pendingRemote=null;
-  function isEditing(){return $('formSheet').open||Object.keys(openA).length>0;}
+  function isEditing(){return $('formSheet').open||Object.keys(openA).length>0||Object.keys(openC).length>0;}
   function applyRemote(d){
     data={devices:sanitize(d.devices)};
     try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}
-    editId=null;openA={};
+    editId=null;openA={};openC={};
     render();
   }
   function flushRemote(){
@@ -685,7 +694,7 @@
       +(forPrint?'':'<div class="d-actions"><button class="small" data-act="edit" data-d="'+v.id+'">編集</button>'
         +'<button class="ghost small" data-act="print" data-d="'+v.id+'">この端末を印刷</button>'
         +'<button class="small danger" data-act="del" data-d="'+v.id+'">削除</button></div>')
-      +accHtml(v,forPrint);
+      +accHtml(v,forPrint)+chgHtml(v,forPrint);
   }
 
   // 詳細シートの開閉・更新
@@ -757,6 +766,50 @@
     return h+'</div>';
   }
 
+  function findC(v,id){
+    var a=v.charges||[];
+    for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];
+    return null;
+  }
+  // チャージ履歴（ポケットWi-Fiのみ。新しい順。合計回数・金額・容量と、最新の有効期限を出す）
+  function chgHtml(v,forPrint){
+    if(v.kind!=='ポケットWi-Fi')return '';
+    var all=(v.charges||[]).slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+    var total=all.reduce(function(s,c){return s+(Number(c.amount)||0);},0);
+    var gbSum=all.reduce(function(s,c){return s+(Number(c.gb)||0);},0);
+    var folded=!forPrint&&!!collA[v.id+':c'];
+    var h='<div class="a-box"><div class="a-head"><button type="button" class="a-toggle" data-act="ctoggle" data-d="'+v.id+'" aria-expanded="'+(!folded)+'">'
+      +'<span class="arrow">'+(folded?'▶':'▼')+'</span> 📶 チャージ履歴'
+      +(all.length?'<span class="a-brief">'+all.length+'回・'+total.toLocaleString()+'円'+(gbSum?'・'+gbSum+'GB':'')+'</span>':'')+'</button>'
+      +'<button class="small" data-act="cadd" data-d="'+v.id+'">＋ 追加</button></div>';
+    if(folded)return h+'</div>';
+    if(forPrint&&!all.length)return h+'</div>';
+    // 最新の有効期限（いちばん先の期限）
+    var last='';all.forEach(function(c){if(c.expire&&c.expire>last)last=c.expire;});
+    if(last){var n=daysLeft(last);h+='<div style="margin-top:8px"><span class="badge '+level(n)+'">有効期限 '+esc(last)+'：'+leftText(n)+'</span></div>';}
+    if(!all.length&&!openC[v.id])h+='<div class="a-sub" style="margin-top:8px">まだチャージの記録がありません。「追加」から登録してください。</div>';
+    h+='<ul class="a-list">'+all.map(function(c){
+      var sub=[c.gb?c.gb+'GB':'',c.expire?'有効期限 '+c.expire:''].filter(Boolean).join(' ・ ');
+      return '<li class="a-item"><div><div class="a-row"><span class="t">'+esc(c.date||'日付なし')+'</span>'
+        +(c.amount?'<span class="c">'+Number(c.amount).toLocaleString()+'円</span>':'')+'</div>'
+        +(sub?'<div class="a-sub">'+esc(sub)+'</div>':'')
+        +'</div><div class="a-btns"><button class="ghost small" data-act="cedit" data-d="'+v.id+'" data-a="'+c.id+'">編集</button>'
+        +'<button class="ghost small danger" data-act="cdel" data-d="'+v.id+'" data-a="'+c.id+'">削除</button></div></li>';
+    }).join('')+'</ul>';
+    if(!forPrint&&openC[v.id]){
+      var oc=openC[v.id]===true?null:findC(v,openC[v.id]);
+      var g=function(k){return oc&&oc[k]!=null?esc(oc[k]):(k==='date'?ymd(new Date()):'');};
+      h+='<div class="a-form" data-cform="'+v.id+'">'
+        +'<label class="f">チャージした日（必須）<input type="date" class="cDate" value="'+g('date')+'"></label>'
+        +'<label class="f">金額（円・必須）<input type="number" min="0" inputmode="numeric" class="cAmount" value="'+g('amount')+'"></label>'
+        +'<label class="f">容量（GB）<input type="number" min="0" step="any" inputmode="decimal" class="cGb" placeholder="例：10" value="'+g('gb')+'"></label>'
+        +'<label class="f">有効期限<input type="date" class="cExpire" value="'+g('expire')+'"></label>'
+        +'<button class="small" data-act="csave" data-d="'+v.id+'">'+(oc?'保存':'登録する')+'</button>'
+        +'<button class="ghost small" data-act="ccancel" data-d="'+v.id+'">やめる</button></div>';
+    }
+    return h+'</div>';
+  }
+
   $('list').onkeydown=function(e){
     if(e.key!=='Enter'&&e.key!==' ')return;
     var c=e.target.closest('.card-main');
@@ -791,11 +844,34 @@
       return;
     }
     if(act==='del'){
-      if(confirm('「'+v.name+'」を削除しますか？アクセサリーの記録も消えます。')){
+      if(confirm('「'+v.name+'」を削除しますか？アクセサリー・チャージ履歴の記録も消えます。')){
         data.devices=data.devices.filter(function(x){return x.id!==v.id;});
         $('detailSheet').close();
         save();render();toast('削除しました');
       }
+      return;
+    }
+    if(act==='ctoggle'){collA[v.id+':c']=!collA[v.id+':c'];saveColl();render();return;}
+    if(act==='cadd'){openC[v.id]=true;if(collA[v.id+':c']){collA[v.id+':c']=false;saveColl();}render();return;}
+    if(act==='cedit'){openC[v.id]=b.dataset.a;render();return;}
+    if(act==='ccancel'){delete openC[v.id];render();if(!isEditing())flushRemote();return;}
+    if(act==='cdel'){
+      var dc=findC(v,b.dataset.a);
+      if(dc&&confirm((dc.date||'この')+'のチャージ記録を削除しますか？')){
+        v.charges=v.charges.filter(function(x){return x.id!==dc.id;});
+        save();render();toast('チャージ記録を削除しました');
+      }
+      return;
+    }
+    if(act==='csave'){
+      var cf=document.querySelector('[data-cform="'+v.id+'"]');
+      var crec={date:cf.querySelector('.cDate').value,amount:cf.querySelector('.cAmount').value,gb:cf.querySelector('.cGb').value,expire:cf.querySelector('.cExpire').value};
+      if(!crec.date){toast('チャージした日を入力してください');cf.querySelector('.cDate').focus();return;}
+      if(crec.amount===''){toast('金額を入力してください');cf.querySelector('.cAmount').focus();return;}
+      var cc=openC[v.id]===true?null:findC(v,openC[v.id]);
+      if(cc){for(var ck in crec)cc[ck]=crec[ck];}
+      else{crec.id=uid();(v.charges=v.charges||[]).push(crec);}
+      delete openC[v.id];pendingRemote=null;save();render();toast(cc?'チャージ記録を保存しました':'チャージ記録を追加しました');
       return;
     }
     if(act==='atoggle'){collA[v.id]=!collA[v.id];saveColl();render();return;}
