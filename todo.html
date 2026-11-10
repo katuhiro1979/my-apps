@@ -1550,6 +1550,50 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const el = li && li.querySelector(k.sel);
     if(el) el.focus({ preventScroll:true });
   }
+  // 定期券アプリの有効期限が14日以内なら、「定期券の期限」のタスクを自動で作る（同じ端末のデータを読む）
+  // 期限が変われば日付も変わる。更新して期限が遠くなったら消える。変更があれば true
+  const TEIKI_KEY = 'teiki-manager:passes', TEIKI_DAYS = 14;
+  function syncTeiki(today){
+    let passes;
+    try{ const raw = localStorage.getItem(TEIKI_KEY); if(raw===null) return false; passes = JSON.parse(raw); }catch(e){ return false; }
+    if(!Array.isArray(passes)) return false;
+    const limit = addDaysISO(TEIKI_DAYS), openSt = statuses.find(s=>!s.done) || statuses[0];
+    if(!openSt) return false;
+    let changed = false;
+    const live = new Map(); // タスクID -> 定期券
+    passes.forEach(p=>{
+      if(!p || typeof p.id!=='string' || !isDate(p.end)) return;
+      live.set('teiki_'+p.id.replace(/[^A-Za-z0-9_.-]/g,'_').slice(0,70), p);
+    });
+    // 定期券が消えた、または更新されて期限が遠くなったタスクの後始末
+    items = items.filter(it=>{
+      if(!/^teiki_/.test(it.id)) return true;
+      const p = live.get(it.id);
+      if(p && p.end <= limit) return true;
+      if(p){ changed = true; return false; } // 更新済み → 消す（次回の期限で作り直す）
+      if(it.deleted || isDone(it)) return true; // 定期券は削除済み。完了・ごみ箱のものはそのまま
+      it.deleted = true; it.deletedAt = today; changed = true; return true; // 定期券を削除 → ごみ箱へ
+    });
+    live.forEach((p,id)=>{
+      if(p.end > limit) return;
+      const text = (String(p.member||'')+'：'+String(p.route||'')+' 定期券の期限').slice(0,500);
+      const it = items.find(i=>i.id===id);
+      if(!it){
+        if(p.end < today) return; // すでに過ぎた期限は新しく作らない
+        items.push({ id, text, date:p.end, time:'', status:openSt.id, createdAt:new Date().toISOString(), doneAt:'' });
+        changed = true; return;
+      }
+      if(it.deleted) return; // 自分でごみ箱へ入れたものは作り直さない
+      if(it.text!==text){ it.text = text; changed = true; }
+      if(it.date!==p.end){
+        it.date = p.end; delete it.until; it.time = '';
+        if(isDone(it)){ it.status = openSt.id; it.doneAt = ''; }
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
   function render(){
     autoExportSoon();
     closeMenu(false);
@@ -1559,6 +1603,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     // 繰り越しを設定した未完了タスクは、日付（終了日）が過ぎたら今日の日付にする
     let rolled = false;
     items.forEach(it=>{ if(it.roll && !it.deleted && !it.archived && !isDone(it) && it.date && (it.until || it.date) < today){ it.date = today; delete it.until; rolled = true; } });
+    if(syncTeiki(today)) rolled = true;
     if(rolled) save();
     const fId = flashId, pId = popId; flashId = popId = null;
     if(statusFilter && !statusById(statusFilter)) statusFilter = null;
@@ -2435,7 +2480,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(cur.date === old) addDp = mountDatePicker($id('addDp'), { date: todayISO(), time: cur.time });
     render();
   }
-  document.addEventListener('visibilitychange', function(){ if(!document.hidden){ checkStale(); refreshDay(); } });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden){ checkStale(); refreshDay(); if(syncTeiki(todayISO())){ save(); render(); } } });
   setInterval(function(){ if(!document.hidden) refreshDay(); }, 60000);
 
   load();
