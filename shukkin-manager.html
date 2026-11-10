@@ -236,7 +236,7 @@
   .sheet form{ display:flex; flex-direction:column; flex:1 1 auto; min-height:0; overflow:hidden; }
   .sheet-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 16px; border-bottom:1px solid var(--line); }
   .sheet-head h2{ margin:0; font-size:1.05rem; }
-  .sheet-body{ padding:16px; overflow:auto; flex:1 1 auto; }
+  .sheet-body{ padding:16px; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; flex:1 1 auto; } /* 横にはずらさない（指で触ると左右に動くため） */
   .sheet-foot{ padding:8px 16px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); display:flex; gap:8px; }
   .sheet-foot .primary{ flex:1; }
   .fld{ margin-bottom:12px; }
