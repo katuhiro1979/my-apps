@@ -679,6 +679,7 @@
       +'<div class="c-body"><div class="d-name">'+esc(v.name)+'</div>'
       +chipsOf(v)
       +'<div>'+badgeOf(v)+'</div>'
+      +chargeBadge(v)
       +'<div class="c-foot"><span>'+esc(v.place||'')+(using?(v.place?'　':'')+'🎒 '+using+'点':'')+'</span><span class="more">詳細 ›</span></div>'
       +'</div></div></div>';
   }
@@ -775,6 +776,12 @@
     if(v.kind!=='ポケットWi-Fi')return '';
     var last='';(v.charges||[]).forEach(function(c){if(c.expire&&c.expire>last)last=c.expire;});
     return last;
+  }
+  // 一覧カード用: チャージの有効期限（ポケットWi-Fiで期限が登録されているときだけ）
+  function chargeBadge(v){
+    var e=lastExpire(v);if(!e)return '';
+    var n=daysLeft(e);
+    return '<div><span class="badge '+level(n)+'">📶 チャージ '+esc(e)+'：'+leftText(n)+'</span></div>';
   }
   function findC(v,id){
     var a=v.charges||[];
