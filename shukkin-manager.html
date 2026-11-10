@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="shukkin-icon-192.png">
 <script>
   /* 保存済みの表示設定を、画面が描かれる前に反映（ちらつき防止） */
-  try{ var t=localStorage.getItem('shukkin-app-theme'); if(t==='light'||t==='dark') document.documentElement.setAttribute('data-theme',t); }catch(e){}
+  try{ var t=localStorage.getItem('shukkin-app-theme'); if(t==='light'||t==='dark') document.documentElement.setAttribute('data-theme',t); var z=localStorage.getItem('shukkin-app-fontsize'); if(z==='s'||z==='l'||z==='xl') document.documentElement.setAttribute('data-fs',z); }catch(e){}
 </script>
 <style>
   /* ===== デザイントークン（ライト／ダーク。ダークは端末の設定に自動で従う） ===== */
@@ -60,6 +60,7 @@
   *{ box-sizing:border-box; }
   body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); line-height:1.6; padding:env(safe-area-inset-top) 16px calc(88px + env(safe-area-inset-bottom)); }
   main{ max-width:720px; margin:0 auto; }
+  .hbtns{ display:flex; gap:4px; flex:none; }
   header{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:16px 0 8px; }
   h1{ font-size:1.25rem; margin:0; }
   h2{ font-size:1rem; margin:0 0 8px; }
@@ -181,7 +182,11 @@
   .mnav button{ width:48px; padding:0; font-size:1.3rem; }
   .mnav .now{ width:auto; padding:0 12px; font-size:.9rem; }
   .mnav .now, .dnav .today-btn{ border-color:var(--line-strong); font-weight:600; }
-  #themeBtn{ border-color:transparent; background:transparent; color:var(--ink-soft); font-size:.85rem; }
+  /* 文字サイズ: 基準を変えると、rem で書いた文字が一緒に変わる */
+  :root[data-fs="s"]{ font-size:87.5%; }
+  :root[data-fs="l"]{ font-size:115%; }
+  :root[data-fs="xl"]{ font-size:130%; }
+  #themeBtn, #fontBtn{ border-color:transparent; background:transparent; color:var(--ink-soft); font-size:.85rem; }
   .days{ list-style:none; margin:0; padding:0; }
   .day{ display:flex; align-items:center; gap:10px; width:100%; min-height:56px; padding:6px 12px; margin-bottom:6px; text-align:left; border-radius:12px; background:var(--paper); }
   .day .d{ width:3.2em; flex-shrink:0; font-weight:700; }
@@ -261,7 +266,7 @@
 <main>
   <header>
     <h1 id="ttl">出勤簿</h1>
-    <button id="themeBtn" type="button" aria-label="表示の切り替え"></button>
+    <span class="hbtns"><button id="fontBtn" type="button" aria-label="文字サイズの切り替え"></button><button id="themeBtn" type="button" aria-label="表示の切り替え"></button></span>
   </header>
   <div class="notice" id="notice" role="alert" hidden><span id="noticeMsg"></span><button type="button" id="noticeClose" aria-label="この通知を閉じる">閉じる</button></div>
 
@@ -1209,6 +1214,27 @@ let nights = '', nrange = [];
     applyTheme(next);
   });
   applyTheme(getTheme());
+
+  // ---------- 文字サイズ（小 → 標準 → 大 → 特大）。端末ごとの設定で、同期はしない ----------
+  const FS_KEY = 'shukkin-app-fontsize';
+  const FS_NEXT = { s:'m', m:'l', l:'xl', xl:'s' };
+  const FS_LABEL = { s:'文字 小', m:'文字 標準', l:'文字 大', xl:'文字 特大' };
+  function getFs(){
+    try{ const z = localStorage.getItem(FS_KEY); return (z === 's' || z === 'l' || z === 'xl') ? z : 'm'; }
+    catch(e){ return 'm'; }
+  }
+  function applyFs(z){
+    if(z === 'm') document.documentElement.removeAttribute('data-fs');
+    else document.documentElement.setAttribute('data-fs', z);
+    $('#fontBtn').textContent = FS_LABEL[z];
+    $('#fontBtn').setAttribute('aria-label', '文字サイズの切り替え（現在: ' + FS_LABEL[z].slice(3) + '。押すと' + FS_LABEL[FS_NEXT[z]].slice(3) + '）');
+  }
+  $('#fontBtn').addEventListener('click', () => {
+    const next = FS_NEXT[getFs()];
+    try{ localStorage.setItem(FS_KEY, next); }catch(e){ /* 保存できなくても表示は切り替える */ }
+    applyFs(next);
+  });
+  applyFs(getFs());
 
   // ---------- オフライン対応（PWA） ----------
   if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
