@@ -224,6 +224,28 @@
   }
   .summary-cell.warn .value{ color:var(--warn); }
 
+  /* ---------- 期限のお知らせバナー ---------- */
+  .expiry-banner{
+    display:none;
+    background:#FBEBD6;
+    border:1px solid var(--warn);
+    border-radius:12px;
+    padding:10px 12px;
+    margin-bottom:14px;
+    font-size:13px;
+  }
+  .expiry-banner.show{ display:block; }
+  .expiry-banner .eb-head{
+    display:flex; align-items:center; justify-content:space-between;
+    font-weight:700; color:var(--warn);
+  }
+  .expiry-banner .eb-close{
+    border:0; background:transparent; font-size:18px; line-height:1;
+    color:var(--warn); cursor:pointer; padding:0 4px;
+  }
+  .expiry-banner ul{ margin:6px 0 0; padding-left:18px; }
+  .expiry-banner li{ margin:2px 0; }
+
   /* ---------- Member filter ---------- */
   .filter-row{
     display:flex;
@@ -560,6 +582,8 @@
     <button class="btn-secondary sm" id="ioFolderBtn">フォルダを選択</button>
     <button class="btn-secondary sm" id="ioFolderOffBtn" style="display:none;">解除</button>
   </div>
+
+  <div class="expiry-banner" id="expiryBanner" role="alert"></div>
 
   <div class="calendar-card">
     <div class="calendar-head">
@@ -1086,6 +1110,28 @@
     $('#statSum').textContent = fmtYen(sum);
   }
 
+  // 期限2週間前からのお知らせ。絞り込みに関係なく全員分を出す。閉じても再読み込みで再表示
+  let bannerClosed = false;
+  function renderBanner(){
+    const el = $('#expiryBanner');
+    const soon = passes
+      .filter(p => statusOf(p.end) === 'warn')
+      .sort((a,b) => daysUntil(a.end) - daysUntil(b.end));
+    if(bannerClosed || soon.length === 0){
+      el.classList.remove('show');
+      el.innerHTML = '';
+      return;
+    }
+    el.innerHTML = `<div class="eb-head"><span>もうすぐ期限の定期券が${soon.length}件あります</span>
+      <button class="eb-close" aria-label="お知らせを閉じる">×</button></div>
+      <ul>${soon.map(p => `<li>${escapeHtml(p.member)}：${escapeHtml(p.route)}（${fmtDate(p.end)}まで・${statusLabel(p.end)}）</li>`).join('')}</ul>`;
+    el.classList.add('show');
+    el.querySelector('.eb-close').addEventListener('click', () => {
+      bannerClosed = true;
+      renderBanner();
+    });
+  }
+
   function filteredPasses(){
     return activeMember === 'all' ? passes : passes.filter(p => p.member === activeMember);
   }
@@ -1164,6 +1210,7 @@
     if(activeMember !== 'all' && !uniqueMembers().has(activeMember)) activeMember = 'all';
     renderMemberFilter();
     renderStats();
+    renderBanner();
     renderList();
     renderCalendar();
   }
