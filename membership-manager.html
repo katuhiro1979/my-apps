@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会員証マネージャー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg: #F4F5F7;
+    --ink: #1B2333;
+    --ink-hover: #333d54;
+    --on-ink: #FFFFFF;
+    --ink-soft: #5B6478;
+    --paper: #FFFFFF;
+    --line: #D7DBE3;
+    --line-strong: #B9BFCB;
+    --ok: #25704F;
+    --warn: #9A5A0C;
+    --danger: #AE2F22;
+    --ok-bg: #E4F1EA;
+    --warn-bg: #FBEBD6;
+    --danger-bg: #F8E2DE;
+    --overlay: rgba(27,35,51,.45);
+    --focus: #2B6CB8;
+    --track: #1B2333;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg: #12151C;
+      --ink: #E8EBF2;
+      --ink-hover: #FFFFFF;
+      --on-ink: #12151C;
+      --ink-soft: #9AA3B5;
+      --paper: #1B202B;
+      --line: #2E3544;
+      --line-strong: #4A5368;
+      --ok: #5FD3A0;
+      --warn: #F0AD5A;
+      --danger: #F28B7D;
+      --ok-bg: #1C3328;
+      --warn-bg: #3A2C16;
+      --danger-bg: #3D2220;
+      --overlay: rgba(0,0,0,.65);
+      --focus: #7FB0F0;
+      --track: #E8EBF2;
+    }
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Noto Sans JP', system-ui, sans-serif;
+    line-height:1.6;
+    min-height:100vh;
+  }
+  .app{
+    max-width:920px;
+    margin:0 auto;
+    padding:clamp(18px,4vw,32px) clamp(14px,4vw,20px) 80px;
+  }
+
+  /* ---------- Header ---------- */
+  .app-header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:28px;
+    border-bottom:3px solid var(--ink);
+    padding-bottom:16px;
+  }
+  .app-header h1{
+    font-size:clamp(21px,5.5vw,26px);
+    font-weight:900;
+    margin:0;
+    letter-spacing:.02em;
+  }
+  .app-header .sub{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:4px;
+  }
+  .add-btn{
+    background:var(--ink);
+    color:var(--on-ink);
+    border:none;
+    border-radius:999px;
+    padding:11px 22px;
+    font-size:14px;
+    font-weight:700;
+    font-family:inherit;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:transform .12s ease, background .12s ease;
+  }
+  .add-btn:hover{ background:var(--ink-hover); transform:translateY(-1px); }
+  .add-btn:active{ transform:translateY(0); }
+
+  .header-actions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .menu{ position:relative; }
+  .menu > summary{
+    list-style:none;
+    width:42px; height:42px;
+    display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--line-strong);
+    border-radius:999px;
+    background:var(--paper);
+    color:var(--ink);
+    font-size:20px; font-weight:700; line-height:1;
+    cursor:pointer;
+  }
+  .menu > summary::-webkit-details-marker{ display:none; }
+  .menu-panel{
+    position:absolute; right:0; top:48px; z-index:20;
+    width:min(340px, calc(100vw - 28px));
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:0 8px 28px rgba(0,0,0,.18);
+    padding:12px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .menu-panel .autosave-bar{ margin-bottom:0; border-radius:12px; }
+  .layout{ display:block; }
+  .side-col{ margin-top:8px; }
+  .cal-fold > summary{
+    cursor:pointer; font-weight:700; font-size:14px;
+    padding:8px 2px; list-style:none;
+  }
+  .cal-fold > summary::-webkit-details-marker{ display:none; }
+  .cal-fold > summary::before{ content:"▾"; display:inline-block; margin-right:6px; transition:transform .15s; }
+  .cal-fold:not([open]) > summary::before{ transform:rotate(-90deg); }
+  .attn{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:var(--warn-bg); color:var(--warn);
+    border:1px solid var(--warn);
+    border-radius:12px; padding:10px 14px; margin-bottom:14px;
+    font-weight:700; font-size:14px;
+  }
+  .attn[hidden]{ display:none; }
+  .attn-btn{
+    font:inherit; font-size:13px; font-weight:700; cursor:pointer;
+    background:var(--warn); color:var(--paper);
+    border:none; border-radius:999px; padding:6px 14px; min-height:36px; white-space:nowrap; flex-shrink:0;
+  }
+  .attn-btn[aria-pressed="true"]{ outline:2px solid var(--ink); outline-offset:2px; }
+  .autosave-bar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:20px;
+    padding:9px 14px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:var(--paper);
+  }
+  .autosave-dot{
+    width:8px; height:8px;
+    border-radius:50%;
+    background:var(--line-strong);
+    flex-shrink:0;
+  }
+  .autosave-dot.on{ background:var(--ok); }
+  .autosave-dot.pending{ background:var(--warn); }
+  #autosaveStatus{ margin-right:auto; }
+  .btn-secondary.sm{
+    padding:5px 12px;
+    font-size:12px;
+  }
+
+  /* ---------- Mini calendar ---------- */
+  .calendar-card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px 18px 12px;
+    margin-bottom:20px;
+  }
+  .calendar-head{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+    margin-bottom:12px;
+  }
+  .cal-title{
+    font-size:14.5px;
+    font-weight:700;
+    min-width:110px;
+    text-align:center;
+    font-variant-numeric:tabular-nums;
+  }
+  .cal-nav{
+    width:26px; height:26px;
+    border-radius:50%;
+    border:1.5px solid var(--line);
+    background:var(--paper);
+    color:var(--ink-soft);
+    font-size:14px;
+    font-family:inherit;
+    cursor:pointer;
+    line-height:1;
+  }
+  .cal-nav:hover{ border-color:var(--ink); color:var(--ink); }
+  .calendar-weekdays{
+    display:grid;
+    grid-template-columns:repeat(7,minmax(0,1fr));
+    text-align:center;
+    font-size:11px;
+    color:var(--ink-soft);
+    font-weight:700;
+    margin-bottom:4px;
+  }
+  .calendar-grid{
+    display:grid;
+    grid-template-columns:repeat(7,minmax(0,1fr));
+    gap:3px;
+  }
+  .cal-day{
+    min-height:56px;
+    border-radius:8px;
+    padding:4px 3px;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  /* 一覧用の .empty（余白・破線）が効かないように打ち消す */
+  .cal-day.empty{ background:transparent; padding:0; border:none; border-radius:0; }
+  .cal-day.today{ box-shadow:inset 0 0 0 1.5px var(--ink); }
+  .cal-day .cal-num{
+    font-size:10.5px;
+    font-variant-numeric:tabular-nums;
+    color:var(--ink-soft);
+    text-align:center;
+  }
+  .cal-day.today .cal-num{ color:var(--ink); font-weight:700; }
+  .cal-pill{
+    font-size:9.5px;
+    font-weight:700;
+    color:var(--on-ink);
+    background:var(--ink);
+    border-radius:5px;
+    padding:1px 4px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    cursor:pointer;
+  }
+  .cal-pill.more{
+    background:none;
+    color:var(--ink-soft);
+    font-weight:700;
+    text-align:center;
+    cursor:default;
+  }
+
+  /* ---------- Summary strip ---------- */
+  .summary{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    margin-bottom:28px;
+  }
+  .summary-cell{
+    background:var(--paper);
+    padding:10px 16px;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    border:none;
+    font:inherit;
+    color:inherit;
+    text-align:left;
+    cursor:pointer;
+    min-height:44px;
+  }
+  .summary-cell[aria-pressed="true"]{ box-shadow:inset 0 0 0 2px var(--ink); }
+  .summary-cell .label{
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-bottom:0;
+    white-space:nowrap;
+  }
+  .summary-cell .value{
+    font-variant-numeric:tabular-nums;
+    font-size:17px;
+    font-weight:700;
+  }
+  .summary-cell.warn .value{ color:var(--warn); }
+  .summary-cell.danger .value{ color:var(--danger); }
+
+  /* ---------- Member filter ---------- */
+  .filter-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:22px;
+  }
+  .sort-select{
+    padding:7px 12px;
+    border:1.5px solid var(--line);
+    border-radius:999px;
+    font-family:inherit;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    background:var(--paper);
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .sort-select:focus{
+    outline:2px solid var(--ink);
+    outline-offset:1px;
+  }
+  .member-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .chip{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    padding:7px 14px 7px 10px;
+    border-radius:999px;
+    border:1.5px solid var(--line);
+    background:var(--paper);
+    font-size:13px;
+    font-weight:500;
+    cursor:pointer;
+    color:var(--ink-soft);
+    font-family:inherit;
+    transition:border-color .12s ease, color .12s ease;
+  }
+  .chip .dot{
+    width:9px; height:9px; border-radius:50%;
+    flex-shrink:0;
+  }
+  .chip.active{
+    border-color:var(--ink);
+    color:var(--ink);
+    font-weight:700;
+  }
+
+  /* ---------- Ticket list ---------- */
+  .list{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .empty{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--ink-soft);
+    border:1.5px dashed var(--line);
+    border-radius:var(--radius);
+  }
+  .empty-art{ color:var(--line-strong); margin-bottom:12px; }
+  .empty-sub{ margin:0 0 16px; }
+  .empty .big{
+    font-size:15px;
+    color:var(--ink);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+
+  .ticket{
+    position:relative;
+    background:var(--paper);
+    border-radius:var(--radius);
+    border:1px solid var(--line);
+    display:grid;
+    grid-template-columns:5px 1fr auto;
+  }
+  .ticket{ min-width:0; }
+  .member-tag{ overflow-wrap:anywhere; max-width:100%; }
+  .ticket .stripe{ background:var(--member-color, var(--ink)); border-radius:var(--radius) 0 0 var(--radius); }
+  .ticket-body{ padding:16px 18px; min-width:0; }
+  .ticket-top{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:10px;
+  }
+  .member-tag{
+    font-size:11.5px;
+    font-weight:700;
+    padding:2px 9px;
+    border-radius:999px;
+    color:#fff;
+    background:var(--member-color, var(--ink));
+  }
+  .route{
+    min-width:0;
+    overflow-wrap:anywhere;
+    font-size:16.5px;
+    font-weight:700;
+    letter-spacing:.01em;
+  }
+  .status-tag{
+    margin-left:auto;
+    font-size:11.5px;
+    font-weight:700;
+    padding:4px 11px;
+    border-radius:999px;
+    white-space:nowrap;
+  }
+  .status-tag::before{ margin-right:4px; font-weight:900; }
+  .status-ok::before{ content:"✓"; }
+  .status-warn::before{ content:"⚠"; }
+  .status-danger::before{ content:"⛔"; }
+  .status-ok{ background:var(--ok-bg); color:var(--ok); }
+  .status-warn{ background:var(--warn-bg); color:var(--warn); }
+  .status-danger{ background:var(--danger-bg); color:var(--danger); }
+
+  .timeline{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-variant-numeric:tabular-nums;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:4px;
+  }
+  .timeline .start-date{ flex-shrink:0; }
+  .remain-note{ font-size:12px; color:var(--ink-soft); margin-top:6px; }
+  .timeline .track{
+    flex:1;
+    height:8px;
+    background:var(--line);
+    border-radius:999px;
+    position:relative;
+    min-width:90px;
+  }
+  .timeline .track .fill{
+    position:absolute; left:0; top:0; bottom:0;
+    background:var(--member-color, var(--ink));
+    border-radius:999px;
+    transition:width .2s ease;
+  }
+  .timeline .track .marker{
+    position:absolute;
+    top:50%;
+    width:14px; height:14px;
+    background:var(--paper);
+    border:3px solid var(--member-color, var(--ink));
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    box-shadow:0 0 0 2px var(--paper);
+  }
+  .timeline .end-date{ color:var(--ink); font-weight:700; font-size:15px; flex-shrink:0; }
+  .timeline .pct-label{
+    font-size:13px;
+    font-weight:800;
+    color:var(--member-color, var(--ink));
+    background:color-mix(in srgb, var(--member-color, var(--ink)) 14%, var(--paper));
+    flex-shrink:0;
+    padding:3px 10px;
+    border-radius:999px;
+    text-align:center;
+    white-space:nowrap;
+  }
+
+  .meta-row{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:8px;
+  }
+  .meta-row b{
+    font-size:17px;
+    color:var(--ink);
+    font-variant-numeric:tabular-nums;
+    font-weight:700;
+  }
+
+  .ticket-actions{ padding:8px 8px 0 0; align-self:start; }
+  .card-menu{ position:relative; }
+  .card-menu > summary{
+    list-style:none; cursor:pointer;
+    width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:999px;
+    font-size:20px; font-weight:700; line-height:1;
+    color:var(--ink-soft);
+  }
+  .card-menu > summary::-webkit-details-marker{ display:none; }
+  .card-menu > summary:hover, .card-menu[open] > summary{ background:var(--bg); color:var(--ink); }
+  .card-menu-panel{
+    position:absolute; right:0; top:46px; z-index:20;
+    min-width:140px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:12px;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);
+    padding:6px;
+    display:flex; flex-direction:column;
+  }
+  .ticket:has(.card-menu[open]){ z-index:10; }
+  .icon-btn{
+    border:none;
+    background:none;
+    cursor:pointer;
+    font-size:14px;
+    color:var(--ink);
+    font-family:inherit;
+    text-align:left;
+    padding:10px 12px;
+    min-height:44px;
+    border-radius:8px;
+  }
+  .icon-btn:hover{ background:var(--bg); }
+  .icon-btn.danger{ color:var(--danger); }
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:fixed; inset:0;
+    background:var(--overlay);
+    display:none;
+    align-items:flex-start;
+    justify-content:center;
+    padding:40px 16px;
+    overflow-y:auto;
+    z-index:50;
+  }
+  .overlay.show{ display:flex; }
+  .modal{
+    background:var(--paper);
+    border-radius:16px;
+    width:100%;
+    max-width:460px;
+    padding:26px 24px 24px;
+  }
+  .modal h2{
+    margin:0 0 18px;
+    font-size:19px;
+    font-weight:900;
+  }
+  .field{ margin-bottom:14px; }
+  .field label{
+    display:block;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin-bottom:5px;
+  }
+  .field input, .field select{
+    width:100%;
+    padding:10px 11px;
+    border:1.5px solid var(--line);
+    border-radius:9px;
+    font-family:inherit;
+    font-size:14px;
+    color:var(--ink);
+    background:var(--paper);
+  }
+  .field input:focus, .field select:focus{
+    outline:2px solid var(--ink);
+    outline-offset:1px;
+  }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .color-picker{ display:flex; gap:8px; flex-wrap:wrap; }
+  .color-swatch{
+    width:28px; height:28px; border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+  }
+  .color-swatch.selected{ border-color:var(--ink); }
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:20px;
+  }
+  .quick{ display:flex; gap:6px; margin-top:6px; }
+  .quick-btn{
+    font:inherit; font-size:12px; font-weight:700; cursor:pointer;
+    background:var(--bg); color:var(--ink);
+    border:1px solid var(--line-strong); border-radius:999px;
+    padding:4px 10px; min-height:32px;
+  }
+  .toast{
+    position:fixed; left:50%; bottom:24px; z-index:60;
+    transform:translate(-50%, 16px);
+    background:var(--ink); color:var(--on-ink);
+    padding:10px 18px; border-radius:999px;
+    font-size:13.5px; font-weight:700;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);
+    opacity:0; pointer-events:none;
+    transition:opacity .18s ease, transform .18s ease;
+    max-width:calc(100vw - 32px);
+  }
+  .toast.show{ opacity:1; transform:translate(-50%, 0); }
+  @keyframes sheet-up{ from{ transform:translateY(24px); opacity:0; } to{ transform:none; opacity:1; } }
+  .btn-secondary{
+    background:none;
+    border:1.5px solid var(--line);
+    border-radius:999px;
+    padding:9px 18px;
+    font-size:13.5px;
+    font-weight:700;
+    font-family:inherit;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .btn-primary{
+    background:var(--ink);
+    color:var(--on-ink);
+    border:none;
+    border-radius:999px;
+    padding:9px 20px;
+    font-size:13.5px;
+    font-weight:700;
+    font-family:inherit;
+    cursor:pointer;
+  }
+
+  @media (min-width:920px){
+    .app{ max-width:1080px; }
+    .layout{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:28px; align-items:start; }
+    .side-col{ position:sticky; top:16px; margin-top:0; }
+    .side-col .calendar-card{ padding:14px 12px 10px; }
+  }
+
+  @media (max-width:520px){
+    /* 追加ボタンは右下に固定（親指で押せる） */
+    .app-header .add-btn{
+      position:fixed; right:16px; bottom:16px; z-index:30;
+      min-height:48px; padding:12px 20px;
+      box-shadow:0 6px 18px rgba(0,0,0,.28);
+    }
+    .toast{ bottom:80px; }
+    /* ダイアログは下から出るシート */
+    .overlay{ align-items:flex-end; padding:0; }
+    .modal{
+      max-width:none; border-radius:20px 20px 0 0;
+      max-height:92vh; overflow-y:auto;
+      padding:22px 18px calc(20px + env(safe-area-inset-bottom));
+      animation:sheet-up .2s ease;
+    }
+    .modal-actions .btn-primary, .modal-actions .btn-secondary{ min-height:44px; }
+    .app-header{ flex-wrap:wrap; }
+    .header-actions{ width:100%; }
+    .cal-day{ min-height:42px; }
+    .cal-pill{ font-size:8.5px; padding:1px 3px; }
+    .timeline{ flex-wrap:wrap; row-gap:4px; }
+    .timeline .track{ order:3; flex-basis:100%; }
+    .summary-cell{ flex-direction:column; align-items:flex-start; gap:2px; padding:10px 12px; }
+    .summary-cell .label{ white-space:normal; }
+    .two-col{ grid-template-columns:1fr; }
+  }
+
+  :focus-visible{
+    outline:2px solid var(--focus);
+    outline-offset:2px;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      transition-duration:.001ms !important;
+      animation-duration:.001ms !important;
+      scroll-behavior:auto !important;
+    }
+  }
+
+  .visually-hidden{
+    position:absolute; width:1px; height:1px;
+    overflow:hidden; clip:rect(0,0,0,0);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="app-header">
+    <div>
+      <h1>会員証マネージャー</h1>
+      <div class="sub">家族の会員証の有効期限をまとめて管理</div>
+    </div>
+    <div class="header-actions">
+      <button class="add-btn" id="openAdd">＋ 会員証を追加</button>
+      <details class="menu" id="menu">
+        <summary id="menuBtn" aria-label="メニュー（書き出し・読み込み・保存先）">⋯</summary>
+        <div class="menu-panel">
+          <button class="btn-secondary" id="exportBtn">エクスポート</button>
+          <button class="btn-secondary" id="importBtn" type="button">インポート</button>
+          <input type="file" id="importInput" accept="application/json" class="visually-hidden">
+      <div class="autosave-bar" id="autosaveBar">
+        <span id="autosaveDot" class="autosave-dot"></span>
+        <span id="autosaveStatus">自動保存ファイル：未設定</span>
+        <button class="btn-secondary sm" id="autosaveBtn">保存先を選択</button>
+        <button class="btn-secondary sm" id="autosaveOffBtn" style="display:none;">解除</button>
+      </div>
+      <div class="autosave-bar" id="ioFolderBar">
+        <span id="ioFolderDot" class="autosave-dot"></span>
+        <span id="ioFolderStatus">書き出し・読み込みフォルダ：未設定</span>
+        <button class="btn-secondary sm" id="ioFolderBtn">フォルダを選択</button>
+        <button class="btn-secondary sm" id="ioFolderOffBtn" style="display:none;">解除</button>
+      </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="main-col">
+      <div class="attn" id="attnPanel" hidden>
+        <span class="attn-text" id="attnText"></span>
+        <button type="button" class="attn-btn" id="attnBtn" aria-pressed="false">確認する</button>
+      </div>
+
+      <div class="summary" role="group" aria-label="状態で絞り込み">
+        <button type="button" class="summary-cell" data-status="all" aria-pressed="true">
+          <span class="label">登録件数</span>
+          <span class="value" id="statTotal">0</span>
+        </button>
+        <button type="button" class="summary-cell warn" data-status="warn" aria-pressed="false">
+          <span class="label">期限30日以内</span>
+          <span class="value" id="statWarn">0</span>
+        </button>
+        <button type="button" class="summary-cell danger" data-status="expired" aria-pressed="false">
+          <span class="label">期限切れ</span>
+          <span class="value" id="statExpired">0</span>
+        </button>
+      </div>
+
+      <div class="filter-row">
+        <div class="member-row" id="memberRow"></div>
+        <select class="sort-select" id="sortSelect">
+          <option value="end-asc">有効期限が近い順</option>
+          <option value="end-desc">有効期限が遠い順</option>
+        </select>
+      </div>
+
+      <div class="list" id="list"></div>
+    </div>
+
+    <div class="side-col">
+      <details class="cal-fold" open>
+        <summary>期限カレンダー</summary>
+    <div class="calendar-card">
+      <div class="calendar-head">
+        <button class="cal-nav" id="calPrev" aria-label="前の月">‹</button>
+        <div class="cal-title" id="calTitle"></div>
+        <button class="cal-nav" id="calNext" aria-label="次の月">›</button>
+      </div>
+      <div class="calendar-weekdays">
+        <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">会員証を追加</h2>
+    <form id="ticketForm">
+      <div class="field">
+        <label for="f-member">利用者名</label>
+        <input type="text" id="f-member" placeholder="例：花子" required maxlength="20" list="memberSuggestions">
+        <datalist id="memberSuggestions"></datalist>
+      </div>
+      <div class="field">
+        <label>ラベルカラー</label>
+        <div class="color-picker" id="colorPicker"></div>
+      </div>
+      <div class="field">
+        <label for="f-name">会員証名（例：○○スポーツクラブ）</label>
+        <input type="text" id="f-name" placeholder="○○スポーツクラブ" required maxlength="40">
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label for="f-start">開始日（任意）</label>
+          <input type="date" id="f-start">
+        </div>
+        <div class="field">
+          <label for="f-end">有効期限</label>
+          <input type="date" id="f-end" required>
+          <div class="quick" aria-label="期限の早見">
+            <button type="button" class="quick-btn" data-months="6">＋6か月</button>
+            <button type="button" class="quick-btn" data-months="12">＋1年</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="cancelBtn">キャンセル</button>
+        <button type="submit" class="btn-primary" id="submitBtn">保存する</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+<script src="cloud-sync.js"></script>
+<script>
+(function(){
+  const COLORS = ['#2B6CB8','#2E9E5B','#C97A1A','#C0392B','#7A5CC9','#1B8A8A'];
+  let items = [];
+  let activeMember = 'all';
+  let statusFilter = 'all'; // all / warn / expired / attn（要確認＝期限切れ＋30日以内）
+  let sortMode = 'end-asc';
+  const today = new Date();
+  let calYear = today.getFullYear();
+  let calMonth = today.getMonth(); // 0-11
+  let editingId = null;
+  let selectedColor = COLORS[0];
+  let lastFocus = null;
+
+  const $ = (sel) => document.querySelector(sel);
+
+  const listEl = $('#list');
+  const memberRow = $('#memberRow');
+  const overlay = $('#overlay');
+  const form = $('#ticketForm');
+  const colorPicker = $('#colorPicker');
+
+  // 日付はすべてローカル時間で扱う（UTC変換による1日ずれを防ぐ）
+  function fmtISO(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+  function parseISO(s){
+    const [y,m,d] = s.split('-').map(Number);
+    return new Date(y, m-1, d);
+  }
+  function todayISO(){ return fmtISO(new Date()); }
+
+  function addMonths(dateStr, months){
+    const d = parseISO(dateStr);
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + Number(months));
+    // 月末の繰り上がりを防ぐ（例：8/31＋1ヶ月 → 9/30）
+    const last = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+    d.setDate(Math.min(day, last));
+    return fmtISO(d);
+  }
+
+  function daysUntil(dateStr){
+    const end = parseISO(dateStr);
+    const now = new Date(); now.setHours(0,0,0,0);
+    return Math.round((end - now) / 86400000);
+  }
+
+  // 期限が近いとみなす日数
+  const WARN_DAYS = 30;
+
+  function statusOf(dateStr){
+    const d = daysUntil(dateStr);
+    if(d < 0) return 'danger';
+    if(d <= WARN_DAYS) return 'warn';
+    return 'ok';
+  }
+
+  function statusLabel(dateStr){
+    const d = daysUntil(dateStr);
+    if(d < 0) return '期限切れ';
+    if(d === 0) return '本日まで';
+    if(d <= WARN_DAYS) return `あと${d}日`;
+    return '有効';
+  }
+
+  // 開始日から有効期限までの経過割合（0〜100）。開始日がなければ null
+  function progressPct(p){
+    if(!p.start) return null;
+    const total = Math.max(1, (parseISO(p.end) - parseISO(p.start)) / 86400000);
+    const now = new Date(); now.setHours(0,0,0,0);
+    const elapsed = Math.min(total, Math.max(0, (now - parseISO(p.start)) / 86400000));
+    return Math.min(100, Math.round((elapsed / total) * 100));
+  }
+
+  function fmtDate(s){
+    const [y,m,d] = s.split('-');
+    return `${y}/${Number(m)}/${Number(d)}`;
+  }
+
+  function colorForMember(name){
+    const existing = items.find(p => p.member === name);
+    if(existing) return existing.color;
+    return null;
+  }
+
+  function uniqueMembers(){
+    const map = new Map();
+    items.forEach(p => { if(!map.has(p.member)) map.set(p.member, p.color); });
+    return map;
+  }
+
+  // ---------- Persistence (localStorage + auto-save file) ----------
+  const STORAGE_KEY = 'membership-manager:items';
+  let cloud = null; // クラウド同期（右下の☁ボタン）。読み込めない環境では null のまま
+  const fsSupported = 'showSaveFilePicker' in window;
+  let fileHandle = null;
+
+  const BACKUP_KEY = 'membership-manager:backup';
+  const COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const MEMBER_MAX = 20;  // 利用者名の最大文字数
+  const NAME_MAX = 40;    // 会員証名の最大文字数
+
+  // 形式が合っていて、実在する日付か（例：2027-02-30 は不可）
+  function isRealDate(s){
+    if(!DATE_RE.test(s)) return false;
+    return fmtISO(parseISO(s)) === s;
+  }
+
+  function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  // 外部データ（インポート・保存ファイル）を検証して安全な形に整える
+  function sanitizeItem(p){
+    if(!p || typeof p !== 'object') return null;
+    const member = String(p.member || '').trim().slice(0, MEMBER_MAX);
+    const name = String(p.name || '').trim().slice(0, NAME_MAX);
+    if(!member || !name) return null;
+    if(!isRealDate(p.end)) return null;
+    const item = {
+      id: (typeof p.id === 'string' && /^[\w-]+$/.test(p.id)) ? p.id : newId(),
+      member,
+      color: COLOR_RE.test(p.color) ? p.color : COLORS[0],
+      name,
+      end: p.end
+    };
+    // 開始日は任意。実在する日付で、有効期限以前のときだけ残す
+    if(isRealDate(p.start) && p.start <= p.end) item.start = p.start;
+    return item;
+  }
+
+  function backupCurrent(){
+    if(items.length === 0) return;
+    try{ localStorage.setItem(BACKUP_KEY, JSON.stringify(items)); }catch(e){}
+  }
+
+  function loadItems(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      items = Array.isArray(arr) ? arr.map(sanitizeItem).filter(Boolean) : [];
+    }catch(e){
+      console.error('読み込みに失敗しました', e);
+      items = [];
+    }
+    render();
+  }
+
+  let saveErrorShown = false;
+  function saveItems(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      if(cloud) cloud.notifyChanged();
+      saveErrorShown = false;
+    }catch(e){
+      console.error('保存に失敗しました', e);
+      if(!saveErrorShown){
+        saveErrorShown = true;
+        alert('データの保存に失敗しました。ブラウザの設定をご確認ください。');
+      }
+    }
+    writeToAutosaveFile();
+  }
+
+  // 他のタブでデータが変更されたら反映する
+  window.addEventListener('storage', (e) => {
+    if(e.key !== STORAGE_KEY) return;
+    try{
+      const arr = e.newValue ? JSON.parse(e.newValue) : [];
+      items = Array.isArray(arr) ? arr.map(sanitizeItem).filter(Boolean) : [];
+      render();
+    }catch(err){ console.error(err); }
+  });
+
+  // ---- IndexedDB: remembers chosen file/folder handles across reloads ----
+  function idbOpen(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('membership-manager-db', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('handles');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbSetHandle(key, handle){
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').put(handle, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  async function idbGetHandle(key){
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', 'readonly');
+      const req = tx.objectStore('handles').get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbClearHandle(key){
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+
+  function setAutosaveUI(state, name){
+    const dot = $('#autosaveDot');
+    const status = $('#autosaveStatus');
+    const btn = $('#autosaveBtn');
+    const offBtn = $('#autosaveOffBtn');
+    dot.className = 'autosave-dot' + (state === 'on' ? ' on' : (state === 'pending' ? ' pending' : ''));
+    if(state === 'on'){
+      status.textContent = `自動保存ファイル：${name}（有効）`;
+      btn.textContent = '変更';
+      offBtn.style.display = '';
+    }else if(state === 'pending'){
+      status.textContent = `自動保存ファイル：${name}（再接続が必要）`;
+      btn.textContent = '再接続';
+      offBtn.style.display = '';
+    }else{
+      status.textContent = fsSupported ? '自動保存ファイル：未設定' : '自動保存ファイル：このブラウザは非対応（エクスポートをご利用ください）';
+      btn.textContent = '保存先を選択';
+      offBtn.style.display = 'none';
+    }
+    btn.disabled = !fsSupported;
+  }
+
+  async function initAutosave(){
+    if(!fsSupported){
+      setAutosaveUI('off');
+      return;
+    }
+    try{
+      const handle = await idbGetHandle('autosave');
+      if(!handle){ setAutosaveUI('off'); return; }
+      const perm = await handle.queryPermission({ mode: 'readwrite' });
+      if(perm === 'granted'){
+        fileHandle = handle;
+        setAutosaveUI('on', handle.name);
+        if(!(await reconcileWithFile())) await disconnectAutosaveFile();
+      }else{
+        fileHandle = handle;
+        setAutosaveUI('pending', handle.name);
+      }
+    }catch(e){
+      setAutosaveUI('off');
+    }
+  }
+
+  // 接続したファイルに既存データがあれば、上書き前に読み込むか確認する
+  // 戻り値：false = ファイルを守るため接続を中止すべき
+  async function reconcileWithFile(){
+    if(!fileHandle) return true;
+    try{
+      const perm = await fileHandle.queryPermission({ mode: 'readwrite' });
+      if(perm !== 'granted') return true;
+      const text = await (await fileHandle.getFile()).text();
+      if(!text.trim()) return true;
+      let arr;
+      try{ arr = JSON.parse(text); }catch(err){ arr = null; }
+      if(!Array.isArray(arr)){
+        return confirm('保存先ファイルの内容を読み取れません。上書きして自動保存を続けますか？\n（キャンセルすると接続を解除します）');
+      }
+      const fromFile = arr.map(sanitizeItem).filter(Boolean);
+      if(fromFile.length === 0) return true;
+      if(JSON.stringify(fromFile) === JSON.stringify(items)) return true;
+      const useFile = confirm(
+        `保存先ファイルに${fromFile.length}件のデータがあります（現在：${items.length}件）。\n\n` +
+        `「OK」= ファイルの内容を読み込む（現在のデータは退避）\n` +
+        `「キャンセル」= 現在のデータでファイルを上書きする`
+      );
+      if(useFile){
+        backupCurrent();
+        items = fromFile;
+        saveItems();
+        render();
+      }
+      return true;
+    }catch(e){
+      console.error('自動保存ファイルの確認に失敗しました', e);
+      return true;
+    }
+  }
+
+  async function connectAutosaveFile(){
+    if(!fsSupported) return;
+    try{
+      if(fileHandle){
+        // 既に接続済み → 再許可のリクエスト
+        const perm = await fileHandle.requestPermission({ mode: 'readwrite' });
+        if(perm === 'granted'){
+          setAutosaveUI('on', fileHandle.name);
+          if(!(await reconcileWithFile())){ await disconnectAutosaveFile(); return; }
+          await writeToAutosaveFile();
+          return;
+        }
+      }
+      const handle = await window.showSaveFilePicker({
+        suggestedName: 'membership-data.json',
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+      });
+      fileHandle = handle;
+      await idbSetHandle('autosave', handle);
+      setAutosaveUI('on', handle.name);
+      if(!(await reconcileWithFile())){ await disconnectAutosaveFile(); return; }
+      await writeToAutosaveFile();
+    }catch(e){
+      if(e && e.name !== 'AbortError'){
+        console.error('自動保存ファイルの設定に失敗しました', e);
+      }
+    }
+  }
+
+  async function disconnectAutosaveFile(){
+    fileHandle = null;
+    try{ await idbClearHandle('autosave'); }catch(e){}
+    setAutosaveUI('off');
+  }
+
+  // 連続保存で書き込みが衝突しないよう直列化する
+  let writeChain = Promise.resolve();
+  function writeToAutosaveFile(){
+    writeChain = writeChain.then(doWriteAutosave);
+    return writeChain;
+  }
+
+  async function doWriteAutosave(){
+    if(!fsSupported || !fileHandle) return;
+    try{
+      const perm = await fileHandle.queryPermission({ mode: 'readwrite' });
+      if(perm !== 'granted'){
+        setAutosaveUI('pending', fileHandle.name);
+        return;
+      }
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(items, null, 2));
+      await writable.close();
+    }catch(e){
+      console.error('自動保存に失敗しました', e);
+    }
+  }
+
+  $('#autosaveBtn').addEventListener('click', connectAutosaveFile);
+  $('#autosaveOffBtn').addEventListener('click', disconnectAutosaveFile);
+
+  // ---------- Export/import folder memory ----------
+  const dirPickerSupported = 'showDirectoryPicker' in window;
+  let ioFolderHandle = null;
+
+  function setIOFolderUI(state, name){
+    const dot = $('#ioFolderDot');
+    const status = $('#ioFolderStatus');
+    const btn = $('#ioFolderBtn');
+    const offBtn = $('#ioFolderOffBtn');
+    dot.className = 'autosave-dot' + (state === 'on' ? ' on' : (state === 'pending' ? ' pending' : ''));
+    if(state === 'on'){
+      status.textContent = `書き出し・読み込みフォルダ：${name}（有効）`;
+      btn.textContent = '変更';
+      offBtn.style.display = '';
+    }else if(state === 'pending'){
+      status.textContent = `書き出し・読み込みフォルダ：${name}（再接続が必要）`;
+      btn.textContent = '再接続';
+      offBtn.style.display = '';
+    }else{
+      status.textContent = dirPickerSupported
+        ? '書き出し・読み込みフォルダ：未設定（毎回選択が必要）'
+        : '書き出し・読み込みフォルダ：この端末は非対応（毎回選択が必要）';
+      btn.textContent = 'フォルダを選択';
+      offBtn.style.display = 'none';
+    }
+    btn.disabled = !dirPickerSupported;
+  }
+
+  async function initIOFolder(){
+    if(!dirPickerSupported){ setIOFolderUI('off'); return; }
+    try{
+      const handle = await idbGetHandle('io-folder');
+      if(!handle){ setIOFolderUI('off'); return; }
+      const perm = await handle.queryPermission({ mode: 'readwrite' });
+      ioFolderHandle = handle;
+      setIOFolderUI(perm === 'granted' ? 'on' : 'pending', handle.name);
+    }catch(e){
+      setIOFolderUI('off');
+    }
+  }
+
+  async function chooseIOFolder(){
+    if(!dirPickerSupported) return;
+    try{
+      if(ioFolderHandle){
+        const perm = await ioFolderHandle.requestPermission({ mode: 'readwrite' });
+        if(perm === 'granted'){
+          setIOFolderUI('on', ioFolderHandle.name);
+          return;
+        }
+      }
+      const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      ioFolderHandle = handle;
+      await idbSetHandle('io-folder', handle);
+      setIOFolderUI('on', handle.name);
+    }catch(e){
+      if(e && e.name !== 'AbortError'){
+        console.error('フォルダの設定に失敗しました', e);
+      }
+    }
+  }
+
+  async function disconnectIOFolder(){
+    ioFolderHandle = null;
+    try{ await idbClearHandle('io-folder'); }catch(e){}
+    setIOFolderUI('off');
+  }
+
+  $('#ioFolderBtn').addEventListener('click', chooseIOFolder);
+  $('#ioFolderOffBtn').addEventListener('click', disconnectIOFolder);
+
+  // ---------- Rendering ----------
+  function renderMemberFilter(){
+    const members = uniqueMembers();
+    let html = `<button type="button" class="chip ${activeMember==='all'?'active':''}" data-member="all" aria-pressed="${activeMember==='all'}">
+        <span class="dot" style="background:var(--ink)"></span>すべて</button>`;
+    members.forEach((color, name) => {
+      html += `<button type="button" class="chip ${activeMember===name?'active':''}" data-member="${escapeHtml(name)}" aria-pressed="${activeMember===name}">
+        <span class="dot" style="background:${color}"></span>${escapeHtml(name)}</button>`;
+    });
+    memberRow.innerHTML = html;
+    memberRow.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        activeMember = chip.dataset.member;
+        render();
+      });
+    });
+  }
+
+  function renderStats(){
+    // 絞り込み中の利用者に連動
+    const visible = filteredItems();
+    $('#statTotal').textContent = visible.length;
+    $('#statWarn').textContent = visible.filter(p => statusOf(p.end) === 'warn').length;
+    $('#statExpired').textContent = visible.filter(p => statusOf(p.end) === 'danger').length;
+  }
+
+  function filteredItems(){
+    return activeMember === 'all' ? items : items.filter(p => p.member === activeMember);
+  }
+
+  // 利用者の絞り込みに、状態の絞り込みを重ねたもの（一覧用）
+  function listItems(){
+    const base = filteredItems();
+    if(statusFilter === 'warn') return base.filter(p => statusOf(p.end) === 'warn');
+    if(statusFilter === 'expired') return base.filter(p => statusOf(p.end) === 'danger');
+    if(statusFilter === 'attn') return base.filter(p => statusOf(p.end) !== 'ok');
+    return base;
+  }
+
+  function renderStatusUi(){
+    document.querySelectorAll('.summary-cell').forEach(c => {
+      const on = (c.dataset.status === statusFilter);
+      c.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    const base = filteredItems();
+    const exp = base.filter(p => statusOf(p.end) === 'danger').length;
+    const warn = base.filter(p => statusOf(p.end) === 'warn').length;
+    const panel = $('#attnPanel');
+    panel.hidden = (exp + warn === 0);
+    $('#attnText').textContent = `⚠ 要確認 ${exp + warn}件（期限切れ${exp}・30日以内${warn}）`;
+    const b = $('#attnBtn');
+    b.setAttribute('aria-pressed', statusFilter === 'attn' ? 'true' : 'false');
+    b.textContent = statusFilter === 'attn' ? '解除' : '確認する';
+  }
+
+  // 進捗バーの下の説明（開始日がある会員証だけ）
+  function remainNote(p){
+    const left = daysUntil(p.end);
+    const total = daysUntil(p.end) - daysUntil(p.start);
+    const done = Math.min(Math.max(total - Math.max(left, 0), 0), total);
+    const head = left < 0 ? `期限から${-left}日過ぎています` : (left === 0 ? '本日が期限です' : `期限まで あと${left}日`);
+    return `${head}（全${total}日のうち${done}日経過）`;
+  }
+
+  function renderList(){
+    const filtered = listItems();
+    const sorters = {
+      'end-asc': (a,b) => daysUntil(a.end) - daysUntil(b.end),
+      'end-desc': (a,b) => daysUntil(b.end) - daysUntil(a.end)
+    };
+    const sorted = [...filtered].sort(sorters[sortMode] || sorters['end-asc']);
+
+    if(sorted.length === 0){
+      const noItems = items.length === 0;
+      listEl.innerHTML = `<div class="empty">
+        <svg class="empty-art" viewBox="0 0 96 64" width="96" height="64" aria-hidden="true" focusable="false">
+          <rect x="6" y="8" width="84" height="48" rx="8" fill="none" stroke="currentColor" stroke-width="3"/>
+          <rect x="6" y="18" width="84" height="9" fill="currentColor" opacity=".25"/>
+          <rect x="16" y="38" width="30" height="5" rx="2.5" fill="currentColor" opacity=".5"/>
+          <rect x="16" y="46" width="18" height="4" rx="2" fill="currentColor" opacity=".3"/>
+        </svg>
+        <div class="big">${noItems ? 'まだ会員証が登録されていません' : '該当する会員証がありません'}</div>
+        <p class="empty-sub">${noItems ? '最初の会員証を登録しましょう' : '絞り込みを変えてください'}</p>
+        ${noItems ? '<button type="button" class="add-btn empty-add">＋ 会員証を追加</button>' : ''}
+      </div>`;
+      const eb = listEl.querySelector('.empty-add');
+      if(eb) eb.addEventListener('click', openAdd);
+      return;
+    }
+
+    listEl.innerHTML = sorted.map(p => {
+      const st = statusOf(p.end);
+      const label = statusLabel(p.end);
+      const statusClass = st === 'ok' ? 'status-ok' : (st === 'warn' ? 'status-warn' : 'status-danger');
+      const pct = progressPct(p);
+      const detailHtml = pct === null
+        ? `<div class="meta-row">
+            <span>有効期限：<b>${fmtDate(p.end)}</b></span>
+          </div>`
+        : `<div class="timeline">
+            <span class="start-date">${fmtDate(p.start)}</span>
+            <span class="track">
+              <span class="fill" style="width:${pct}%"></span>
+              <span class="marker" style="left:${pct}%"></span>
+            </span>
+            <span class="end-date">${fmtDate(p.end)}</span>
+            <span class="pct-label">${pct}%</span>
+          </div>
+          <div class="remain-note">${remainNote(p)}</div>`;
+      return `
+      <div class="ticket" style="--member-color:${p.color}" data-id="${p.id}">
+        <div class="stripe"></div>
+        <div class="ticket-body">
+          <div class="ticket-top">
+            <span class="member-tag">${escapeHtml(p.member)}</span>
+            <span class="route">${escapeHtml(p.name)}</span>
+            <span class="status-tag ${statusClass}">${label}</span>
+          </div>
+          ${detailHtml}
+        </div>
+        <div class="ticket-actions">
+          <details class="card-menu">
+            <summary aria-label="${escapeHtml(p.member)}の会員証の操作（編集・削除）">⋯</summary>
+            <div class="card-menu-panel">
+              <button type="button" class="icon-btn edit-btn" aria-label="${escapeHtml(p.member)}の会員証を編集">編集</button>
+              <button type="button" class="icon-btn danger delete-btn" aria-label="${escapeHtml(p.member)}の会員証を削除">削除</button>
+            </div>
+          </details>
+        </div>
+      </div>`;
+    }).join('');
+
+    listEl.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.closest('.ticket').dataset.id;
+        e.target.closest('.card-menu').open = false;
+        openEdit(id);
+      });
+    });
+    listEl.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.target.closest('.ticket').dataset.id;
+        e.target.closest('.card-menu').open = false;
+        deleteItem(id);
+      });
+    });
+  }
+
+  function render(){
+    // 絞り込み中の利用者がいなくなったら「すべて」に戻す
+    if(activeMember !== 'all' && !uniqueMembers().has(activeMember)) activeMember = 'all';
+    renderMemberFilter();
+    renderStats();
+    renderStatusUi();
+    renderList();
+    renderCalendar();
+  }
+
+  function renderCalendar(){
+    const y = calYear, m = calMonth;
+    $('#calTitle').textContent = `${y}年${m+1}月`;
+
+    // date string (YYYY-MM-DD) -> array of items expiring that day
+    const byDate = {};
+    items.forEach(p => {
+      if(!byDate[p.end]) byDate[p.end] = [];
+      byDate[p.end].push(p);
+    });
+
+    const firstDay = new Date(y, m, 1);
+    const startOffset = firstDay.getDay(); // 0=Sun
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    const todayStr = todayISO();
+
+    let cells = '';
+    for(let i=0; i<startOffset; i++){
+      cells += `<div class="cal-day empty"></div>`;
+    }
+    for(let d=1; d<=daysInMonth; d++){
+      const dateStr = `${y}-${pad2(m+1)}-${pad2(d)}`;
+      const dayItems = byDate[dateStr] || [];
+      const isToday = dateStr === todayStr;
+      const visible = dayItems.slice(0,2);
+      const extra = dayItems.length - visible.length;
+      const pillsHtml = visible.map(p =>
+        `<span class="cal-pill" style="background:${p.color}" data-id="${p.id}" title="${escapeHtml(p.member)}：${escapeHtml(p.name)}">${escapeHtml(p.name)}</span>`
+      ).join('') + (extra > 0 ? `<span class="cal-pill more">+${extra}件</span>` : '');
+      cells += `<div class="cal-day${isToday ? ' today' : ''}">
+        <div class="cal-num">${d}</div>
+        ${pillsHtml}
+      </div>`;
+    }
+
+    $('#calendarGrid').innerHTML = cells;
+    $('#calendarGrid').querySelectorAll('.cal-pill[data-id]').forEach(pill => {
+      pill.addEventListener('click', () => {
+        let el = document.querySelector(`.ticket[data-id="${pill.dataset.id}"]`);
+        if(!el && (activeMember !== 'all' || statusFilter !== 'all')){
+          // 絞り込みで非表示の場合は解除して表示する
+          activeMember = 'all';
+          statusFilter = 'all';
+          render();
+          el = document.querySelector(`.ticket[data-id="${pill.dataset.id}"]`);
+        }
+        if(el){
+          el.scrollIntoView({ behavior:'smooth', block:'center' });
+          el.style.boxShadow = '0 0 0 3px var(--member-color)';
+          setTimeout(() => { el.style.boxShadow = ''; }, 1200);
+        }
+      });
+    });
+  }
+
+  $('#calPrev').addEventListener('click', () => {
+    calMonth--;
+    if(calMonth < 0){ calMonth = 11; calYear--; }
+    renderCalendar();
+  });
+  $('#calNext').addEventListener('click', () => {
+    calMonth++;
+    if(calMonth > 11){ calMonth = 0; calYear++; }
+    renderCalendar();
+  });
+
+  // 属性値の中でも安全に使えるよう引用符もエスケープする
+  function escapeHtml(str){
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  // ---------- Modal ----------
+  function renderColorPicker(){
+    colorPicker.innerHTML = COLORS.map(c =>
+      `<span class="color-swatch ${c===selectedColor?'selected':''}" style="background:${c}" data-color="${c}"></span>`
+    ).join('');
+    colorPicker.querySelectorAll('.color-swatch').forEach(sw => {
+      sw.addEventListener('click', () => {
+        selectedColor = sw.dataset.color;
+        renderColorPicker();
+      });
+    });
+  }
+
+  function refreshMemberSuggestions(){
+    const dl = $('#memberSuggestions');
+    dl.innerHTML = [...uniqueMembers().keys()].map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+  }
+
+  function openAdd(){
+    editingId = null;
+    $('#modalTitle').textContent = '会員証を追加';
+    $('#submitBtn').textContent = '保存する';
+    form.reset();
+    $('#f-end').value = addMonths(todayISO(), 12);
+    selectedColor = COLORS[items.length % COLORS.length];
+    renderColorPicker();
+    refreshMemberSuggestions();
+    lastFocus = document.activeElement;
+    overlay.classList.add('show');
+    $('#f-member').focus();
+  }
+
+  function openEdit(id){
+    const p = items.find(x => x.id === id);
+    if(!p) return;
+    editingId = id;
+    $('#modalTitle').textContent = '会員証を編集';
+    $('#submitBtn').textContent = '更新する';
+    $('#f-member').value = p.member;
+    $('#f-name').value = p.name;
+    $('#f-start').value = p.start || '';
+    $('#f-end').value = p.end;
+    selectedColor = p.color;
+    renderColorPicker();
+    refreshMemberSuggestions();
+    lastFocus = document.activeElement;
+    overlay.classList.add('show');
+    $('#f-member').focus();
+  }
+
+  let toastTimer = null;
+  function showToast(msg){
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  function closeModal(){
+    overlay.classList.remove('show');
+    if(lastFocus && document.contains(lastFocus)) lastFocus.focus();
+    lastFocus = null;
+  }
+
+  function deleteItem(id){
+    const p = items.find(x => x.id === id);
+    if(!p) return;
+    if(!confirm(`${p.member}の会員証（${p.name}）を削除しますか？`)) return;
+    items = items.filter(p => p.id !== id);
+    saveItems();
+    render();
+    showToast('会員証を削除しました');
+  }
+
+  // ---------- Events ----------
+  $('#openAdd').addEventListener('click', openAdd);
+  // 集計欄・要確認パネルで状態を絞り込む（もう一度押すと解除）
+  document.querySelectorAll('.summary-cell').forEach(c => {
+    c.addEventListener('click', () => {
+      const v = c.dataset.status;
+      statusFilter = (v === 'all' || statusFilter === v) ? 'all' : v;
+      render();
+    });
+  });
+  $('#attnBtn').addEventListener('click', () => {
+    statusFilter = statusFilter === 'attn' ? 'all' : 'attn';
+    render();
+  });
+  // メニュー：外を押す・Escで閉じる
+  document.addEventListener('click', (e) => {
+    const m = $('#menu');
+    if(m.open && !m.contains(e.target)) m.open = false;
+    document.querySelectorAll('.card-menu[open]').forEach(d => { if(!d.contains(e.target)) d.open = false; });
+  });
+  document.addEventListener('keydown', (e) => {
+    const m = $('#menu');
+    if(e.key === 'Escape' && m.open){ m.open = false; $('#menuBtn').focus(); }
+  });
+  $('#sortSelect').addEventListener('change', (e) => {
+    sortMode = e.target.value;
+    render();
+  });
+  // 期限の早見：開始日（なければ今日）から◯か月後を入れる
+  document.querySelectorAll('.quick-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      const base = isRealDate($('#f-start').value) ? $('#f-start').value : todayISO();
+      $('#f-end').value = addMonths(base, Number(b.dataset.months));
+    });
+  });
+  $('#cancelBtn').addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
+
+  $('#f-member').addEventListener('input', (e) => {
+    const existingColor = colorForMember(e.target.value.trim());
+    if(existingColor){
+      selectedColor = existingColor;
+      renderColorPicker();
+    }
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {
+      id: editingId || newId(),
+      member: $('#f-member').value.trim(),
+      color: selectedColor,
+      name: $('#f-name').value.trim(),
+      end: $('#f-end').value
+    };
+    const startVal = $('#f-start').value;
+    if(startVal) data.start = startVal;
+    if(!data.member || !data.name){
+      alert('利用者名と会員証名を入力してください。');
+      return;
+    }
+    if(!isRealDate(data.end)){
+      alert('有効期限に実在する日付を入力してください。');
+      return;
+    }
+    if(data.start && (!isRealDate(data.start) || data.start > data.end)){
+      alert('開始日は、有効期限以前の実在する日付にしてください。');
+      return;
+    }
+    if(editingId){
+      items = items.map(p => p.id === editingId ? data : p);
+    }else{
+      items.push(data);
+    }
+    // 同じ利用者の色を統一する
+    items.forEach(p => { if(p.member === data.member) p.color = data.color; });
+    saveItems();
+    closeModal();
+    render();
+    showToast(editingId ? '会員証を更新しました' : '会員証を追加しました');
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if(!overlay.classList.contains('show')) return;
+    if(e.key === 'Escape'){ closeModal(); return; }
+    // モーダル内でフォーカスを循環させる
+    if(e.key === 'Tab'){
+      const focusables = [...overlay.querySelectorAll('input, select, button')].filter(el => !el.disabled);
+      if(focusables.length === 0) return;
+      const first = focusables[0], last = focusables[focusables.length - 1];
+      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    }
+  });
+
+  // ---------- Export / Import ----------
+  function pad2(n){ return String(n).padStart(2,'0'); }
+
+  async function exportItems(){
+    const now = new Date();
+    const fname = `membership-export-${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}.json`;
+    const jsonText = JSON.stringify(items, null, 2);
+
+    // 0) 記憶済みフォルダがあれば、ダイアログなしでそこに直接保存
+    if(dirPickerSupported && ioFolderHandle){
+      try{
+        const perm = await ioFolderHandle.queryPermission({ mode: 'readwrite' });
+        if(perm === 'granted'){
+          const handle = await ioFolderHandle.getFileHandle(fname, { create: true });
+          const writable = await handle.createWritable();
+          await writable.write(jsonText);
+          await writable.close();
+          alert(`「${ioFolderHandle.name}」フォルダに保存しました：${fname}`);
+          return;
+        }else{
+          setIOFolderUI('pending', ioFolderHandle.name);
+        }
+      }catch(e){
+        console.error('記憶済みフォルダへの保存に失敗しました', e);
+        // 失敗時は下の方法にフォールバック
+      }
+    }
+
+    // 1) PC(Chrome/Edge)：保存先フォルダを選べるダイアログ
+    if('showSaveFilePicker' in window){
+      try{
+        const handle = await window.showSaveFilePicker({
+          suggestedName: fname,
+          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(jsonText);
+        await writable.close();
+        return;
+      }catch(e){
+        if(e && e.name === 'AbortError') return; // ユーザーがキャンセル
+        // 失敗時は下の方法にフォールバック
+      }
+    }
+
+    // 2) Android Chromeなど：共有シートから保存先アプリ・フォルダを選べる
+    const file = new File([jsonText], fname, { type: 'application/json' });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      try{
+        await navigator.share({
+          files: [file],
+          title: '会員証データのエクスポート',
+          text: fname
+        });
+        return;
+      }catch(e){
+        if(e && e.name === 'AbortError') return; // ユーザーがキャンセル
+        // 失敗時は下のダウンロード方式にフォールバック
+      }
+    }
+
+    // 3) それ以外：通常のダウンロード（ダウンロードフォルダに保存される）
+    const url = URL.createObjectURL(new Blob([jsonText], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  $('#exportBtn').addEventListener('click', exportItems);
+
+  function processImportText(text){
+    let incoming;
+    try{
+      incoming = JSON.parse(text);
+      if(!Array.isArray(incoming)) throw new Error('形式が正しくありません');
+    }catch(err){
+      alert('このファイルは読み込めませんでした。会員証マネージャーからエクスポートしたJSONファイルを選択してください。');
+      return;
+    }
+
+    // 各項目を検証（不正な色・日付・数値は除外／補正）
+    const valid = incoming.map(sanitizeItem).filter(Boolean);
+    if(valid.length === 0){
+      alert('有効な会員証データが見つかりませんでした。');
+      return;
+    }
+
+    // 追加／置換／中止 の3択（confirmを2段階で使用）
+    const doAdd = confirm(
+      `${valid.length}件のデータが見つかりました。\n\n` +
+      `「OK」= 現在のデータに追加する\n` +
+      `「キャンセル」= 次の画面で置き換え／中止を選ぶ`
+    );
+
+    if(doAdd){
+      // 追加：同じIDがあれば上書き、なければ追加
+      const map = new Map(items.map(p => [p.id, p]));
+      valid.forEach(p => map.set(p.id, p));
+      items = [...map.values()];
+    }else{
+      const doReplace = confirm(
+        '現在のデータを削除して、読み込んだデータに置き換えますか？\n' +
+        '（現在のデータは退避されます）\n\n' +
+        '「OK」= 置き換える\n' +
+        '「キャンセル」= インポートを中止'
+      );
+      if(!doReplace) return;
+      backupCurrent();
+      items = valid;
+    }
+
+    saveItems();
+    render();
+    alert('インポートが完了しました。');
+  }
+
+  async function startImport(){
+    // PC(Chrome/Edge)で記憶済みフォルダがあれば、そこを開いた状態でファイル選択ダイアログを表示
+    if(dirPickerSupported && ioFolderHandle && 'showOpenFilePicker' in window){
+      try{
+        // 読み込みには読み取り権限だけで足りる
+        const perm = await ioFolderHandle.queryPermission({ mode: 'read' });
+        if(perm !== 'granted'){
+          setIOFolderUI('pending', ioFolderHandle.name);
+        }else{
+          const [handle] = await window.showOpenFilePicker({
+            startIn: ioFolderHandle,
+            types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+          });
+          const file = await handle.getFile();
+          const text = await file.text();
+          processImportText(text);
+          return;
+        }
+      }catch(e){
+        if(e && e.name === 'AbortError') return; // ユーザーがキャンセル
+        // 失敗時は下の通常の方法にフォールバック
+      }
+    }
+    // それ以外：通常のファイル選択（Androidなど）
+    $('#importInput').click();
+  }
+
+  $('#importBtn').addEventListener('click', startImport);
+
+  $('#importInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      processImportText(reader.result);
+      e.target.value = '';
+    };
+    reader.onerror = () => {
+      alert('ファイルの読み込みに失敗しました。');
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  loadItems();
+  initAutosave();
+  initIOFolder();
+
+  // クラウド同期: 会員証の一覧を同期する（cloud-sync.js）
+  if(window.CloudSync){
+    cloud = CloudSync.init({
+      appName: '会員証マネージャー',
+      key: 'data-v1',
+      getData: function(){ return { items: items }; },
+      hasData: function(){ return items.length > 0; },
+      applyData: function(d){
+        if(!d || !Array.isArray(d.items)) throw new Error('会員証のデータ形式が違います');
+        items = d.items.map(sanitizeItem).filter(Boolean);
+        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
+        catch(e){ alert('クラウドのデータを端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
+        render();
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>
