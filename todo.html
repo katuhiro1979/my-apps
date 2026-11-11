@@ -1552,47 +1552,53 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const el = li && li.querySelector(k.sel);
     if(el) el.focus({ preventScroll:true });
   }
-  // 定期券アプリの有効期限が14日以内なら、「定期券の期限」のタスクを自動で作る（同じ端末のデータを読む）
+  // 定期券・会員証アプリの有効期限が14日以内なら、「○○の期限」のタスクを自動で作る（同じ端末のデータを読む）
   // 期限が変われば日付も変わる。更新して期限が遠くなったら消える。変更があれば true
-  const TEIKI_KEY = 'teiki-manager:passes', TEIKI_DAYS = 14;
+  const LINK_DAYS = 14;
+  const LINK_SRC = [
+    { prefix:'teiki_',  key:'teiki-manager:passes',     label:p=>String(p.member||'')+'：'+String(p.route||'')+' 定期券の期限' },
+    { prefix:'member_', key:'membership-manager:items', label:p=>String(p.member||'')+'：'+String(p.name||'')+' 会員証の期限' }
+  ];
+  const isLinked = id=>LINK_SRC.some(s=>String(id).startsWith(s.prefix));
   function syncTeiki(today){
     // 安全策: 読み込み前・読み込み失敗・タスクが空のときは動かない（空の状態から保存して、データを上書きしないため）
     if(!dataLoaded || loadFailed || !items.length) return false;
-    const before = items.filter(i=>!/^teiki_/.test(i.id)).length;
+    const before = items.filter(i=>!isLinked(i.id)).length;
     const snapshot = items.slice(), snapState = snapshot.map(i=>JSON.stringify(i));
-    const result = syncTeikiMain(today);
-    // 定期券以外のタスクが1件でも減ったら、元に戻して何も保存しない
-    if(items.filter(i=>!/^teiki_/.test(i.id)).length !== before){
+    let result = false;
+    LINK_SRC.forEach(s=>{ if(syncLinked(s, today)) result = true; });
+    // 連動タスク以外が1件でも減ったら、元に戻して何も保存しない
+    if(items.filter(i=>!isLinked(i.id)).length !== before){
       items = snapshot; snapshot.forEach((it,n)=>{ Object.keys(it).forEach(k=>delete it[k]); Object.assign(it, JSON.parse(snapState[n])); });
-      console.error('定期券タスクの同期を中止しました（他のタスクが減るため）');
+      console.error('期限タスクの同期を中止しました（他のタスクが減るため）');
       return false;
     }
     return result;
   }
-  function syncTeikiMain(today){
-    let passes;
-    try{ const raw = localStorage.getItem(TEIKI_KEY); if(raw===null) return false; passes = JSON.parse(raw); }catch(e){ return false; }
-    if(!Array.isArray(passes)) return false;
-    const limit = addDaysISO(TEIKI_DAYS), openSt = statuses.find(s=>!s.done) || statuses[0];
+  function syncLinked(src, today){
+    let list;
+    try{ const raw = localStorage.getItem(src.key); if(raw===null) return false; list = JSON.parse(raw); }catch(e){ return false; }
+    if(!Array.isArray(list)) return false;
+    const limit = addDaysISO(LINK_DAYS), openSt = statuses.find(s=>!s.done) || statuses[0];
     if(!openSt) return false;
     let changed = false;
-    const live = new Map(); // タスクID -> 定期券
-    passes.forEach(p=>{
+    const live = new Map(); // タスクID -> 元の項目
+    list.forEach(p=>{
       if(!p || typeof p.id!=='string' || !isDate(p.end)) return;
-      live.set('teiki_'+p.id.replace(/[^A-Za-z0-9_.-]/g,'_').slice(0,70), p);
+      live.set(src.prefix+p.id.replace(/[^A-Za-z0-9_.-]/g,'_').slice(0,70), p);
     });
-    // 定期券が消えた、または更新されて期限が遠くなったタスクの後始末
+    // 元の項目が消えた、または更新されて期限が遠くなったタスクの後始末
     items = items.filter(it=>{
-      if(!/^teiki_/.test(it.id)) return true;
+      if(!String(it.id).startsWith(src.prefix)) return true;
       const p = live.get(it.id);
       if(p && p.end <= limit) return true;
       if(p){ changed = true; return false; } // 更新済み → 消す（次回の期限で作り直す）
-      if(it.deleted || isDone(it)) return true; // 定期券は削除済み。完了・ごみ箱のものはそのまま
-      it.deleted = true; it.deletedAt = today; changed = true; return true; // 定期券を削除 → ごみ箱へ
+      if(it.deleted || isDone(it)) return true; // 元の項目は削除済み。完了・ごみ箱のものはそのまま
+      it.deleted = true; it.deletedAt = today; changed = true; return true; // 元の項目を削除 → ごみ箱へ
     });
     live.forEach((p,id)=>{
       if(p.end > limit) return;
-      const text = (String(p.member||'')+'：'+String(p.route||'')+' 定期券の期限').slice(0,500);
+      const text = src.label(p).slice(0,500);
       const it = items.find(i=>i.id===id);
       if(!it){
         if(p.end < today) return; // すでに過ぎた期限は新しく作らない
