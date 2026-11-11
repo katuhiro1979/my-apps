@@ -7,6 +7,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script>
+  // 表示テーマ(自動/ライト/ダーク)。描画前に反映してチラつきを防ぐ
+  (function(){
+    try{
+      var t = localStorage.getItem('membership-manager:theme');
+      if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    }catch(e){}
+  })();
+</script>
 <style>
   :root{
     color-scheme: light dark;
@@ -29,8 +38,11 @@
     --track: #1B2333;
     --radius: 14px;
   }
+  :root[data-theme="light"]{ color-scheme: light; }
+  :root[data-theme="dark"]{ color-scheme: dark; }
+  /* ダーク配色: 「自動」のときは端末の設定、「ダーク」を選んだときは常に */
   @media (prefers-color-scheme: dark){
-    :root{
+    :root:not([data-theme="light"]){
       --bg: #12151C;
       --ink: #E8EBF2;
       --ink-hover: #FFFFFF;
@@ -49,6 +61,25 @@
       --focus: #7FB0F0;
       --track: #E8EBF2;
     }
+  }
+  :root[data-theme="dark"]{
+    --bg: #12151C;
+    --ink: #E8EBF2;
+    --ink-hover: #FFFFFF;
+    --on-ink: #12151C;
+    --ink-soft: #9AA3B5;
+    --paper: #1B202B;
+    --line: #2E3544;
+    --line-strong: #4A5368;
+    --ok: #5FD3A0;
+    --warn: #F0AD5A;
+    --danger: #F28B7D;
+    --ok-bg: #1C3328;
+    --warn-bg: #3A2C16;
+    --danger-bg: #3D2220;
+    --overlay: rgba(0,0,0,.65);
+    --focus: #7FB0F0;
+    --track: #E8EBF2;
   }
   *{ box-sizing:border-box; }
   html,body{ margin:0; padding:0; }
@@ -133,6 +164,22 @@
     display:flex; flex-direction:column; gap:8px;
   }
   .menu-panel .autosave-bar{ margin-bottom:0; border-radius:12px; }
+  .theme-switch{
+    display:flex; align-items:center; gap:8px;
+    font-size:12.5px; color:var(--ink-soft);
+  }
+  .theme-switch .seg{
+    display:flex; flex:1;
+    border:1.5px solid var(--line); border-radius:999px; overflow:hidden;
+  }
+  .theme-switch .seg button{
+    flex:1; border:0; background:none; color:var(--ink-soft);
+    font:inherit; font-size:12.5px; font-weight:700;
+    padding:7px 6px; cursor:pointer; min-height:34px;
+  }
+  .theme-switch .seg button + button{ border-left:1px solid var(--line); }
+  .theme-switch .seg button[aria-pressed="true"]{ background:var(--ink); color:var(--on-ink); }
+  .theme-switch .seg button:focus-visible{ outline:2px solid var(--focus); outline-offset:-2px; }
   .layout{ display:block; }
   .side-col{ margin-top:8px; }
   .cal-fold > summary{
@@ -666,6 +713,7 @@
     .modal-actions .btn-primary, .modal-actions .btn-secondary{ min-height:44px; }
     .app-header{ flex-wrap:wrap; }
     .header-actions{ width:100%; }
+    .menu-panel{ right:auto; left:0; } /* ⋯ボタンが左端に来るため、右基準だと画面外にはみ出す */
     .cal-day{ min-height:42px; }
     .cal-pill{ font-size:8.5px; padding:1px 3px; }
     .timeline{ flex-wrap:wrap; row-gap:4px; }
@@ -706,6 +754,14 @@
       <details class="menu" id="menu">
         <summary id="menuBtn" aria-label="メニュー（書き出し・読み込み・保存先）">⋯</summary>
         <div class="menu-panel">
+          <div class="theme-switch" role="group" aria-label="表示テーマ">
+            <span>表示</span>
+            <div class="seg">
+              <button type="button" data-theme-val="auto" aria-pressed="true">自動</button>
+              <button type="button" data-theme-val="light" aria-pressed="false">ライト</button>
+              <button type="button" data-theme-val="dark" aria-pressed="false">ダーク</button>
+            </div>
+          </div>
           <button class="btn-secondary" id="exportBtn">エクスポート</button>
           <button class="btn-secondary" id="importBtn" type="button">インポート</button>
           <input type="file" id="importInput" accept="application/json" class="visually-hidden">
@@ -1807,6 +1863,28 @@
     };
     reader.readAsText(file);
   });
+
+  // ---------- 表示テーマ(自動/ライト/ダーク) ----------
+  const THEME_KEY = 'membership-manager:theme';
+  function currentTheme(){
+    const t = document.documentElement.getAttribute('data-theme');
+    return (t === 'light' || t === 'dark') ? t : 'auto';
+  }
+  function applyTheme(t){
+    if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    else document.documentElement.removeAttribute('data-theme');
+    document.querySelectorAll('[data-theme-val]').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.themeVal === currentTheme()));
+    });
+  }
+  document.querySelectorAll('[data-theme-val]').forEach(b => {
+    b.addEventListener('click', () => {
+      const t = b.dataset.themeVal;
+      applyTheme(t);
+      try{ if(t === 'auto') localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, t); }catch(e){}
+    });
+  });
+  applyTheme(currentTheme());
 
   loadItems();
   initAutosave();
