@@ -204,6 +204,7 @@
   .day.sat .d small{ color:var(--c-off); } .day.sun .d small{ color:var(--danger); }
   .day{ border-left:4px solid var(--line); } .day.k-work{ border-left-color:var(--c-work); } .day.k-off{ border-left-color:var(--c-off); } .day.k-legal{ border-left-color:var(--c-legal); } .day.k-leave{ border-left-color:var(--c-leave); }
   .day.today{ outline:2px solid var(--ink); outline-offset:-2px; }
+  .day.past{ background:var(--surface-2); } /* 過ぎた日は薄いグレー */
   .day .mid{ flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; }
   .day .tm{ font-size:.9rem; color:var(--ink-soft); }
   .day .rm{ font-size:.8rem; color:var(--ink-soft); flex-basis:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -881,7 +882,7 @@ let nights = '', nrange = [];
     for(let d = 1; d <= dim(mv.y, mv.m); d++){
       const ds = mv.y + '-' + pad(mv.m) + '-' + pad(d), r = st.records[ds] || null, c = calc(r), w = toDate(ds).getDay();
       const right = r ? (c.has ? '<b class="num">' + hm(c.work) + '</b>' + (c.ot > 0 ? '<div class="ot num">残 ' + hm(c.ot) + '</div>' : '') + (c.night > 0 ? '<div class="num">深 ' + hm(c.night) + '</div>' : '') : (r.otManual ? '<div class="ot num">残 ' + hm(r.otManual) + '</div>' : '')) : '';
-      h += '<li><button type="button" class="day' + (r ? ' k-' + r.kind : '') + (w === 6 ? ' sat' : '') + (w === 0 ? ' sun' : '') + (ds === tdy ? ' today' : '') + (r ? hcls(r.type) : '') + '"' + (r ? hsty(r.type) : '') + ' data-date="' + ds + '" aria-label="' + dayLabel(ds) + (r ? ' ' + (r.type || KINDS[r.kind]) : ' 未入力') + (r && r.plan ? ' 予定あり' : '') + todoCount(tdMap[ds]) + '">' +
+      h += '<li><button type="button" class="day' + (r ? ' k-' + r.kind : '') + (w === 6 ? ' sat' : '') + (w === 0 ? ' sun' : '') + (ds === tdy ? ' today' : '') + (ds < tdy ? ' past' : '') + (r ? hcls(r.type) : '') + '"' + (r ? hsty(r.type) : '') + ' data-date="' + ds + '" aria-label="' + dayLabel(ds) + (r ? ' ' + (r.type || KINDS[r.kind]) : ' 未入力') + (r && r.plan ? ' 予定あり' : '') + todoCount(tdMap[ds]) + '">' +
         '<span class="d num">' + d + '<small>' + WD[w] + '</small></span>' +
         '<span class="mid">' + (r ? badgeHtml(r) : '') + (r && c.has ? '<span class="tm num">' + r.clockIn + '–' + r.clockOut + '</span>' : '') + (r && r.locked ? '<span aria-hidden="true">🔒</span>' : '') +
         planSec(r) + todoSec(tdMap[ds], '', 2) + '</span>' +
