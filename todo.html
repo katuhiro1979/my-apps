@@ -1077,6 +1077,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(date && dp.roll) it.roll = true;
     items.push(it);
     placeInDay(it);
+    moveToTopIfNeed(it); // 一番上の状態（要）なら、その日の一番上へ
     flashId = it.id;
     $id('addText').value = ''; updateHint();
     const ok = save(); render();
@@ -1358,6 +1359,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   // ---- グループ（リスト）----
   const groupById = id=>groups.find(g=>g.id===id);
+  // 他のアプリ（定期券・会員証）と連動しているタスクの印
+  const linkTag = it=>{ const s = LINK_SRC.find(x=>String(it.id).startsWith(x.prefix)); return s ? '<span class="chip static c-gray">🔗 '+(s.prefix==='teiki_' ? '定期券' : '会員証')+'と連動中</span>' : ''; };
   const groupTag = it=>{ const g = groupById(it.group); return g ? '<span class="gtag" style="--gc:var(--c-'+g.color+'-fg)">'+escapeHtml(g.name)+'</span>' : ''; };
   function groupErr(m){ $id('groupErr').textContent = m || ''; }
   function openGroupMgr(){ groupErr(''); renderGroupMgr(); openDlg($id('groupDlg')); }
@@ -1848,7 +1851,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         meta = '<div class="task-meta"><button type="button" class="chip date'+cls+'" data-act="edit" aria-label="日付を変更">'+escapeHtml((over ? '期限切れ・' : '')+(rel || fmtMD(it.date))+(it.time ? ' '+it.time : ''))+'</button></div>';
       } else meta = '<div class="task-meta"><button type="button" class="chip date" data-act="edit" aria-label="日付を設定">日付なし</button></div>';
     }
-    const gt = (c.hideGroup ? '' : groupTag(it)) + (it.until ? '<span class="chip static c-gray">'+escapeHtml('〜'+fmtMD(it.until))+'</span>' : '') + (it.roll ? '<span class="chip static c-gray">繰越</span>' : '');
+    const gt = (c.hideGroup ? '' : groupTag(it)) + (it.until ? '<span class="chip static c-gray">'+escapeHtml('〜'+fmtMD(it.until))+'</span>' : '') + (it.roll ? '<span class="chip static c-gray">繰越</span>' : '') + linkTag(it);
     if(gt) meta = meta ? meta.replace('</div>', gt+'</div>') : '<div class="task-meta">'+gt+'</div>';
     const hasTime = !c.showDate && it.time;
     const time = hasTime ? '<span class="task-time s">'+escapeHtml(it.time)+'</span>' : '';
