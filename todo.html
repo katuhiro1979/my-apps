@@ -111,7 +111,7 @@
   .top .icon-btn{position:relative;}
   .top .icon-btn.on{color:var(--accent);}
   .icon-btn .badge{position:absolute;top:3px;right:1px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:calc(11px*var(--fs));font-weight:700;line-height:18px;text-align:center;}
-  .searchbar{margin:0 0 10px;}
+  .searchbar{max-width:760px;margin:0 auto;padding:0 20px 10px;}
   .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px;}
   .stat{appearance:none;display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:0 14px;cursor:pointer;min-height:44px;}
   .stat .num{order:2;font-size:calc(18px*var(--fs));font-weight:700;line-height:1;}
@@ -347,6 +347,7 @@
     .addopts > *,.addopts .dp > *{flex:none;}
     .wrap{padding:12px 14px 24px;}
     .top-in{padding-left:14px;}
+    .searchbar{padding:0 14px 10px;}
     dialog.sheet{width:100%;max-width:none;margin:auto 0 0;border-radius:22px 22px 0 0;border-bottom:none;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));animation:sheet-in .25s ease both;}
     dialog.sheet .row .btn{flex:1;}
     dialog.sheet .row .btn.danger-text{flex:none;}
@@ -369,6 +370,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       <button type="button" class="icon-btn plain" id="topMenuBtn" aria-label="メニュー" aria-haspopup="menu" aria-expanded="false"></button>
     </div>
   </div>
+  <div class="searchbar" id="searchBar">
+    <input type="search" class="field" id="searchBox" placeholder="内容で検索" aria-label="検索" autocomplete="off">
+  </div>
 </header>
 
 <div class="wrap">
@@ -379,10 +383,6 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     <button type="button" class="stat today" data-go="today"><span class="num" id="statToday">0</span><span class="label">今日</span></button>
     <button type="button" class="stat over" data-go="overdue"><span class="num" id="statOver">0</span><span class="label">期限切れ</span></button>
     <button type="button" class="stat" data-go="open"><span class="num" id="statOpen">0</span><span class="label">未完了</span></button>
-  </div>
-
-  <div class="searchbar" id="searchBar">
-    <input type="search" class="field" id="searchBox" placeholder="内容で検索" aria-label="検索" autocomplete="off">
   </div>
 
   <form class="addbox" id="addForm" autocomplete="off">
@@ -2286,11 +2286,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   updateTopH(); onScroll();
 
   // 検索は虫眼鏡で開く。入力が落ち着いてから再描画する
-  // 検索欄は新規追加欄の上に常に表示。虫眼鏡は検索欄へ移動する
-  $id('searchToggle').addEventListener('click', function(){
-    $id('searchBar').scrollIntoView({ block:'center' });
-    $id('searchBox').focus();
-  });
+  // 検索欄は上の固定バーに常に表示（スクロールしても見える）。虫眼鏡は検索欄へ移動する
+  $id('searchToggle').addEventListener('click', function(){ $id('searchBox').focus(); });
   $id('searchBox').addEventListener('keydown', function(e){
     if(e.key==='Escape'){ $id('searchBox').value = ''; render(); }
   });
