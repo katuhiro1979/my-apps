@@ -227,6 +227,7 @@
   li.task{position:relative;scroll-margin-top:calc(var(--top-h,56px) + var(--tabs-h,0px) + 56px);scroll-margin-bottom:96px;}
   .task-in{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:0 4px;align-items:center;min-height:58px;padding:4px 2px;background:var(--surface);touch-action:pan-y;}
   .task-in.back{transition:transform .2s ease;}
+  .grp[data-date]:not(.is-focus) ul.task-list,.grp[data-date]:not(.is-focus) .task-in{background:var(--surface-2);} /* 中心の日（明日タブは明日、ほかは今日）以外は薄いグレー */
   li.task.hasg .task-in{box-shadow:inset 8px 0 0 var(--gb);} /* グループの色の帯 */
   li.task.over .task-in{box-shadow:inset 5px 0 0 var(--danger);}
   li.task.over.hasg .task-in{box-shadow:inset 5px 0 0 var(--danger),inset 13px 0 0 var(--gb);}
@@ -1675,8 +1676,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       else {
         if(it.archived) return false;
         if(currentTab==='open' && isDone(it)) return false;
-        if(currentTab==='today' && !spans(it, today, today)) return false; // 今日・明日・1週間以内は完了済みも出す
-        if(currentTab==='tomorrow' && !spans(it, tomorrow, tomorrow)) return false;
+        if(currentTab==='today' && !spans(it, addDaysISO(-1), today)) return false; // 今日・明日・1週間以内は完了済みも出す。今日タブは昨日も出す
+        if(currentTab==='tomorrow' && !spans(it, today, tomorrow)) return false; // 明日タブは今日も出す
         if(currentTab==='week' && !inWeek(it)) return false;
         if(currentTab==='overdue' && !isOverdue(it)) return false;
         if(currentTab==='done' && !isDone(it)) return false;
@@ -1794,6 +1795,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
           const rel = relLabel(g.key);
           const over = g.key<today && g.items.some(i=>!isDone(i));
           dayAttr = ' data-date="'+g.key+'"';
+          if(g.key===(currentTab==='tomorrow' ? addDaysISO(1) : today)) cls += ' is-focus'; // 中心の日は白、ほかの日は薄いグレー
           if(g.key===today){ cls += ' is-today'; dayAttr += ' data-day="today"'; }
           else if(over) cls += ' is-over';
           const wd = WEEK[new Date(g.key+'T00:00:00').getDay()];
