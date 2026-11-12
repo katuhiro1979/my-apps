@@ -1628,7 +1628,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const today = lastRenderDay;
     // 繰り越しを設定した未完了タスクは、日付（終了日）が過ぎたら今日の日付にする
     let rolled = false;
-    items.forEach(it=>{ if(it.roll && !it.deleted && !it.archived && !isDone(it) && it.date && (it.until || it.date) < today){ it.date = today; delete it.until; rolled = true; } });
+    items.forEach(it=>{ if(it.roll && !it.deleted && !it.archived && !isDone(it) && it.date && it.date < today){ it.date = today; if(it.until && it.until < today) delete it.until; rolled = true; } }); // 期間つきは、期間の途中でも開始日を今日へ進める（終了日は残す）
     if(syncTeiki(today)) rolled = true;
     if(rolled) save();
     const fId = flashId, pId = popId; flashId = popId = null;
