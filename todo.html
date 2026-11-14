@@ -253,8 +253,6 @@
   /* 改行は、編集画面と同じく入力どおりの行で表示する */
   .task-text .ln{display:block;}
   .task-text .ln:empty::before{content:"\00a0";}
-  .task-text.long{font-size:calc(14px*var(--fs));line-height:1.45;}
-  .task-text.longer{font-size:calc(13px*var(--fs));line-height:1.4;}
   .task-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
   .task-side{display:flex;align-items:center;gap:6px;}
   .task-time{font-size:calc(12px*var(--fs));color:var(--ink-soft);}
@@ -1834,7 +1832,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const done = !!st.done;
     const over = isOverdue(it);
     const id = escapeHtml(it.id);
-    const len = it.text.length, sz = len>90 ? ' longer' : len>40 ? ' long' : '';
+    const sz = '';
     const text = '<button type="button" class="task-text'+sz+'" data-act="'+(plain ? 'none' : 'edit')+'"><span class="tt">'+(over && !plain ? '<span class="sr-only">期限切れ：</span>' : '')+it.text.split('\n').map(l=>'<span class="ln">'+escapeHtml(l)+'</span>').join('')+'</span></button>';
     const menuBtn = '<button type="button" class="icon-btn plain" data-menu="1" aria-haspopup="menu" aria-expanded="false" aria-label="メニュー">'+DOTS+'</button>';
     if(plain){
