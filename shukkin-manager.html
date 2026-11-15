@@ -725,7 +725,7 @@
       const done = {};
       (Array.isArray(d.statuses) ? d.statuses : []).forEach((s) => { if(s && s.id) done[s.id] = !!s.done; });
       d.items.forEach((it) => {
-        if(!it || typeof it.date !== 'string' || it.deleted || it.archived || typeof it.text !== 'string') return;
+        if(!it || typeof it.date !== 'string' || it.deleted || it.archived || it.noSk === true || typeof it.text !== 'string') return; // noSk=ToDoアプリで「出勤簿に表示しない」にした項目
         (out[it.date] = out[it.date] || []).push({ text: it.text, time: typeof it.time === 'string' ? it.time : '', done: !!done[it.status], ord: typeof it.ord === 'number' ? it.ord : Infinity, at: typeof it.createdAt === 'string' ? it.createdAt : '' });
       });
       // ToDoアプリと同じ並び: 未完了→完了、手動の並び（ord）→時刻→登録順
