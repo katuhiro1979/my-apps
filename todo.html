@@ -349,6 +349,11 @@
     .wrap{padding:12px 14px 24px;}
     .top-in{padding-left:14px;}
     .searchbar{padding:0 14px 10px;}
+    /* スクロール中は、上の固定部分を小さくして、リストの表示領域を広げる */
+    .top.scrolled .top-in{min-height:40px;}
+    .top.scrolled .searchbar{padding-bottom:6px;}
+    .top.scrolled .searchbar .field{min-height:36px;padding:6px 12px;}
+    .top.scrolled ~ .wrap .fbar .tabs button,.top.scrolled ~ .wrap .fbar .gbar button{min-height:32px;}
     dialog.sheet{width:100%;max-width:none;margin:auto 0 0;border-radius:22px 22px 0 0;border-bottom:none;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));animation:sheet-in .25s ease both;}
     dialog.sheet .row .btn{flex:1;}
     dialog.sheet .row .btn.danger-text{flex:none;}
