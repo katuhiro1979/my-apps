@@ -1108,7 +1108,12 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   // 同じ日の中の並び: 未完了→完了、手動で並べたもの（ord順）→時刻→登録順
   function byTime(a,b){
     const oa = typeof a.ord==='number' ? a.ord : Infinity, ob = typeof b.ord==='number' ? b.ord : Infinity;
-    return (Number(isDone(a))-Number(isDone(b))) || (oa===ob ? 0 : oa<ob ? -1 : 1) || (a.time||'').localeCompare(b.time||'') || (a.createdAt||'').localeCompare(b.createdAt||'');
+    return (Number(isDone(a))-Number(isDone(b))) || (oa===ob ? 0 : oa<ob ? -1 : 1) || autoCmp(a,b) || (a.createdAt||'').localeCompare(b.createdAt||'');
+  }
+  // 自動の優先順位: 「要」（状態の一番上）→ 時刻つき（早い順）→ 時刻なし
+  function isTopSt(it){ return !!statuses.length && it.status === statuses[0].id; }
+  function autoCmp(a,b){
+    return (Number(!isTopSt(a))-Number(!isTopSt(b))) || (Number(!a.time)-Number(!b.time)) || (a.time||'').localeCompare(b.time||'');
   }
   // 新規追加・日付変更・未完了へ戻したタスクを、その日の手動の並びの中へ時刻順で入れる。
   // 古い ord は捨てる。その日に手動の並びがなければ何もしない（これまでどおり時刻順）
@@ -1117,16 +1122,21 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(it.deleted || it.archived || isDone(it)) return;
     const day = items.filter(i=>i!==it && !i.deleted && !i.archived && !isDone(i) && (i.date||'')===(it.date||'')).sort(byTime);
     if(!day.some(i=>typeof i.ord==='number')) return;
-    let at = it.time ? day.findIndex(i=>i.time && i.time > it.time) : -1;
+    let at = day.findIndex(i=>autoCmp(i,it) > 0); // 自動の優先順位で、同じ順位の最後へ
     if(at < 0) at = day.length;
     day.splice(at, 0, it);
     day.forEach((i,n)=>{ i.ord = n; });
   }
   // 状態の管理で一番上にある状態（初期は「要」）にしたタスクを、同じ日の未完了の一番上へ移す
   function moveToTopIfNeed(it){
-    if(!statuses.length || it.status !== statuses[0].id ||it.deleted || it.archived || isDone(it)) return;
+    if(!statuses.length || it.deleted || it.archived || isDone(it)) return;
+    if(it.status !== statuses[0].id){ placeInDay(it); return; } // 「要」以外へ変えたら、「要」の下の正しい位置へ移す
     const day = items.filter(i=>i!==it && !i.deleted && !i.archived && !isDone(i) && (i.date||'')===(it.date||'')).sort(byTime);
-    [it].concat(day).forEach((i,n)=>{ i.ord = n; });
+    // 「要」の中では、時刻つきを先にし、同じ順位なら新しいものを先頭にする
+    let at = day.findIndex(i=>autoCmp(i,it) >= 0);
+    if(at < 0) at = day.length;
+    day.splice(at, 0, it);
+    day.forEach((i,n)=>{ i.ord = n; });
   }
   // 画面に出ている未完了タスクの新しい並び(ids)を、同じ日の全体の並びに反映する
   function reorderDay(key, ids){
@@ -1262,7 +1272,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const text = $id('editText').value.trim();
     if(!text){ $id('editText').focus(); return; }
     const dp = editDp.get();
-    const dateChanged = (it.date||'') !== (dp.date||''), wasDone = isDone(it), prevStatus = it.status;
+    const dateChanged = (it.date||'') !== (dp.date||''), timeChanged = (it.time||'') !== (dp.time||''), wasDone = isDone(it), prevStatus = it.status;
     it.text = text; it.date = dp.date; it.time = dp.time;
     if(dp.until) it.until = dp.until; else delete it.until;
     if(dp.roll) it.roll = true; else delete it.roll;
@@ -1275,7 +1285,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       if(!st.done){ it.doneAt = ''; delete it.prev; }
       it.status = st.id;
     }
-    if(dateChanged || (wasDone && !isDone(it))) placeInDay(it);
+    if(dateChanged || timeChanged || (wasDone && !isDone(it))) placeInDay(it); // 時刻を変えたら、自動の順の正しい位置へ移す
     if(st && st.id !== prevStatus) moveToTopIfNeed(it);
     closeDlg($id('editDlg'));
     commit();
