@@ -261,8 +261,8 @@
   @media (max-width:480px){
     .task-time.s{display:none;}
     .task-time.m{display:inline;}
-    .task-in{grid-template-columns:40px minmax(0,1fr) auto;gap:0 2px;}
-    .chk{width:40px;}
+    .task-in{grid-template-columns:44px minmax(0,1fr) auto;gap:0 2px;}
+    .chk{width:44px;}
     .task-side{gap:2px;}
     .task-side .chip{padding:0 8px;}
     .drag,.drag-sp{width:34px;}
@@ -842,7 +842,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   }
   function normalizeGroups(list){
     const seen = new Set(), out = [];
-    (Array.isArray(list) ? list : []).slice(0,12).forEach(g=>{
+    (Array.isArray(list) ? list : []).slice(0,50).forEach(g=>{ // 画面からは12個まで作れる。取り込みや他の端末のデータで超えていても、切り捨てない
       if(!g || typeof g !== 'object') return;
       const id = (typeof g.id==='string' && SAFE_ID.test(g.id) && !seen.has(g.id)) ? g.id : 'gr_'+Math.random().toString(36).slice(2,10);
       seen.add(id);
