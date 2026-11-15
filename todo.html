@@ -422,7 +422,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   <div id="taskArea"></div>
   <div class="empty" id="emptyState" style="display:none;"></div>
-  <button type="button" class="jump" id="jumpToday" hidden>今日へ移動</button>
+  <button type="button" class="jump" id="jumpToday" hidden aria-label="今日へ移動">今日へ移動</button>
 
   <footer><div id="backupInfo"></div>データはこのブラウザに保存されます。<span id="cloudHint" hidden>右下の☁でログインすると、端末間で同期できます。</span></footer>
 </div>
@@ -2119,6 +2119,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const bars = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-h'))||56) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tabs-h'))||0);
     const kb = window.visualViewport && window.visualViewport.height < window.innerHeight * 0.75; // ソフトキーボード表示中
     b.hidden = kb || !(r.bottom < bars + 24 || r.top > window.innerHeight);
+    if(!b.hidden){ b.textContent = (r.top > window.innerHeight ? '↓ ' : '↑ ') + '今日へ移動'; } // 今日が上にあるか下にあるかを矢印で示す
   }
   $id('jumpToday').addEventListener('click', function(){
     const sec = todayTarget();
