@@ -144,6 +144,16 @@
   .sec .ln{ display:block; white-space:pre-wrap; overflow-wrap:anywhere; padding:1px 0; }
   .sec .ln.done{ color:var(--ink-soft); text-decoration:line-through; }
   .sec .ln.mute{ color:var(--ink-soft); }
+  /* ToDoの行: 区切り線・行間・時刻をそろえる（時刻は太字、なしの項目も文頭をそろえる）、完了は薄く */
+  .sec.todo .ln{ padding:5px 0; }
+  .sec.todo .ln + .ln{ border-top:1px solid var(--line); }
+  .sec.todo .ln:first-child{ padding-top:1px; }
+  .sec.todo .ln:not(.mute){ display:flex; gap:4px; align-items:baseline; }
+  .sec.todo .ln .tt{ flex:none; min-width:3.1em; font-weight:700; }
+  .sec.todo .ln .tt.none{ font-weight:400; color:var(--ink-soft); }
+  .sec.todo .ln .tx{ min-width:0; overflow-wrap:anywhere; }
+  .sec.todo .ln.done{ opacity:.6; }
+  .sec.todo .ln.mute{ border-top:0; padding-top:2px; }
   .day .sec.plan .ln{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .sec a{ display:inline-flex; align-items:center; min-height:44px; font-size:.85rem; text-decoration:underline; text-underline-offset:3px; }
   #dTodo .sec{ margin:0 0 12px; }
@@ -746,7 +756,7 @@
       rest = list.length - shown.length;
     }
     const body = shown.map((t) => '<span class="ln' + (t.done ? ' done' : '') + '"><span aria-hidden="true">' + (t.done ? '✓ ' : '・') + '</span><span class="vh">' + (t.done ? '完了：' : '未完了：') + '</span>' +
-      (t.time ? '<span class="num">' + esc(t.time) + '</span> ' : '') + esc(t.text) + '</span>').join('') +
+      (t.time ? '<span class="tt num">' + esc(t.time) + '</span>' : '<span class="tt none" aria-hidden="true">–</span>') + '<span class="tx">' + esc(t.text) + '</span></span>').join('') +
       (rest ? '<span class="ln mute">ほか ' + rest + '件</span>' : '') + (list.length ? '' : '<span class="ln mute">この日はありません</span>') +
       (link ? '<a href="todo.html"' + (link === 'edit' ? ' target="app:todo">ToDoアプリで編集 ›' : '>ToDoを開く ›') + '</a>' : '');
     return secHtml('todo', '☑ ToDo', body);
