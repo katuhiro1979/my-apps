@@ -281,6 +281,8 @@
   .chip{position:relative;appearance:none;display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:0 10px;border:none;border-radius:999px;font-size:calc(12px*var(--fs));font-weight:600;cursor:pointer;white-space:nowrap;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;}
   .chip::after{content:"";position:absolute;inset:-9px -3px;}
   .chip.date{background:var(--surface-2);color:var(--ink-soft);box-shadow:inset 0 0 0 1px var(--line);}
+  .grp[data-date]:not(.is-focus) .chip.date:not(.over):not(.today){background:var(--surface);} /* グレーの日でもチップが溶けないよう白にする */
+  @media (max-width:640px){ .chip{min-height:32px;} } /* スマホでは押しやすく */
   .chip.date.over{background:var(--danger-bg);color:var(--danger);}
   .chip.date.today{background:var(--warn-bg);color:var(--warn);}
   .chip.static{cursor:default;}
@@ -902,6 +904,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       raw = localStorage.getItem(STORE_KEY); lastRaw = raw;
       const d = raw ? JSON.parse(raw) : { items:[], statuses:defaultStatuses() };
       if(!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('形式が正しくありません');
+      if(!Array.isArray(d.items)) throw new Error('タスクの形式が正しくありません'); // 形が違うデータを空として扱い、上書きしない
       statuses = normalizeStatuses(d.statuses);
       groups = normalizeGroups(d.groups); items = normalizeItems(d.items, statuses, groups);
     }catch(e){
@@ -918,6 +921,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       }
     }
     dataLoaded = true;
+    if(syncTeiki(todayISO())) save(); // 連動タスクの同期は、描画のたびではなく、起動時・画面に戻ったとき・連動元の変更時・日付が変わったときだけ
     addStatusId = firstOpenId();
     render();
     remindBackup();
@@ -1359,7 +1363,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   // ---- グループ（リスト）----
   const groupById = id=>groups.find(g=>g.id===id);
   // 他のアプリ（定期券・会員証）と連動しているタスクの印
-  const linkTag = it=>{ const s = LINK_SRC.find(x=>String(it.id).startsWith(x.prefix)); return s ? '<span class="chip static c-gray">🔗 '+(s.prefix==='teiki_' ? '定期券' : '会員証')+'と連動中</span>' : ''; };
+  const linkTag = it=>{ const s = LINK_SRC.find(x=>String(it.id).startsWith(x.prefix)); return s ? '<button type="button" class="chip c-gray" data-act="linkinfo" aria-label="連動の説明を見る">🔗 '+(s.prefix==='teiki_' ? '定期券' : '会員証')+'と連動中</button>' : ''; };
   const groupTag = it=>{ const g = groupById(it.group); return g ? '<span class="gtag" style="--gc:var(--c-'+g.color+'-fg)">'+escapeHtml(g.name)+'</span>' : ''; };
   function groupErr(m){ $id('groupErr').textContent = m || ''; }
   function openGroupMgr(){ groupErr(''); renderGroupMgr(); openDlg($id('groupDlg')); }
@@ -1589,13 +1593,19 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       if(!p || typeof p.id!=='string' || !isDate(p.end)) return;
       live.set(src.prefix+p.id.replace(/[^A-Za-z0-9_.-]/g,'_').slice(0,70), p);
     });
+    // 歯止め: 元の項目が消えたせいでごみ箱へ入る未完了タスクが、2件以上かつ半数を超えるなら、今回はごみ箱へ入れない
+    // （連動元が空になる・古いデータに戻るなどで、連動タスクが一斉に消えるのを防ぐ）
+    const openLinked = items.filter(it=>String(it.id).startsWith(src.prefix) && !it.deleted && !isDone(it));
+    const orphans = openLinked.filter(it=>!live.has(it.id)).length;
+    const holdTrash = orphans >= 2 && orphans * 2 > openLinked.length;
+    if(holdTrash) console.error('連動元の項目が一斉に消えたため、ごみ箱へ入れるのを見送りました');
     // 元の項目が消えた、または更新されて期限が遠くなったタスクの後始末
     items = items.filter(it=>{
       if(!String(it.id).startsWith(src.prefix)) return true;
       const p = live.get(it.id);
       if(p && p.end <= limit) return true;
       if(p){ changed = true; return false; } // 更新済み → 消す（次回の期限で作り直す）
-      if(it.deleted || isDone(it)) return true; // 元の項目は削除済み。完了・ごみ箱のものはそのまま
+      if(it.deleted || isDone(it) || holdTrash) return true; // 元の項目は削除済み。完了・ごみ箱のものはそのまま
       it.deleted = true; it.deletedAt = today; changed = true; return true; // 元の項目を削除 → ごみ箱へ
     });
     live.forEach((p,id)=>{
@@ -1627,7 +1637,6 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     // 繰り越しを設定した未完了タスクは、日付（終了日）が過ぎたら今日の日付にする
     let rolled = false;
     items.forEach(it=>{ if(it.roll && !it.deleted && !it.archived && !isDone(it) && it.date && it.date < today){ it.date = today; if(it.until && it.until < today) delete it.until; rolled = true; } }); // 期間つきは、期間の途中でも開始日を今日へ進める（終了日は残す）
-    if(syncTeiki(today)) rolled = true;
     if(rolled) save();
     const fId = flashId, pId = popId; flashId = popId = null;
     if(statusFilter && !statusById(statusFilter)) statusFilter = null;
@@ -1894,6 +1903,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       if(act==='toggle') toggleDone(id);
       else if(act==='edit') openEdit(id);
       else if(act==='restore') restoreItem(id);
+      else if(act==='linkinfo') showToast((String(id).startsWith('teiki_') ? '定期券' : '会員証')+'アプリの期限と連動しています。日付や内容は、そちらのアプリで直してください（ここで変えても元に戻ります）。', false);
       else if(act==='status'){
         if(suppressChip){ suppressChip = false; return; } // 長押しでメニューを開いた直後のクリックは無視する
         // 状態が3つ以上のときは誤操作を避けるため一覧を開き、2つのときだけ順に切り替える
@@ -2478,7 +2488,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       showNotice('別のタブでデータが更新されたため、最新の内容に更新しました。');
     }catch(err){ /* 壊れた値は無視 */ }
   }
-  window.addEventListener('storage', function(e){ if(e.key===STORE_KEY) adoptStored(e.newValue); });
+  window.addEventListener('storage', function(e){
+    if(e.key===STORE_KEY) adoptStored(e.newValue);
+    else if(LINK_SRC.some(x=>x.key===e.key) && syncTeiki(todayISO())){ save(); render(); } // 定期券・会員証アプリ側の変更を反映
+  });
   // 凍結・キャッシュ復帰したタブは storage イベントを受け取れないため、戻ったときに保存データと見比べる
   function checkStale(){
     let cur = null;
@@ -2493,6 +2506,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const old = lastRenderDay, cur = addDp.get();
     // 追加欄の日付が「昨日の今日」のままなら、新しい今日に合わせる
     if(cur.date === old) addDp = mountDatePicker($id('addDp'), { date: todayISO(), time: cur.time });
+    if(syncTeiki(todayISO())) save();
     render();
   }
   document.addEventListener('visibilitychange', function(){ if(!document.hidden){ checkStale(); refreshDay(); if(syncTeiki(todayISO())){ save(); render(); } } });
