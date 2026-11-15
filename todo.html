@@ -89,6 +89,8 @@
   button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.menu-item:focus-visible{outline:3px solid var(--accent);outline:3px solid color-mix(in srgb,var(--accent) 60%,transparent);outline-offset:2px;}
   .field,.fld input:not([type=file]):not([type=checkbox]),.fld select,.fld textarea{width:100%;min-height:46px;padding:10px 12px;font-size:calc(16px*var(--fs));border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);}
   .fld textarea{resize:vertical;line-height:1.5;}
+  label.chk-l.fld{display:flex;align-items:center;gap:8px;min-height:44px;}
+  label.chk-l.fld input{width:20px;height:20px;}
   .fld{display:grid;gap:6px;margin-top:14px;font-size:calc(13px*var(--fs));font-weight:600;color:var(--ink-soft);}
   .fld.check{display:flex;align-items:center;gap:8px;font-weight:400;}
   .row{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
@@ -435,6 +437,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     <div class="fld" id="editDpWrap">日付・時刻<div id="editDp" class="dp"></div></div>
     <label class="fld">状態<select id="editStatus"></select></label>
     <div class="fld" id="editGroupWrap">グループ<input type="hidden" id="editGroup"><div class="chips" id="editGroupChips"></div></div>
+    <label class="chk-l fld"><input type="checkbox" id="editShukkin"> 出勤簿のToDo欄に表示する</label>
     <div class="row">
       <button type="button" class="btn danger-text" id="editDelete">ごみ箱へ</button>
       <span class="grow"></span>
@@ -880,6 +883,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       if(typeof it.group==='string' && gset.has(it.group)) rec.group = it.group;
       if(typeof it.prev==='string' && ids.has(it.prev)) rec.prev = it.prev;
       if(typeof it.ord==='number' && isFinite(it.ord)) rec.ord = it.ord; // 手動の並び順（同じ日付の中）
+      if(it.noSk === true) rec.noSk = true; // 出勤簿のToDo欄に出さない（付いていなければ表示する）
       if(it.archived) rec.archived = true;
       if(it.deleted){ rec.deleted = true; rec.deletedAt = isDate(it.deletedAt) ? it.deletedAt : ''; }
       out.push(rec);
@@ -1233,6 +1237,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     sel.value = statusOf(it).id;
     $id('editGroupWrap').hidden = groups.length===0;
     $id('editGroup').value = groupById(it.group) ? it.group : '';
+    $id('editShukkin').checked = !it.noSk;
     renderEditGroup();
     openDlg($id('editDlg'));
     if(finePointer()) $id('editText').focus();
@@ -1263,6 +1268,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     if(dp.roll) it.roll = true; else delete it.roll;
     const gv = $id('editGroup').value;
     if(groupById(gv)) it.group = gv; else delete it.group;
+    if($id('editShukkin').checked) delete it.noSk; else it.noSk = true;
     const st = statusById($id('editStatus').value);
     if(st && st.id !== it.status){
       if(st.done && !isDone(it)){ it.prev = it.status; it.doneAt = todayISO(); }
