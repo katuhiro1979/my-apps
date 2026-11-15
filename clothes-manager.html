@@ -24,8 +24,8 @@
     --bg:#F4F5F7; --paper:#FFFFFF; --surface-2:#EEF0F4;
     --ink:#1B2333; --ink-soft:#505A6E; --line:#D7DBE3; --field-line:#7C8699;
     --accent:#1B2333; --on-accent:#FFFFFF;
-    --ok:#1F7A52;
-    --warn:#9A5B0C;
+    --ok:#1A6E49;
+    --warn:#8A5209;
     --danger:#B3281C;
     --overlay:rgba(27,35,51,.45);
     --shadow-lg:0 8px 28px rgba(27,35,51,.22);
@@ -75,12 +75,19 @@
       --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow-md:0 4px 14px rgba(0,0,0,.45);
   }
 
+  /* color-mix に未対応のブラウザ用：状態色の背景を固定色にする */
+  @supports not (background:color-mix(in oklch, red, blue)){
+    :root{ --ok-bg:#E0ECE7; --warn-bg:#F4E8D8; --danger-bg:#F6E0DC; }
+    @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){ --ok-bg:#12301F; --warn-bg:#3A2A0C; --danger-bg:#3D1A17; } }
+    :root[data-theme="dark"]{ --ok-bg:#12301F; --warn-bg:#3A2A0C; --danger-bg:#3D1A17; }
+  }
+
   *{ box-sizing:border-box; }
   [hidden]{ display:none !important; }
   body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); line-height:1.6;
         padding:env(safe-area-inset-top) 16px calc(150px + env(safe-area-inset-bottom)); }
   main{ max-width:var(--maxw); margin:0 auto; }
-  header{ position:sticky; top:0; z-index:25; background:color-mix(in oklch, var(--bg) 88%, transparent); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:space-between; gap:var(--s-2); padding:16px 0 10px; }
+  header{ position:sticky; top:env(safe-area-inset-top, 0px); z-index:25; box-shadow:0 calc(-1 * env(safe-area-inset-top, 0px)) 0 0 var(--bg); background:var(--bg); background:color-mix(in oklch, var(--bg) 88%, transparent); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:space-between; gap:var(--s-2); padding:16px 0 10px; }
   h1{ font-size:var(--fs-xl); margin:0; }
   h1:focus{ outline:none; }
   button, input, select, textarea{ font:inherit; color:inherit; }
@@ -134,13 +141,13 @@
   /* タブ・検索 */
   .tabs{ display:flex; gap:var(--s-1); padding:var(--s-1); background:var(--surface-2); border-radius:var(--r-pill); margin-bottom:var(--s-3); overflow-x:auto; scrollbar-width:none; }
   .tabs::-webkit-scrollbar{ display:none; }
-  .tab{ flex:1 0 auto; min-height:40px; padding:0 16px; border:0; border-radius:var(--r-pill); background:none; color:var(--ink-soft); white-space:nowrap; }
+  .tab{ flex:1 0 auto; min-height:44px; padding:0 16px; border:0; border-radius:var(--r-pill); background:none; color:var(--ink-soft); white-space:nowrap; }
   .tab[aria-pressed="true"]{ color:var(--ink); font-weight:600; background:var(--paper); box-shadow:var(--shadow-sm); }
   .tools{ display:flex; gap:var(--s-2); margin-bottom:var(--s-2); flex-wrap:wrap; }
   .tools input[type=search]{ flex:1 1 100%; min-height:44px; padding:0 12px; border:1px solid var(--field-line); border-radius:var(--r-ctl); background:var(--paper); }
   .tools select{ flex:1 1 140px; min-height:44px; padding:0 10px; border:1px solid var(--field-line); border-radius:var(--r-ctl); background:var(--paper); }
   .filterbar{ display:flex; align-items:center; gap:var(--s-2); margin-bottom:var(--s-2); font-size:var(--fs-sm); color:var(--ink); background:var(--surface-2); border-radius:var(--r-pill); padding:0 var(--s-1) 0 var(--s-4); width:fit-content; }
-  .filterbar button{ min-height:36px; border:0; background:none; color:var(--ink-soft); text-decoration:underline; }
+  .filterbar button{ min-height:44px; border:0; background:none; color:var(--ink-soft); text-decoration:underline; }
 
   /* 一覧 */
   .gh{ display:flex; justify-content:space-between; align-items:center; gap:var(--s-2); margin:16px 4px 6px; font-size:var(--fs-md); }
@@ -149,9 +156,10 @@
   .gh .ng{ color:var(--warn); font-size:var(--fs-sm); font-weight:600; }
   .cw{ margin-bottom:var(--s-2); }
   .card{ box-shadow:var(--shadow-sm); display:flex; align-items:center; gap:var(--s-3); padding:var(--s-3); background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); cursor:pointer; transition:box-shadow var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease); }
-  .card:hover{ box-shadow:var(--shadow-md); border-color:var(--field-line); }
+  @media (hover:hover){ .card:hover{ box-shadow:var(--shadow-md); border-color:var(--field-line); } }
   .card:active{ transform:scale(.99); }
-  .card.gone{ opacity:.6; }
+  .card.gone .dot{ opacity:.45; }
+  .card.gone .qty b{ color:var(--ink-soft); }
   .card.gone .t{ text-decoration:line-through; color:var(--ink-soft); }
   .dot{ width:40px; height:40px; border-radius:50%; flex:none; background:#888780; box-shadow:inset 0 0 0 1px rgba(128,128,128,.35), inset 0 -6px 10px rgba(0,0,0,.08); }
   .card .body{ flex:1; min-width:0; }
@@ -173,7 +181,7 @@
   .menu .sep{ border-top:1px solid var(--line); margin:4px 0; }
   .toast{ position:fixed; left:50%; bottom:calc(140px + env(safe-area-inset-bottom)); transform:translateX(-50%); display:none; align-items:center; gap:var(--s-3); padding:10px 14px; background:var(--ink); color:var(--bg); border-radius:12px; box-shadow:var(--shadow-lg); z-index:50; max-width:calc(100vw - 32px); }
   .toast.show{ display:flex; }
-  .toast button{ min-height:36px; background:transparent; color:inherit; border-color:currentColor; }
+  .toast button{ min-height:44px; background:transparent; color:inherit; border-color:currentColor; }
 
   /* ダイアログ（入力・目標数） */
   /* 下から出るシート */
@@ -200,7 +208,7 @@
   .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .err{ color:var(--danger); font-size:var(--fs-sm); min-height:1.2em; margin:0; }
   .trow{ display:grid; grid-template-columns:1fr 84px 84px; gap:var(--s-2); align-items:center; margin-bottom:6px; font-size:var(--fs-md); }
-  .trow input{ min-height:40px; padding:4px 8px; border:1px solid var(--field-line); border-radius:8px; background:var(--bg); width:100%; }
+  .trow input{ min-height:44px; padding:4px 8px; border:1px solid var(--field-line); border-radius:8px; background:var(--bg); width:100%; }
   .trow.h{ color:var(--ink-soft); font-size:var(--fs-xs); line-height:1.3; align-items:end; }
   .hint{ font-size:var(--fs-sm); color:var(--ink-soft); margin:0 0 8px; }
   /* 画面の切り替え：上のバーとナビは動かさず、中身だけ短くなじませる */
@@ -214,17 +222,11 @@
   /* 広い画面（タブレット横・PC）：幅を広げ、ホームを2列にする */
   @media (min-width:900px){
     :root{ --maxw:960px; }
-    #pgHome{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:var(--s-5); align-items:start; grid-template-rows:auto auto auto 1fr auto auto; }
-    #pgHome .hero{ grid-column:1 / -1; }
-    #pgHome > .sech{ grid-column:1; grid-row:2; }
-    #pgHome #shortList{ grid-column:1; grid-row:3; }
-    #pgHome #recentWrap{ grid-column:2; grid-row:2 / 5; }
-    #pgHome #recentWrap .sech{ margin-top:var(--s-3); }
-    #pgHome .sum{ grid-column:2; grid-row:5; }
-    #pgHome .planrow{ grid-column:2; grid-row:6; }
-    #pgHome .sum{ margin-top:0 !important; }
+    #pgHome .cols{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:var(--s-5); align-items:start; }
+    #pgHome .cols .sech{ margin-top:var(--s-3); }
+    #pgHome .colB .sum{ margin-top:var(--s-3) !important; }
     #list{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); column-gap:var(--s-4); }
-    #list .gh{ grid-column:1 / -1; }
+    #list .gh, #list .empty{ grid-column:1 / -1; }
   }
   @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
 </style>
@@ -259,8 +261,10 @@
         <button type="button" id="heroSet" style="margin-top:6px;font-size:var(--fs-sm)" hidden>目標数を設定する</button>
       </div>
     </section>
+    <div class="cols"><div class="colA">
     <div class="sech"><h2 class="sec">足りないもの</h2><button type="button" class="link" id="secSet">目標数を設定</button></div>
     <div id="shortList"></div>
+    </div><div class="colB">
     <div id="recentWrap" hidden>
       <div class="sech"><h2 class="sec">最近買った服</h2><button type="button" class="link" id="recentAll">一覧を見る</button></div>
       <div id="recentList"></div>
@@ -270,6 +274,7 @@
       <div><span>購入額</span><strong id="sPrice">¥0</strong></div>
     </section>
     <button type="button" class="planrow" id="planRow"><span>購入予定</span><span class="pill" id="sPlan">0点</span></button>
+    </div></div>
   </div>
 
   <div id="pgList" hidden>
@@ -402,13 +407,14 @@
   ];
 
   let items = [];     // 衣服の一覧
-  let targets = {};   // 品目ごとの目標数 { 品目: { target, spare } }
+  let targets = Object.create(null);   // 品目ごとの目標数 { 品目: { target, spare } }
   let view = { tab: 'all', sort: 'dateDesc', status: 'active', page: 'home' };
   let catFilter = '';
   let cloud = null;
   let editingId = null;
   let undoFn = null;
   let loadFailed = false; // 端末のデータが壊れていて読めなかったか（その間は空をクラウドへ送らない）
+  let droppedCount = 0; // 読み込み時に、名前が無いなどで読めなかった項目の数
   let saveFailed = false; // 直前の端末への保存に失敗したか
   const BACKUP_KEY = 'clothes-manager-data-v1-backup'; // 読み込みで置き換える直前の退避（1世代）
   const BROKEN_KEY = 'clothes-manager-data-v1-broken'; // 壊れていた元の文字列の退避
@@ -416,6 +422,13 @@
   // ---------- 検証（端末・クラウド・ファイルに共通。壊れた値を取り除く） ----------
   const str = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
   const num = (v, max, def) => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n >= 0 ? Math.min(n, max) : def; };
+  // 実在する日付（YYYY-MM-DD）か。2月30日や13月は不可
+  function validDate(v){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || '');
+    if(!m) return false;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return d.getFullYear() === Number(m[1]) && d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]);
+  }
   function sanitizeItem(x){
     if(!x || typeof x !== 'object') return null;
     const name = str(x.name, 100);
@@ -428,13 +441,13 @@
       category: str(x.category, 50),
       size: str(x.size, 20), color: str(x.color, 30),
       price: num(x.price, 9999999, 0), qty: num(x.qty, 9999, 1),
-      boughtAt: /^\d{4}-\d{2}-\d{2}$/.test(x.boughtAt) ? x.boughtAt : '',
+      boughtAt: validDate(x.boughtAt) ? x.boughtAt : '',
       shop: str(x.shop, 50), productNo: str(x.productNo, 30),
       feel: str(x.feel, 200), note: str(x.note, 500)
     };
   }
   function sanitizeTargets(t){
-    const out = {};
+    const out = Object.create(null);
     if(!t || typeof t !== 'object' || Array.isArray(t)) return out;
     Object.keys(t).slice(0, 200).forEach((k) => {
       const name = str(k, 50);
@@ -459,10 +472,15 @@
   function load(){
     try{
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      items = Array.isArray(raw.items) ? uniqueIds(raw.items.map(sanitizeItem).filter(Boolean)) : [];
+      const rawItems = Array.isArray(raw.items) ? raw.items : [];
+      items = uniqueIds(rawItems.map(sanitizeItem).filter(Boolean));
+      droppedCount = rawItems.length - items.length;
+      if(droppedCount > 0){
+        try{ if(!localStorage.getItem(BROKEN_KEY)) localStorage.setItem(BROKEN_KEY, localStorage.getItem(STORAGE_KEY) || ''); }catch(e2){ /* 退避できなくても続ける */ }
+      }
       targets = sanitizeTargets(raw.targets);
     }catch(e){
-      items = []; targets = {}; loadFailed = true;
+      items = []; targets = Object.create(null); loadFailed = true;
       // 壊れた元の文字列を、消えないように退避しておく
       try{ if(!localStorage.getItem(BROKEN_KEY)) localStorage.setItem(BROKEN_KEY, localStorage.getItem(STORAGE_KEY) || ''); }catch(e2){ /* 退避できなくても続ける */ }
     }
@@ -476,7 +494,7 @@
   }
   function save(){
     saveFailed = false;
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets })); }
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets })); loadFailed = false; /* 新しく保存できたら、壊れた状態は解除する（元の文字列は退避済み） */ }
     catch(e){ saveFailed = true; toast('端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
     if(cloud) cloud.notifyChanged(); // 端末へ保存した直後に必ず呼ぶ
   }
@@ -527,7 +545,7 @@
     const lack = cats.filter((c) => targets[c].target > (owned[c] || 0))
       .sort((a, b) => (targets[b].target - (owned[b] || 0)) - (targets[a].target - (owned[a] || 0)));
     // 最近買った服（所持のうち、購入日が新しい順に3件）
-    const recent = items.filter((it) => it.status === '所持' && it.boughtAt).sort((a, b) => b.boughtAt.localeCompare(a.boughtAt)).slice(0, 3);
+    const recent = items.filter((it) => it.status === '所持' && it.boughtAt && it.boughtAt <= todayStr()).sort((a, b) => b.boughtAt.localeCompare(a.boughtAt)).slice(0, 3);
     $('#recentWrap').hidden = recent.length === 0;
     $('#recentList').innerHTML = recent.map(cardHtml).join('');
     $('#shortList').innerHTML = lack.length
@@ -770,7 +788,7 @@
   $('#tCancel').addEventListener('click', () => tdlg.close());
   $('#tform').addEventListener('submit', (e) => {
     e.preventDefault();
-    const next = {};
+    const next = Object.create(null);
     $('#trows').querySelectorAll('.trow').forEach((r) => {
       const v = r.querySelectorAll('input');
       next[r.dataset.name] = { target: num(v[0].value, 999, 0), spare: num(v[1].value, 999, 0) };
@@ -869,6 +887,7 @@
   $('#status').value = view.status;
   render();
   if(loadFailed) toast('端末のデータが読めませんでした。壊れたデータは退避しました。ログイン済みなら、☁の同期でクラウドから戻せます。');
+  else if(droppedCount > 0) toast(droppedCount + '件の項目が読めなかったため、表示していません。元のデータは退避しました。');
 
   // ---------- クラウド同期（cloud-sync.js） ----------
   if(window.CloudSync){
