@@ -88,27 +88,32 @@
     #list .card{ margin-bottom:0; }
     #list .empty{ grid-column:1 / -1; }
   }
-  /* 追加・編集シート（スマホは下から出る。広い画面は中央） */
-  #sheet{ margin:auto auto 0; width:100%; max-width:560px; max-height:92dvh; padding:0; overflow:auto; border:1px solid var(--line); border-radius:20px 20px 0 0; background:var(--paper); color:var(--ink); }
-  @media (min-width:600px){ #sheet{ margin:auto; border-radius:20px; } }
+  /* 追加・編集シート（衣服管理と同じ作り。スマホは下から出る。広い画面は中央）。本文だけスクロールし、操作行は下に固定 */
+  #sheet{ margin:auto auto 0; width:min(560px,100vw); max-width:100vw; padding:0 0 env(safe-area-inset-bottom); overflow:hidden; border:1px solid var(--line); border-bottom:0; border-radius:20px 20px 0 0; background:var(--paper); color:var(--ink); box-shadow:var(--shadow-lg); }
+  @media (min-width:600px){ #sheet{ margin:auto; border-bottom:1px solid var(--line); border-radius:20px; } }
   #sheet::backdrop{ background:rgba(0,0,0,.45); }
   #sheet[open]{ animation:sheet-in .2s ease-out; }
-  @keyframes sheet-in{ from{ transform:translateY(24px); opacity:0; } to{ transform:none; opacity:1; } }
-  .sheet-in{ padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
-  #sheet .sh-head{ display:flex; align-items:center; gap:8px; margin:0 0 12px; }
+  @keyframes sheet-in{ from{ transform:translateY(40px); opacity:0; } to{ transform:none; opacity:1; } }
+  #addForm{ display:flex; flex-direction:column; max-height:calc(100dvh - 24px); }
+  #addForm::before{ content:""; flex:none; width:36px; height:4px; border-radius:2px; background:var(--line); margin:8px auto 0; } /* つまみ */
+  #sheet .sh-head{ flex:none; display:flex; align-items:center; gap:8px; padding:8px 8px 4px 16px; }
   #sheet h2{ flex:1; font-size:1.1rem; margin:0; }
   #sheet h2:focus{ outline:none; }
   #sheet .sh-x{ width:44px; padding:0; font-size:1.25rem; line-height:1; border:0; background:transparent; }
-  #sheet fieldset{ display:grid; gap:8px; margin:0 0 12px; padding:0; border:0; min-width:0; }
-  #sheet legend{ padding:0; margin-bottom:6px; font-size:.875rem; font-weight:700; color:var(--ink-soft); }
-  #sheet .row2{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
-  #sheet label{ display:flex; flex-direction:column; gap:2px; min-width:0; font-size:.875rem; color:var(--ink-soft); }
-  #sheet input, #sheet select{ width:100%; min-width:0; min-height:44px; padding:0 12px; border:1px solid var(--field-line); border-radius:var(--radius-s); background:var(--paper); color:var(--ink); }
+  .dbody{ padding:0 16px 8px; overflow-y:auto; min-height:0; }
+  .dfoot{ flex:none; display:flex; gap:8px; justify-content:flex-end; padding:12px 16px 16px; border-top:1px solid var(--line); }
+  .dfoot .left{ margin-right:auto; }
+  .dfoot .danger{ color:var(--danger); border-color:var(--danger); background:transparent; }
+  .dfoot .danger[hidden]{ display:none; }
+  #sheet .row2{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
+  #sheet label{ display:block; min-width:0; margin-bottom:10px; font-size:.875rem; color:var(--ink-soft); }
+  #sheet textarea{ display:block; width:100%; min-width:0; min-height:72px; margin-top:2px; padding:8px 10px; font:inherit; font-size:1rem; border:1px solid var(--field-line); border-radius:var(--radius-s); background:var(--bg); color:var(--ink); resize:vertical; }
+  #sheet textarea:focus-visible{ border-color:var(--accent); }
+  #sheet input, #sheet select{ display:block; width:100%; min-width:0; min-height:44px; margin-top:2px; padding:8px 10px; font-size:1rem; border:1px solid var(--field-line); border-radius:var(--radius-s); background:var(--bg); color:var(--ink); }
   #sheet input:focus-visible, #sheet select:focus-visible{ border-color:var(--accent); }
   #sheet [aria-invalid="true"]{ border-color:var(--danger); }
-  #sheet .btns{ display:flex; gap:8px; }
-  #sheet .btns button{ flex:1; }
-  #sheet .danger-link{ width:100%; margin-top:12px; color:var(--danger); border-color:var(--danger); background:transparent; }
+  #sheet .err{ margin:0; padding:0 16px; }
+  #sheet .dbody .err{ padding:0; margin:-6px 0 10px; }
   /* 種類チップ（横にスクロール）・検索・並び替え */
   .tools{ display:grid; gap:8px; margin:0 0 12px; }
   .tools[hidden]{ display:none; }
@@ -131,6 +136,7 @@
   .card .foot{ display:flex !important; align-items:center; flex-wrap:wrap; gap:4px 10px; margin-top:6px; }
   .card .foot .price{ margin-left:auto; font-weight:600; color:var(--ink-soft); }
   .card .shoe-name, .card .soft{ overflow-wrap:anywhere; word-break:break-word; }
+  .card .open > .soft{ display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; } /* 長い補足は2行まで */
   .empty p{ margin:0 0 12px; }
   .empty svg{ display:block; margin:0 auto 8px; width:56px; height:56px; color:var(--ink-soft); }
   .empty{ color:var(--ink-soft); text-align:center; padding:20px 16px; border:1px dashed var(--line); border-radius:var(--radius); background:var(--paper); }
@@ -195,7 +201,7 @@
   <div class="tools" id="tools" hidden>
     <div class="chips" id="chips" role="group" aria-label="種類で絞り込み"></div>
     <div class="find">
-      <input id="q" type="search" placeholder="名前・ブランド・色で検索" aria-label="名前・ブランド・色で検索" autocomplete="off" maxlength="60">
+      <input id="q" type="search" placeholder="名前・ブランド・色・メモで検索" aria-label="名前・ブランド・色・メモで検索" autocomplete="off" maxlength="60">
       <select id="sort" aria-label="並び順"></select>
     </div>
     <div class="soft" id="count" aria-live="polite"></div>
@@ -204,33 +210,31 @@
   <!-- ★ここまで -->
 </main>
 
-<!-- 追加・編集シート。中身を .sheet-in で包むのは、余白を押しても「背景を押した」と判定されないようにするため -->
 <dialog id="sheet" aria-labelledby="sTitle">
-  <div class="sheet-in">
+  <form id="addForm" novalidate>
     <div class="sh-head"><h2 id="sTitle" tabindex="-1">靴を追加</h2><button class="sh-x" id="sX" type="button" aria-label="閉じる">×</button></div>
-    <form id="addForm" novalidate>
-      <fieldset>
-        <legend>基本</legend>
-        <label>名前（必須）<input id="fName" type="text" maxlength="60" autocomplete="off" placeholder="例: 通勤用の黒い革靴"></label>
-        <label>ブランド<input id="fBrand" type="text" maxlength="40" autocomplete="off" placeholder="例: REGAL"></label>
-        <div class="row2">
-          <label>種類<select id="fType"></select></label>
-          <label>色<input id="fColor" type="text" maxlength="20" autocomplete="off" list="colorList" placeholder="例: 黒"><datalist id="colorList"></datalist></label>
-        </div>
-      </fieldset>
-      <fieldset>
-        <legend>購入情報</legend>
-        <div class="row2">
-          <label>サイズ（cm）<input id="fSize" type="number" inputmode="decimal" min="10" max="40" step="0.5"></label>
-          <label>価格（円）<input id="fPrice" type="number" inputmode="numeric" min="0" max="10000000" step="1"></label>
-        </div>
-        <label>購入日<input id="fDate" type="date"></label>
-      </fieldset>
-      <div class="err" id="fErr" role="alert"></div>
-      <div class="btns"><button class="primary" id="fSubmit" type="submit">追加</button><button id="sCancel" type="button">キャンセル</button></div>
-      <button class="danger-link" id="sDel" type="button" hidden>この靴を削除</button>
-    </form>
-  </div>
+    <div class="dbody">
+      <label>名前（必須）<input id="fName" type="text" maxlength="60" autocomplete="off" placeholder="例: 通勤用の黒い革靴"></label>
+      <div class="row2">
+        <label>種類<select id="fType"></select></label>
+        <label>色<input id="fColor" type="text" maxlength="20" autocomplete="off" list="colorList" placeholder="例: 黒"><datalist id="colorList"></datalist></label>
+      </div>
+      <label>ブランド<input id="fBrand" type="text" maxlength="40" autocomplete="off" placeholder="例: REGAL"></label>
+      <div class="row2">
+        <label>サイズ（cm）<input id="fSize" type="number" inputmode="decimal" min="10" max="40" step="0.5"></label>
+        <label>価格（円）<input id="fPrice" type="number" inputmode="numeric" min="0" max="10000000" step="1"></label>
+      </div>
+      <label>購入日<input id="fDate" type="date"></label>
+      <label>使用感<input id="fFeel" type="text" maxlength="200" autocomplete="off" placeholder="例: 少し大きい・雨の日は避ける"></label>
+      <label>メモ<textarea id="fNote" maxlength="500"></textarea></label>
+    </div>
+    <div class="err" id="fErr" role="alert"></div>
+    <div class="dfoot">
+      <button class="danger left" id="sDel" type="button" hidden>削除</button>
+      <button id="sCancel" type="button">キャンセル</button>
+      <button class="primary" id="fSubmit" type="submit">追加</button>
+    </div>
+  </form>
 </dialog>
 
 <dialog id="cfm" aria-labelledby="cfmMsg">
@@ -291,7 +295,8 @@
       name: str(x.name, 60), brand: str(x.brand, 40),
       type: TYPES.indexOf(x.type) >= 0 ? x.type : 'その他',
       color: str(x.color, 20), size: sizeOf(x.size),
-      boughtOn: isDate(x.boughtOn) ? x.boughtOn : '', price: num(x.price, 10000000)
+      boughtOn: isDate(x.boughtOn) ? x.boughtOn : '', price: num(x.price, 10000000),
+      feel: str(x.feel, 200), note: str(x.note, 500)
     };
   }
   // 検証して、id の重複を振り直す（重複すると片方の編集でもう片方が消えるため）。端末・クラウド・ファイルの読み込みはすべてこれを通す
@@ -394,7 +399,7 @@
   const PAGE = 200;      // 一度に描く最大件数（多いときは「もっと見る」）
   let limit = PAGE;
   const hayCache = new WeakMap(); // 検索用の文字（項目ごとに1回だけ作る）
-  const hay = (it) => { let h = hayCache.get(it); if(h === undefined){ h = [it.name, it.brand, it.color].join('\n').toLowerCase(); hayCache.set(it, h); } return h; };
+  const hay = (it) => { let h = hayCache.get(it); if(h === undefined){ h = [it.name, it.brand, it.color, it.feel, it.note].join('\n').toLowerCase(); hayCache.set(it, h); } return h; };
   // 中身が同じなら書き換えない（読み上げの再通知やフォーカス喪失を防ぐ）
   function setIfChanged(el, html){ if(el.__h !== html){ el.innerHTML = html; el.__h = html; } }
   $('#sort').innerHTML = Object.keys(SORTS).map((k) => '<option value="' + k + '">' + SORTS[k] + '</option>').join('');
@@ -449,6 +454,7 @@
       return '<div class="card" data-id="' + esc(it.id) + '"><button class="open" type="button">' +
         '<span class="head"><i class="dot' + (dot ? '' : ' none') + '" aria-hidden="true"' + (dot ? ' style="background:' + dot + '"' : '') + '></i><span class="shoe-name">' + esc(it.name) + '</span></span>' +
         (sub ? '<span class="soft">' + sub + '</span>' : '') +
+        (it.feel ? '<span class="soft">使用感: ' + esc(it.feel) + '</span>' : '') +
         (foot ? '<span class="foot">' + foot + '</span>' : '') +
         '<span class="vh">（押すと編集します）</span></button></div>';
     }).join('') + (view.length > part.length ? '<button class="more" type="button">もっと見る（残り' + (view.length - part.length) + '足）</button>' : ''));
@@ -491,7 +497,7 @@
   // ---------- 追加・編集シート（下から出る <dialog>。部品集の 1・2・6 に沿う） ----------
   const sheet = $('#sheet');
   $('#fType').innerHTML = TYPES.map((t) => '<option>' + t + '</option>').join('');
-  const FIELDS = ['fName', 'fBrand', 'fType', 'fColor', 'fSize', 'fDate', 'fPrice'];
+  const FIELDS = ['fName', 'fBrand', 'fType', 'fColor', 'fSize', 'fDate', 'fPrice', 'fFeel', 'fNote'];
   let editingId = null;   // 編集中の靴の id。null なら追加
   let editBase = '';      // 開いた時点の1件ぶん（他の場所での更新を見つける用）
   let formOrig = '';      // 開いた時点の入力値（閉じるとき、入力が変わったかを見る用）
@@ -503,7 +509,7 @@
   function placeErr(field){
     const host = field ? (field.closest('.row2') || field.closest('label')) : null;
     if(host){ host.after(errEl); return; }
-    const b = $('#addForm .btns');
+    const b = $('#addForm .dfoot');
     if(errEl.nextElementSibling !== b) b.before(errEl);
   }
   function clearInvalid(){
@@ -529,6 +535,7 @@
     if(it){
       $('#fName').value = it.name; $('#fBrand').value = it.brand; $('#fType').value = it.type; $('#fColor').value = it.color;
       $('#fSize').value = it.size || ''; $('#fDate').value = it.boughtOn; $('#fPrice').value = it.price || '';
+      $('#fFeel').value = it.feel; $('#fNote').value = it.note;
     }else{
       $('#fType').value = fType || TYPES[0]; // 絞り込み中の種類を、初期値にする
     }
@@ -585,7 +592,8 @@
     if($('#fPrice').validity.badInput || (priceRaw !== '' && !(Number.isInteger(Number(priceRaw)) && Number(priceRaw) >= 0 && Number(priceRaw) <= 10000000))) return showErr('価格は0〜1000万円の整数で入力してください。', $('#fPrice'));
     const shoe = sanitizeItem({
       id: editingId || newId(), name: name, brand: $('#fBrand').value, type: $('#fType').value,
-      color: $('#fColor').value, size: sizeRaw, boughtOn: date, price: priceRaw
+      color: $('#fColor').value, size: sizeRaw, boughtOn: date, price: priceRaw,
+      feel: $('#fFeel').value, note: $('#fNote').value
     });
     if(editingId){
       // 編集中に別の場所で削除・更新されていたら、確認してから保存する
