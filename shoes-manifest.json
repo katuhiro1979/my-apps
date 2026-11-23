@@ -1,0 +1,26 @@
+{
+  "name": "靴管理",
+  "short_name": "靴管理",
+  "description": "持っている靴のサイズ・購入日・価格を記録する",
+  "start_url": "shoes-manager.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4F5F7",
+  "theme_color": "#F4F5F7",
+  "icons": [
+    {
+      "src": "shoes-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "shoes-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "id": "shoes-manager.html",
+  "lang": "ja"
+}

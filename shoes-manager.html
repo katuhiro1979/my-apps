@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- ★ここを変える: アプリ名 -->
+<title>靴管理</title>
+<meta name="theme-color" content="#F4F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1116" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- ★ここを変える: ホーム画面に出す短い名前、manifest・アイコンのファイル名 -->
+<meta name="apple-mobile-web-app-title" content="靴管理">
+<link rel="manifest" href="shoes-manifest.json">
+<link rel="icon" href="shoes-icon-192.png">
+<link rel="apple-touch-icon" href="shoes-icon-192.png">
+<script>
+  /* 保存済みの表示設定を、画面が描かれる前に反映（ちらつき防止）。★キー名はアプリごとに変える */
+  try{ var t=localStorage.getItem('shoes-app-theme'); if(t==='light'||t==='dark') document.documentElement.setAttribute('data-theme',t); }catch(e){}
+</script>
+<style>
+  /* ===== デザイントークン（ライト／ダーク。ダークは端末の設定に自動で従う） =====
+     ★ダークの値は2か所（prefers-color-scheme の中と :root[data-theme="dark"]）にある。値を変えるときは、必ず両方を同じに直す */
+  :root{
+    color-scheme:light dark;
+    --bg:#F4F5F7; --paper:#FFFFFF; --surface-2:#EEF0F4;
+    --ink:#1B2333; --ink-soft:#505A6E; --line:#D7DBE3; --field-line:#7D8799; /* 入力欄・チップの枠（3:1以上） */
+    /* ★主色（--accent と --tint）は、アプリごとに決める。雛形は中立の墨色 */
+    --accent:#8A5A2B; --on-accent:#FFFFFF; --tint:#F1E6DA; --focus:#1D6FD8;
+    --danger:#B3281C; --danger-bg:#FCEBEB;
+    --shadow-lg:0 8px 28px rgba(27,35,51,.22);
+    --radius:14px; --radius-s:10px;
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; /* 余白の刻み */
+    --font:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo UI",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1116; --paper:#171B22; --surface-2:#1F242C;
+      --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440; --field-line:#667186;
+      --accent:#D9A066; --on-accent:#1B1208; --tint:#33291F; --focus:#6FA8FF;
+      --danger:#FF8176; --danger-bg:#3A1C1A;
+      --shadow-lg:0 8px 28px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="light"]{ color-scheme:light; }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#0E1116; --paper:#171B22; --surface-2:#1F242C;
+    --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440; --field-line:#667186;
+    --accent:#D9A066; --on-accent:#1B1208; --tint:#33291F; --focus:#6FA8FF;
+    --danger:#FF8176; --danger-bg:#3A1C1A;
+    --shadow-lg:0 8px 28px rgba(0,0,0,.6);
+  }
+
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); line-height:1.6; font-variant-numeric:tabular-nums; padding:0 16px calc(88px + env(safe-area-inset-bottom)); }
+  :root{ --maxw:640px; }
+  @media (min-width:900px){ :root{ --maxw:960px; } } /* 広い画面は、一覧を2列にするため幅を広げる */
+  main{ max-width:var(--maxw); margin:0 auto; }
+  header{ position:sticky; top:0; z-index:25; display:flex; align-items:center; gap:8px; margin:0 -16px 8px; padding:calc(16px + env(safe-area-inset-top,0px)) 16px 8px; background:var(--bg); }
+  header h1{ margin-right:auto; }
+  h1{ font-size:1.25rem; margin:0; }
+  button, input, select, textarea{ font:inherit; color:inherit; }
+  button{ min-height:44px; padding:0 14px; border:1px solid var(--line); border-radius:var(--radius-s); background:var(--paper); cursor:pointer; transition:background-color .15s, transform .1s; }
+  button.primary{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{ outline:3px solid var(--focus); outline-offset:2px; }
+  button:active{ transform:scale(.98); }
+  @media (hover:hover){ button:not(.primary):hover{ background:var(--surface-2); } button.primary:hover{ filter:brightness(1.08); } }
+  /* 同期の☁ボタンと設定パネルは、上のバー（⋯の左）に置く。cloud-sync.js の既定（右下）を上書き */
+  body #cs-btn{ top:calc(16px + env(safe-area-inset-top,0px)); bottom:auto; right:calc(max(16px, (100% - var(--maxw)) / 2) + 52px); z-index:26; }
+  body #cs-panel{ top:calc(68px + env(safe-area-inset-top,0px)); bottom:auto; right:max(16px, calc((100% - var(--maxw)) / 2)); }
+  @media (min-width:900px){ body #cs-btn{ right:calc(max(16px, (100% - var(--maxw)) / 2) + 52px + 136px); } } /* 広い画面は、追加ボタンの左に置く */
+  /* ⋯メニュー（書き出し・読み込み・表示の切り替え） */
+  .menu-wrap{ position:relative; }
+  #menuBtn{ width:44px; padding:0; font-size:1.25rem; line-height:1; }
+  #menu{ position:absolute; right:0; top:calc(100% + 4px); min-width:210px; padding:6px; display:flex; flex-direction:column; gap:2px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow-lg); z-index:30; }
+  #menu[hidden]{ display:none; }
+  #menu button{ width:100%; border:0; background:transparent; text-align:left; }
+  /* 追加ボタン（右下に固定。親指で押せる） */
+  .fab{ position:fixed; right:calc(16px + env(safe-area-inset-right,0px)); bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:20; width:56px; height:56px; padding:0; border-radius:50%; font-size:1.75rem; line-height:1; box-shadow:var(--shadow-lg); }
+  .fab .lbl{ display:none; }
+  /* 広い画面: 追加ボタンは右上（上のバー）に置き、右下には出さない */
+  @media (min-width:900px){
+    .fab{ position:static; width:128px; height:44px; border-radius:var(--radius-s); font-size:1rem; box-shadow:none; }
+    .fab .lbl{ display:inline; }
+    #list{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; align-items:start; }
+    #list .card{ margin-bottom:0; }
+    #list .empty{ grid-column:1 / -1; }
+  }
+  /* 追加・編集シート（スマホは下から出る。広い画面は中央） */
+  #sheet{ margin:auto auto 0; width:100%; max-width:560px; max-height:92dvh; padding:0; overflow:auto; border:1px solid var(--line); border-radius:20px 20px 0 0; background:var(--paper); color:var(--ink); }
+  @media (min-width:600px){ #sheet{ margin:auto; border-radius:20px; } }
+  #sheet::backdrop{ background:rgba(0,0,0,.45); }
+  #sheet[open]{ animation:sheet-in .2s ease-out; }
+  @keyframes sheet-in{ from{ transform:translateY(24px); opacity:0; } to{ transform:none; opacity:1; } }
+  .sheet-in{ padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
+  #sheet .sh-head{ display:flex; align-items:center; gap:8px; margin:0 0 12px; }
+  #sheet h2{ flex:1; font-size:1.1rem; margin:0; }
+  #sheet h2:focus{ outline:none; }
+  #sheet .sh-x{ width:44px; padding:0; font-size:1.25rem; line-height:1; border:0; background:transparent; }
+  #sheet fieldset{ display:grid; gap:8px; margin:0 0 12px; padding:0; border:0; min-width:0; }
+  #sheet legend{ padding:0; margin-bottom:6px; font-size:.875rem; font-weight:700; color:var(--ink-soft); }
+  #sheet .row2{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+  #sheet label{ display:flex; flex-direction:column; gap:2px; min-width:0; font-size:.875rem; color:var(--ink-soft); }
+  #sheet input, #sheet select{ width:100%; min-width:0; min-height:44px; padding:0 12px; border:1px solid var(--field-line); border-radius:var(--radius-s); background:var(--paper); color:var(--ink); }
+  #sheet input:focus-visible, #sheet select:focus-visible{ border-color:var(--accent); }
+  #sheet [aria-invalid="true"]{ border-color:var(--danger); }
+  #sheet .btns{ display:flex; gap:8px; }
+  #sheet .btns button{ flex:1; }
+  #sheet .danger-link{ width:100%; margin-top:12px; color:var(--danger); border-color:var(--danger); background:transparent; }
+  /* 種類チップ（横にスクロール）・検索・並び替え */
+  .tools{ display:grid; gap:8px; margin:0 0 12px; }
+  .tools[hidden]{ display:none; }
+  .chips{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; scrollbar-width:thin; }
+  .chip{ position:relative; flex:none; white-space:nowrap; border-radius:99px; border-color:var(--field-line); }
+  .chip[aria-pressed="true"]{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:700; }
+  .find{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
+  .find select{ width:9.5em; max-width:40vw; }
+  .find input, .find select{ min-width:0; min-height:44px; padding:0 12px; border:1px solid var(--field-line); border-radius:var(--radius-s); background:var(--paper); color:var(--ink); }
+  .find input:focus-visible, .find select:focus-visible{ border-color:var(--accent); }
+  .summary{ display:flex; flex-wrap:wrap; gap:8px 20px; margin:0 0 12px; }
+  .summary:empty{ display:none; }
+  .summary div{ display:flex; flex-direction:column; min-width:0; }
+  .summary .num{ font-size:1.15rem; overflow-wrap:anywhere; }
+  .shoe-name{ font-weight:700; }
+  .card .open > span{ display:block; }
+  .card .head{ display:flex !important; align-items:center; gap:10px; }
+  .card .dot{ flex:none; width:14px; height:14px; border-radius:50%; border:1px solid var(--ink-soft); }
+  .card .dot.none{ background:transparent; border-style:dashed; } /* 色が分からないときは中空の点（名前の左端をそろえる） */
+  .card .foot{ display:flex !important; align-items:center; flex-wrap:wrap; gap:4px 10px; margin-top:6px; }
+  .card .foot .price{ margin-left:auto; font-weight:600; color:var(--ink-soft); }
+  .card .shoe-name, .card .soft{ overflow-wrap:anywhere; word-break:break-word; }
+  .empty p{ margin:0 0 12px; }
+  .empty svg{ display:block; margin:0 auto 8px; width:56px; height:56px; color:var(--ink-soft); }
+  .empty{ color:var(--ink-soft); text-align:center; padding:20px 16px; border:1px dashed var(--line); border-radius:var(--radius); background:var(--paper); }
+  .vh{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; } /* 読み上げだけに出す文字 */
+  /* 消えない通知（警告など。閉じるまで残る） */
+  .notice{ display:flex; align-items:flex-start; gap:8px; margin:4px 0 12px; padding:10px 12px; border:1px solid var(--danger); border-radius:10px; background:var(--danger-bg); color:var(--danger); font-size:.9rem; }
+  .notice[hidden]{ display:none; }
+  .notice span{ flex:1; padding-top:10px; }
+  .notice button{ min-height:44px; background:transparent; color:inherit; border-color:currentColor; }
+  /* 確認画面（標準の confirm の代わり） */
+  #cfm{ margin:auto; width:min(420px,calc(100% - 32px)); max-height:none; padding:16px; border-radius:16px; }
+  #cfm p{ margin:0 0 14px; line-height:1.6; white-space:pre-line; }
+  #cfm .acts{ display:flex; gap:8px; }
+  #cfm .acts button{ flex:1; }
+  .err{ color:var(--danger); font-size:.875rem; min-height:1.2em; margin-bottom:4px; } /* 入力エラーの表示欄（部品集の showErr 用） */
+  .toast{ position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%); display:none; align-items:center; gap:12px; padding:10px 14px; background:var(--ink); color:var(--bg); border-radius:12px; box-shadow:var(--shadow-lg); z-index:50; max-width:calc(100vw - 32px); }
+  .toast{ top:auto; right:auto; margin:0; border:0; overflow:visible; } /* popover（最前面の層）の既定の見た目を打ち消す */
+  .toast.show{ display:flex; }
+  .toast button{ min-height:44px; background:transparent; color:inherit; border-color:currentColor; }
+  /* ===== 共通部品（医療管理で整えたもの。必要なものだけ使う） ===== */
+  /* 警告は、色だけに頼らない: ▲（<span aria-hidden="true">▲</span>）＋文字＋色の面 */
+  .warn{ display:inline-block; color:var(--danger); background:var(--danger-bg); font-weight:700; font-size:.9rem; line-height:1.4; padding:2px 10px; border-radius:8px; }
+  /* 状態の札。予定の注意（今日・明日）は赤い .warn にせず .tag.today。赤は異常・期限切れ専用 */
+  .tag{ display:inline-block; font-size:.875rem; line-height:1.4; padding:1px 10px; border-radius:99px; background:var(--tint); color:var(--ink); }
+  .tag.today{ background:var(--accent); color:var(--on-accent); font-weight:700; }
+  /* 大きな数字は専用クラス。<b> や <strong> そのものには大きさを付けない（全部が巨大化する） */
+  .num{ font-size:1.4rem; font-weight:700; }
+  /* カードの下の操作行（情報と操作を分ける） */
+  .card{ padding:0; margin-bottom:10px; background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); }
+  .card .open{ position:relative; display:block; width:100%; min-height:44px; padding:12px 34px 12px 14px; border:0; border-radius:var(--radius); background:transparent; text-align:left; }
+  .card .open::after{ content:'›'; position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:1.4rem; line-height:1; color:var(--ink-soft); } /* 押すと編集できる手がかり */
+  @media (hover:hover){ .card .open:hover{ background:var(--tint); } }
+  .card .acts{ display:flex; gap:8px; flex-wrap:wrap; margin-top:var(--sp-2); padding-top:var(--sp-2); border-top:1px solid var(--line); }
+  .soft{ color:var(--ink-soft); font-size:.9rem; }
+  /* 文字は、本文16px・補足でも14px（0.875rem）を下回らせない。タブなど幅が足りない所だけ360px以上で14px */
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } button:active{ transform:none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <!-- ★ここを変える: 画面の見出し -->
+    <h1>靴管理</h1>
+    <!-- 追加ボタン。スマホは右下に固定（＋だけ）、広い画面はここ（右上）に文字つきで出る -->
+    <button class="primary fab" id="addBtn" type="button" aria-label="靴を追加"><span aria-hidden="true">＋</span><span class="lbl" aria-hidden="true"> 靴を追加</span></button>
+    <div class="menu-wrap">
+      <button id="menuBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="menu" aria-label="メニュー">⋯</button>
+      <div id="menu" role="menu" hidden>
+        <button id="themeBtn" type="button" role="menuitem"></button>
+        <button id="exportBtn" type="button" role="menuitem">書き出し（JSON）</button>
+        <button id="importBtn" type="button" role="menuitem">読み込み</button>
+      </div>
+    </div>
+    <input id="importFile" type="file" accept="application/json,.json" hidden>
+  </header>
+
+  <div class="notice" id="notice" role="alert" hidden><span id="noticeMsg"></span><button type="button" id="noticeClose" aria-label="この通知を閉じる">閉じる</button></div>
+
+  <!-- ★ここから下が、アプリごとに作り替える中身 -->
+  <div class="summary" id="summary" aria-live="polite"></div>
+  <!-- 絞り込み・検索・並び替え（靴が1足以上あるときだけ出す） -->
+  <div class="tools" id="tools" hidden>
+    <div class="chips" id="chips" role="group" aria-label="種類で絞り込み"></div>
+    <div class="find">
+      <input id="q" type="search" placeholder="名前・ブランド・色で検索" aria-label="名前・ブランド・色で検索" autocomplete="off" maxlength="60">
+      <select id="sort" aria-label="並び順"></select>
+    </div>
+    <div class="soft" id="count" aria-live="polite"></div>
+  </div>
+  <div id="list"></div>
+  <!-- ★ここまで -->
+</main>
+
+<!-- 追加・編集シート。中身を .sheet-in で包むのは、余白を押しても「背景を押した」と判定されないようにするため -->
+<dialog id="sheet" aria-labelledby="sTitle">
+  <div class="sheet-in">
+    <div class="sh-head"><h2 id="sTitle" tabindex="-1">靴を追加</h2><button class="sh-x" id="sX" type="button" aria-label="閉じる">×</button></div>
+    <form id="addForm" novalidate>
+      <fieldset>
+        <legend>基本</legend>
+        <label>名前（必須）<input id="fName" type="text" maxlength="60" autocomplete="off" placeholder="例: 通勤用の黒い革靴"></label>
+        <label>ブランド<input id="fBrand" type="text" maxlength="40" autocomplete="off" placeholder="例: REGAL"></label>
+        <div class="row2">
+          <label>種類<select id="fType"></select></label>
+          <label>色<input id="fColor" type="text" maxlength="20" autocomplete="off" list="colorList" placeholder="例: 黒"><datalist id="colorList"></datalist></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>購入情報</legend>
+        <div class="row2">
+          <label>サイズ（cm）<input id="fSize" type="number" inputmode="decimal" min="10" max="40" step="0.5"></label>
+          <label>価格（円）<input id="fPrice" type="number" inputmode="numeric" min="0" max="10000000" step="1"></label>
+        </div>
+        <label>購入日<input id="fDate" type="date"></label>
+      </fieldset>
+      <div class="err" id="fErr" role="alert"></div>
+      <div class="btns"><button class="primary" id="fSubmit" type="submit">追加</button><button id="sCancel" type="button">キャンセル</button></div>
+      <button class="danger-link" id="sDel" type="button" hidden>この靴を削除</button>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="cfm" aria-labelledby="cfmMsg">
+  <form method="dialog">
+    <p id="cfmMsg"></p>
+    <div class="acts"><button class="primary" id="cfmNo" value="no"></button><button id="cfmOk" value="ok"></button></div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" popover="manual" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastUndo" type="button">元に戻す</button><button id="toastClose" type="button" aria-label="閉じる">×</button></div>
+
+<!-- クラウド同期（右下の☁ボタンは、このスクリプトが作る）。読み込めなくても端末内だけで動く -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous" defer></script>
+<script src="cloud-sync.js" defer></script>
+<script>
+(function(){
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+
+  // ★アプリごとに変える: 保存キー、クラウド上のアプリ名、テーマのキー
+  const STORAGE_KEY = 'shoes-app-data-v1';
+  const THEME_KEY = 'shoes-app-theme';
+  const APP_NAME = '靴管理'; // クラウドの app_name。他のアプリと重複させない（重複すると上書きされる）
+  const TYPES = ['スニーカー', '革靴', 'ブーツ', 'サンダル', 'パンプス', 'その他'];
+  const SYNC_KEY = 'data-v1';
+
+  let items = [];       // ★アプリのデータ本体
+  let cloud = null;     // クラウド同期。読み込めない環境では null のまま
+  let undoFn = null;    // 直前の操作を元に戻す関数
+  let readOnly = false; // 壊れたデータを退避できなかったとき true（上書きして消さないよう、保存を止める）
+  let brokenRaw = null; // その元データ（書き出しで取り出せるように）
+  // 新しい id（重複しにくいもの）
+  const newId = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2, 8));
+
+  // ---------- 日付の部品 ----------
+  const pad = (n) => (n < 10 ? '0' : '') + n;
+  function todayISO(){ const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  // 年月・日付の検証（13月や2月30日、5桁の年を通さない）。日付の欄を作るときに使う
+  const isYM = (s) => /^\d{4}-(0[1-9]|1[0-2])$/.test(s || '');
+  function isDate(s){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+    if(!m) return false;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return d.getFullYear() === Number(m[1]) && d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]);
+  }
+  // 数値・文字列の検証（範囲外は0／空に）。sanitizeItem で使う
+  const num = (v, max) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), max) : 0; };
+  const str = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+
+  // ---------- 保存と読み込み ----------
+  // 読み込んだ値を検証して、壊れた項目や不正な値を取り除く（端末・クラウド・ファイルに共通）
+  // サイズは10〜40cmを0.5刻みに丸める。範囲外は0（未入力）
+  const sizeOf = (v) => { const n = Number(v); return Number.isFinite(n) && n >= 10 && n <= 40 ? Math.round(n * 2) / 2 : 0; };
+  function sanitizeItem(x){
+    if(!x || typeof x.name !== 'string' || !x.name.trim()) return null;
+    return {
+      id: (x.id === 0 || x.id) ? String(x.id) : newId(),
+      name: str(x.name, 60), brand: str(x.brand, 40),
+      type: TYPES.indexOf(x.type) >= 0 ? x.type : 'その他',
+      color: str(x.color, 20), size: sizeOf(x.size),
+      boughtOn: isDate(x.boughtOn) ? x.boughtOn : '', price: num(x.price, 10000000)
+    };
+  }
+  // 検証して、id の重複を振り直す（重複すると片方の編集でもう片方が消えるため）。端末・クラウド・ファイルの読み込みはすべてこれを通す
+  function sanitizeList(arr){
+    const seen = new Set(), all = new Set();
+    arr.forEach((x) => { if(x && (x.id === 0 || x.id)) all.add(String(x.id)); }); // 振り直した id が、別の項目の本物の id とぶつからないように
+    return arr.map(sanitizeItem).filter(Boolean).map((it) => {
+      let n = 2, v = it.id;
+      if(seen.has(v)){ do{ v = it.id + '_' + (n++); }while(seen.has(v) || all.has(v)); }
+      it.id = v; seen.add(v);
+      return it;
+    });
+  }
+  let lastRaw = null;       // 最後に保存・読み込みした保存データ（古い画面の検出用）
+  let loadFailed = false;   // 保存データが壊れていて、空で起動したとき true
+  // 読み込めなかった元データを別キーへ退避する（次の保存で消えないように）。日時つきで3世代まで
+  function quarantine(raw, msg){
+    try{
+      const P = STORAGE_KEY + '-corrupt';
+      const keys = Object.keys(localStorage).filter((k) => k.indexOf(P) === 0).sort();
+      let k = keys.filter((x) => localStorage.getItem(x) === raw)[0]; // 同じ内容なら書き直さない
+      if(!k){
+        k = P + '-' + Date.now();
+        localStorage.setItem(k, raw);
+        keys.concat(k).sort().slice(0, -3).forEach((x) => localStorage.removeItem(x));
+      }
+      notice(msg + '元データは「' + k + '」に退避しました。');
+      return true;
+    }catch(e2){
+      // 退避できないまま使い続けると、次の保存で元データが消える。保存を止めて、書き出しで取り出せるようにする
+      readOnly = true; brokenRaw = raw;
+      notice(msg + '元データを退避できなかったため、消さないように保存を止めました。メニューの「書き出し」で元データを保存してください。');
+      return false;
+    }
+  }
+  function load(){
+    let raw = null;
+    try{
+      raw = localStorage.getItem(STORAGE_KEY); lastRaw = raw;
+      const d = raw ? JSON.parse(raw) : [];
+      if(!Array.isArray(d)) throw new Error('形式が正しくありません');
+      items = sanitizeList(d);
+      // 配列は読めたが、中身が検証で落ちたとき（黙って消えて、次の保存で確定するのを防ぐ）
+      if(d.length && items.length < d.length){
+        if(!items.length) loadFailed = true;
+        quarantine(raw, '保存データの一部（' + (d.length - items.length) + '件）を読み込めませんでした。');
+      }
+    }catch(e){
+      items = []; loadFailed = true;
+      if(raw) quarantine(raw, '保存データを読み込めませんでした。');
+    }
+  }
+  // 保存できたら true。失敗時は警告を出して false（クラウドへは知らせない）
+  function save(){
+    try{
+      const s = JSON.stringify(items);
+      localStorage.setItem(STORAGE_KEY, s); lastRaw = s;
+    }catch(e){
+      notice('端末に保存できませんでした。このまま閉じると変更が失われます。書き出し（JSON）で保存してください。');
+      return false;
+    }
+    if(cloud) cloud.notifyChanged(); // 端末へ保存した直後に必ず呼ぶ
+    return true;
+  }
+
+  // 別のタブで保存されたら最新の内容に更新する（古い画面のまま上書きして消すのを防ぐ）
+  function adoptStored(raw){
+    try{
+      const d = JSON.parse(raw || '[]');
+      if(!Array.isArray(d)) return;
+      lastRaw = raw;
+      items = sanitizeList(d);
+      clearUndo();
+      render();
+      toast('別のタブでデータが更新されたため、最新の内容に更新しました。');
+    }catch(err){ /* 壊れた値は無視 */ }
+  }
+  window.addEventListener('storage', (e) => { if(e.key === STORAGE_KEY) adoptStored(e.newValue); });
+  // 凍結・キャッシュ復帰したタブは storage イベントを受け取れないため、戻ったときに見比べる
+  function checkStale(){
+    let cur = null;
+    try{ cur = localStorage.getItem(STORAGE_KEY); }catch(e){ return; }
+    if(cur !== lastRaw) adoptStored(cur); // 他のタブで削除された（null）場合も含めて見比べる
+  }
+  window.addEventListener('pageshow', (e) => { if(e.persisted) checkStale(); });
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) checkStale(); });
+
+  // ---------- 画面 ----------
+  // 消えない通知（警告など。閉じるまで残る）
+  function notice(msg){ $('#noticeMsg').textContent = msg; $('#notice').hidden = false; }
+  $('#noticeClose').addEventListener('click', () => { $('#notice').hidden = true; });
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const yen = (n) => n.toLocaleString('ja-JP') + '円';
+  // 絞り込み・検索・並び替えの状態（画面だけのもの。保存しない）
+  let fType = '';       // 絞り込み中の種類（空ならすべて）
+  let fQuery = '';      // 検索の文字
+  let fSort = 'added';  // 並び順
+  const SORTS = { added:'登録順', dateDesc:'購入日 新→古', dateAsc:'購入日 古→新', priceDesc:'価格 高→安', priceAsc:'価格 安→高', name:'名前順' };
+  const collator = new Intl.Collator('ja');
+  const PAGE = 200;      // 一度に描く最大件数（多いときは「もっと見る」）
+  let limit = PAGE;
+  const hayCache = new WeakMap(); // 検索用の文字（項目ごとに1回だけ作る）
+  const hay = (it) => { let h = hayCache.get(it); if(h === undefined){ h = [it.name, it.brand, it.color].join('\n').toLowerCase(); hayCache.set(it, h); } return h; };
+  // 中身が同じなら書き換えない（読み上げの再通知やフォーカス喪失を防ぐ）
+  function setIfChanged(el, html){ if(el.__h !== html){ el.innerHTML = html; el.__h = html; } }
+  $('#sort').innerHTML = Object.keys(SORTS).map((k) => '<option value="' + k + '">' + SORTS[k] + '</option>').join('');
+  // 並び替え。購入日・価格が未入力の靴は、どの並びでも最後（同じ値は、元の順を保つ）
+  function sortedView(list){
+    const a = list.slice();
+    const last = (x, y, key) => (!x[key] - !y[key]); // 値のないほうを後ろへ
+    if(fSort === 'dateDesc') a.sort((x, y) => last(x, y, 'boughtOn') || (x.boughtOn < y.boughtOn ? 1 : x.boughtOn > y.boughtOn ? -1 : 0));
+    else if(fSort === 'dateAsc') a.sort((x, y) => last(x, y, 'boughtOn') || (x.boughtOn < y.boughtOn ? -1 : x.boughtOn > y.boughtOn ? 1 : 0));
+    else if(fSort === 'priceDesc') a.sort((x, y) => last(x, y, 'price') || (y.price - x.price));
+    else if(fSort === 'priceAsc') a.sort((x, y) => last(x, y, 'price') || (x.price - y.price));
+    else if(fSort === 'name') a.sort((x, y) => collator.compare(x.name, y.name));
+    return a;
+  }
+  const EMPTY_SVG = '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 46V30l10 4 9-11 8 7c9 2 17 6 21 11v5z"/><path d="M8 54h48"/></svg>';
+  function render(){
+    const box = $('#list');
+    $('#addBtn').disabled = readOnly;
+    const total = items.reduce((s, it) => s + it.price, 0);
+    const priced = items.filter((it) => it.price > 0);
+    setIfChanged($('#summary'), !items.length ? '' :
+      '<div><span class="soft">持っている靴</span><span class="num">' + items.length + '足</span></div>' +
+      '<div><span class="soft">購入額の合計</span><span class="num">' + yen(total) + '</span></div>' +
+      '<div><span class="soft">平均価格</span><span class="num">' + (priced.length ? yen(Math.round(total / priced.length)) : '－') + '</span></div>');
+    $('#tools').hidden = !items.length;
+    if(!items.length){
+      setIfChanged(box, '<div class="empty">' + EMPTY_SVG + '<p>まだ靴がありません。</p><p class="soft">名前だけでも登録できます。サイズ・購入日・価格は、あとから足せます。</p><button class="primary empty-add" type="button"' + (readOnly ? ' disabled' : '') + '>最初の1足を追加</button></div>');
+      return;
+    }
+    // 種類チップ（いま持っている種類だけ。選んだ種類が無くなったら「すべて」に戻す）
+    const counts = {};
+    items.forEach((it) => { counts[it.type] = (counts[it.type] || 0) + 1; });
+    if(fType && !counts[fType]) fType = '';
+    const chip = (v, label, n) => '<button class="chip" type="button" data-type="' + v + '" aria-pressed="' + (fType === v) + '">' + (fType === v ? '<span aria-hidden="true">✓ </span>' : '') + label + ' ' + n + '<span class="vh">足</span></button>';
+    setIfChanged($('#chips'), chip('', 'すべて', items.length) + TYPES.filter((t) => counts[t]).map((t) => chip(t, t, counts[t])).join(''));
+    const q = fQuery.trim().toLowerCase();
+    const view = sortedView(items.filter((it) => (!fType || it.type === fType) && (!q || hay(it).indexOf(q) >= 0)));
+    const cnt = (fType || q) ? view.length + '足を表示（全' + items.length + '足）' : '';
+    if($('#count').textContent !== cnt) $('#count').textContent = cnt;
+    if(!view.length){
+      setIfChanged(box, '<div class="empty"><p>条件に合う靴がありません。</p>' + (q ? '<p class="soft">検索: 「' + esc(fQuery.trim()) + '」</p>' : '') + '<button class="clr" type="button">絞り込みを解除</button></div>');
+      return;
+    }
+    const part = view.slice(0, limit);
+    setIfChanged(box, part.map((it) => {
+      const sub = [it.brand, it.type, it.color].filter(Boolean).map(esc).join(' ／ ');
+      const dot = colorOf(it.color);
+      const foot = (it.size ? '<span class="tag">' + it.size + 'cm</span>' : '') +
+        (it.boughtOn ? '<span class="soft">購入 ' + esc(it.boughtOn.replace(/-/g, '/')) + '</span>' : '') +
+        (it.price ? '<span class="price">' + yen(it.price) + '</span>' : '');
+      // カード全体が1つのボタン（押すと編集シートが開く）。色の点は飾り（色の名前は文字でも出す）。色が分からないときは中空の点
+      return '<div class="card" data-id="' + esc(it.id) + '"><button class="open" type="button">' +
+        '<span class="head"><i class="dot' + (dot ? '' : ' none') + '" aria-hidden="true"' + (dot ? ' style="background:' + dot + '"' : '') + '></i><span class="shoe-name">' + esc(it.name) + '</span></span>' +
+        (sub ? '<span class="soft">' + sub + '</span>' : '') +
+        (foot ? '<span class="foot">' + foot + '</span>' : '') +
+        '<span class="vh">（押すと編集します）</span></button></div>';
+    }).join('') + (view.length > part.length ? '<button class="more" type="button">もっと見る（残り' + (view.length - part.length) + '足）</button>' : ''));
+  }
+  // 「色」の文字から、色の点の色を決める（当てはまらなければ点なし）。順番に最初に当てはまったものを使う
+  const COLORS = [['ベージュ','#D9C3A0'], ['ネイビー','#23376B'], ['紺','#23376B'], ['ピンク','#E58FA8'], ['オレンジ','#E07B2E'], ['グレー','#8A8F98'], ['灰','#8A8F98'],
+    ['黒','#1B1B1B'], ['白','#F5F5F5'], ['茶','#8B5A2B'], ['赤','#C0392B'], ['青','#2F6FD0'], ['緑','#3F7D4E'], ['黄','#E0B72E'], ['紫','#7A4FA3'], ['金','#C9A227'], ['銀','#B8BCC4'],
+    ['ブラック','#1B1B1B'], ['ホワイト','#F5F5F5'], ['オフホワイト','#F0EDE4'], ['アイボリー','#F2EBD3'], ['ブラウン','#8B5A2B'], ['キャメル','#C19A6B'], ['チャコール','#44474D'],
+    ['レッド','#C0392B'], ['ブルー','#2F6FD0'], ['グリーン','#3F7D4E'], ['カーキ','#78794F'], ['ワイン','#722F37'], ['ボルドー','#5E1224'], ['イエロー','#E0B72E'], ['パープル','#7A4FA3'],
+    ['ゴールド','#C9A227'], ['シルバー','#B8BCC4'],
+    ['black','#1B1B1B'], ['white','#F5F5F5'], ['brown','#8B5A2B'], ['navy','#23376B'], ['gray','#8A8F98'], ['grey','#8A8F98'], ['red','#C0392B'], ['blue','#2F6FD0'], ['green','#3F7D4E'],
+    ['beige','#D9C3A0'], ['pink','#E58FA8'], ['orange','#E07B2E'], ['khaki','#78794F'], ['camel','#C19A6B'], ['wine','#722F37'], ['ivory','#F2EBD3']];
+  // 「色」の文字から、色の点の色を決める（当てはまらなければ空）。文字の中で一番左に出てくる色を使う（同じ位置なら長い名前）
+  function colorOf(s){
+    const t = String(s).toLowerCase();
+    let best = null, at = 1e9;
+    COLORS.forEach((c) => { const i = t.indexOf(c[0]); if(i >= 0 && (i < at || (i === at && c[0].length > best[0].length))){ best = c; at = i; } });
+    return best ? best[1] : '';
+  }
+  // 「色」の入力候補（候補から選べば、必ず点が付く）
+  $('#colorList').innerHTML = ['黒','白','茶','グレー','ネイビー','ベージュ','キャメル','ワイン','カーキ','赤','青','緑'].map((c) => '<option value="' + c + '"></option>').join('');
+
+  // ---------- ⋯メニュー ----------
+  const menuBtn = $('#menuBtn'), menuEl = $('#menu');
+  function setMenu(open, back){
+    menuEl.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open));
+    if(open) menuEl.querySelector('button').focus(); else if(back) menuBtn.focus();
+  }
+  menuBtn.addEventListener('click', () => setMenu(menuEl.hidden));
+  menuEl.addEventListener('click', () => setMenu(false, true));
+  menuEl.addEventListener('keydown', (e) => {
+    const bs = Array.from(menuEl.querySelectorAll('button')), i = bs.indexOf(document.activeElement);
+    if(e.key === 'Escape'){ e.preventDefault(); setMenu(false, true); }
+    else if(e.key === 'ArrowDown'){ e.preventDefault(); bs[(i + 1) % bs.length].focus(); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); bs[(i - 1 + bs.length) % bs.length].focus(); }
+  });
+  menuEl.addEventListener('focusout', (e) => { if(e.relatedTarget && !e.relatedTarget.closest('.menu-wrap')) setMenu(false); });
+  document.addEventListener('click', (e) => { if(!menuEl.hidden && !e.target.closest('.menu-wrap')) setMenu(false); });
+
+  // ---------- 追加・編集シート（下から出る <dialog>。部品集の 1・2・6 に沿う） ----------
+  const sheet = $('#sheet');
+  $('#fType').innerHTML = TYPES.map((t) => '<option>' + t + '</option>').join('');
+  const FIELDS = ['fName', 'fBrand', 'fType', 'fColor', 'fSize', 'fDate', 'fPrice'];
+  let editingId = null;   // 編集中の靴の id。null なら追加
+  let editBase = '';      // 開いた時点の1件ぶん（他の場所での更新を見つける用）
+  let formOrig = '';      // 開いた時点の入力値（閉じるとき、入力が変わったかを見る用）
+  let allowClose = false; // 自分で閉じるときだけ true（Esc連打などの勝手な close と区別する）
+  let committing = false; // 確認待ち中の二重実行を防ぐ
+  const formVals = () => JSON.stringify(FIELDS.map((f) => $('#' + f).value));
+  const errEl = $('#fErr');
+  // エラー文を、該当の欄のすぐ下へ置く（欄が無いときは、ボタンの上に戻す）
+  function placeErr(field){
+    const host = field ? (field.closest('.row2') || field.closest('label')) : null;
+    if(host){ host.after(errEl); return; }
+    const b = $('#addForm .btns');
+    if(errEl.nextElementSibling !== b) b.before(errEl);
+  }
+  function clearInvalid(){
+    placeErr(null);
+    errEl.textContent = '';
+    FIELDS.forEach((f) => { const el = $('#' + f); el.removeAttribute('aria-invalid'); el.removeAttribute('aria-describedby'); });
+  }
+  // エラーを欄と結び付けて出す。field が無いときは、シート内に文だけ出す
+  function showErr(msg, field){
+    placeErr(field || null);
+    errEl.textContent = msg;
+    if(field){ field.setAttribute('aria-invalid', 'true'); field.setAttribute('aria-describedby', 'fErr'); field.focus(); }
+    errEl.scrollIntoView({ block: 'nearest' });
+  }
+  sheet.addEventListener('input', clearInvalid);
+  function openSheet(id){
+    if(readOnly) return; // 退避できなかったとき、元データを守るため編集しない
+    const it = id ? items.find((x) => x.id === id) : null;
+    if(id && !it) return;
+    editingId = it ? it.id : null;
+    editBase = it ? JSON.stringify(it) : '';
+    $('#addForm').reset(); clearInvalid();
+    if(it){
+      $('#fName').value = it.name; $('#fBrand').value = it.brand; $('#fType').value = it.type; $('#fColor').value = it.color;
+      $('#fSize').value = it.size || ''; $('#fDate').value = it.boughtOn; $('#fPrice').value = it.price || '';
+    }else{
+      $('#fType').value = fType || TYPES[0]; // 絞り込み中の種類を、初期値にする
+    }
+    $('#sTitle').textContent = it ? '靴を編集' : '靴を追加';
+    $('#fSubmit').textContent = it ? '保存' : '追加';
+    $('#sDel').hidden = !it;
+    formOrig = formVals();
+    sheet.showModal();
+    // 追加のときだけ名前へ（編集でいきなりキーボードを出さない）
+    if(it) $('#sTitle').focus(); else $('#fName').focus();
+  }
+  function closeSheet(){ if(!sheet.open) return; allowClose = true; sheet.close(); }
+  sheet.addEventListener('close', () => {
+    if(allowClose){ allowClose = false; return; }
+    try{ sheet.showModal(); }catch(err){ /* 入力は残したまま開き直す */ }
+  });
+  // 閉じる前に、入力が変わっていれば確認する（Esc・キャンセル・背景を押したとき）
+  async function askClose(){
+    if(committing) return;
+    if(formVals() !== formOrig){
+      committing = true;
+      let ok = false;
+      try{ ok = await askConfirm('入力した内容は保存されません。閉じますか？', '閉じる', '戻る'); } finally { committing = false; }
+      if(!ok) return;
+    }
+    closeSheet();
+  }
+  sheet.addEventListener('cancel', (e) => { e.preventDefault(); askClose(); });
+  $('#sCancel').addEventListener('click', askClose);
+  $('#sX').addEventListener('click', askClose);
+  // 入力欄の中で押し始めて、外側で離したときに閉じないよう、押し始めが背景のときだけ閉じる
+  let downOnBackdrop = false;
+  // スクロールバーの上も target は sheet になるため、シートの外側（背景）の座標かも見る
+  const outside = (e) => { const r = sheet.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
+  sheet.addEventListener('pointerdown', (e) => { downOnBackdrop = (e.target === sheet && outside(e)); }, true);
+  sheet.addEventListener('click', (e) => { if(e.target === sheet && downOnBackdrop && outside(e)) askClose(); downOnBackdrop = false; });
+  function focusCard(id){
+    const b = id && document.querySelector('.card[data-id="' + CSS.escape(id) + '"] .open');
+    (b || $('#addBtn')).focus();
+  }
+  $('#addBtn').addEventListener('click', () => openSheet(null));
+  $('#addForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if(committing) return;
+    clearInvalid();
+    const name = $('#fName').value.trim();
+    if(!name) return showErr('名前を入力してください。', $('#fName'));
+    const sizeRaw = $('#fSize').value;
+    if($('#fSize').validity.badInput || (sizeRaw !== '' && (!sizeOf(sizeRaw) || Math.round(Number(sizeRaw) * 2) !== Number(sizeRaw) * 2))) return showErr('サイズは10〜40cmの範囲で、0.5cm刻みで入力してください。', $('#fSize'));
+    const date = $('#fDate').value;
+    // 日付は入力の途中だと value が空になる。そのまま「日付なし」で保存しないよう、途中入力も止める
+    if($('#fDate').validity.badInput || (date && !isDate(date))) return showErr('購入日が正しくありません。年・月・日をすべて入力するか、空にしてください。', $('#fDate'));
+    const priceRaw = $('#fPrice').value;
+    if($('#fPrice').validity.badInput || (priceRaw !== '' && !(Number.isInteger(Number(priceRaw)) && Number(priceRaw) >= 0 && Number(priceRaw) <= 10000000))) return showErr('価格は0〜1000万円の整数で入力してください。', $('#fPrice'));
+    const shoe = sanitizeItem({
+      id: editingId || newId(), name: name, brand: $('#fBrand').value, type: $('#fType').value,
+      color: $('#fColor').value, size: sizeRaw, boughtOn: date, price: priceRaw
+    });
+    if(editingId){
+      // 編集中に別の場所で削除・更新されていたら、確認してから保存する
+      const cur = items.find((x) => x.id === editingId);
+      let ok = true;
+      committing = true;
+      try{
+        if(!cur) ok = await askConfirm('編集中の靴は、別の場所で削除されました。新しい靴として保存しますか？', '保存する', 'やめる');
+        else if(JSON.stringify(cur) !== editBase) ok = await askConfirm('この靴は、編集中に別の場所で更新されました。上書きしますか？', '上書きする', '戻る');
+      } finally { committing = false; }
+      if(!ok) return;
+    }
+    // 確認の待ち中に変わったかもしれないので、最新の一覧から作る
+    const next = (editingId && items.some((x) => x.id === editingId))
+      ? items.map((x) => (x.id === editingId ? shoe : x))
+      : [shoe].concat(items);
+    if(!setItems(next)) return showErr('端末に保存できませんでした。書き出し（JSON）で保存してください。', null);
+    closeSheet();
+    render();
+    focusCard(shoe.id);
+  });
+  // シートの下端の「削除」。確認してから消し、元に戻すこともできる
+  $('#sDel').addEventListener('click', async () => {
+    if(committing || !editingId) return;
+    const target = items.find((x) => x.id === editingId);
+    if(!target){ closeSheet(); render(); return; }
+    let ok = false;
+    committing = true;
+    try{ ok = await askConfirm('「' + target.name + '」を削除しますか？', '削除する', '戻る'); } finally { committing = false; }
+    if(!ok) return;
+    const i = items.findIndex((x) => x.id === target.id);
+    if(i < 0){ closeSheet(); render(); return; }
+    if(!setItems(items.filter((x) => x.id !== target.id))) return showErr('端末に保存できませんでした。', null);
+    closeSheet();
+    render();
+    $('#addBtn').focus();
+    toast('削除しました', () => {
+      if(items.some((x) => x.id === target.id)) return;
+      const at = Math.min(i, items.length);
+      if(setItems(items.slice(0, at).concat(target, items.slice(at)))) render();
+    });
+  });
+  $('#list').addEventListener('click', (e) => {
+    const card = e.target.closest('.card[data-id]');
+    if(card && e.target.closest('.open')) openSheet(card.dataset.id);
+    else if(e.target.closest('.empty-add')) openSheet(null);
+    else if(e.target.closest('.clr')){ clearTimeout(qTimer); fType = ''; fQuery = ''; limit = PAGE; $('#q').value = ''; render(); $('#q').focus(); }
+    else if(e.target.closest('.more')){ limit += PAGE; render(); }
+  });
+  // ---------- 絞り込み・検索・並び替え ----------
+  $('#chips').addEventListener('click', (e) => {
+    const b = e.target.closest('.chip');
+    if(!b) return;
+    fType = b.dataset.type; limit = PAGE;
+    render();
+    const again = $('#chips').querySelector('[data-type="' + fType + '"]'); // 作り直したチップへフォーカスを戻す
+    if(again) again.focus();
+  });
+  // 検索は、入力が止まってから反映する（変換中は待つ）。1文字ごとに全件を描き直さない
+  let qTimer = null, composing = false;
+  const applyQ = (v) => { fQuery = v; limit = PAGE; render(); };
+  $('#q').addEventListener('compositionstart', () => { composing = true; });
+  $('#q').addEventListener('compositionend', (e) => { composing = false; clearTimeout(qTimer); applyQ(e.target.value); });
+  $('#q').addEventListener('input', (e) => {
+    if(composing || e.isComposing) return;
+    clearTimeout(qTimer);
+    const v = e.target.value;
+    qTimer = setTimeout(() => applyQ(v), 150);
+  });
+  $('#sort').addEventListener('change', (e) => { fSort = e.target.value; limit = PAGE; render(); });
+
+  // ---------- 元に戻す（トースト） ----------
+  // 保存して items を入れ替える。保存できなければ元に戻して false（警告は save() が出す）
+  function setItems(next){
+    if(readOnly){ notice('元データを守るため、保存を止めています。メニューの「書き出し」で元データを保存してください。'); return false; }
+    const before = items;
+    items = next;
+    if(!save()){ items = before; return false; }
+    loadFailed = false; // 正常に保存できたので、「破損で空になった」状態は終わり
+    clearUndo();        // 新しい変更が入ったら、古い「元に戻す」は使えなくする（あとの操作を巻き込んで消さないため）
+    return true;
+  }
+  let toastTimer = null;
+  const toastEl = $('#toast');
+  function hideToast(){
+    toastEl.classList.remove('show');
+    try{ if(toastEl.hidePopover && toastEl.matches(':popover-open')) toastEl.hidePopover(); }catch(e){}
+  }
+  // important: 警告など、読む時間が要るメッセージ（長く出す）。<dialog> を使うアプリでも隠れないよう、popover の最前面の層に出す
+  function toast(msg, undo, important){
+    $('#toastMsg').textContent = msg;
+    undoFn = undo || null;
+    $('#toastUndo').style.display = undo ? '' : 'none';
+    toastEl.classList.add('show');
+    try{ if(toastEl.showPopover && !toastEl.matches(':popover-open')) toastEl.showPopover(); }catch(e){}
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, important ? 30000 : (undo ? 10000 : 6000));
+  }
+  // 外部の更新（他タブ・クラウド）が入ったら、古い「元に戻す」は使えなくする
+  function clearUndo(){
+    if(undoFn){ undoFn = null; hideToast(); }
+  }
+  $('#toastUndo').addEventListener('click', () => {
+    if(undoFn) undoFn();
+    undoFn = null;
+    hideToast();
+  });
+  toastEl.addEventListener('click', (e) => { if(!e.target.closest('button')) hideToast(); });
+  $('#toastClose').addEventListener('click', () => { undoFn = null; hideToast(); });
+
+  // ---------- 確認画面（標準の confirm の代わり） ----------
+  // 押したボタンが ok なら true。安全な方（戻る）に初期フォーカスを置く
+  function askConfirm(msg, okLabel, noLabel){
+    return new Promise((resolve) => {
+      const d = $('#cfm');
+      $('#cfmMsg').textContent = msg; $('#cfmOk').textContent = okLabel; $('#cfmNo').textContent = noLabel || 'キャンセル';
+      d.returnValue = 'no';
+      d.addEventListener('close', () => resolve(d.returnValue === 'ok'), { once: true });
+      d.showModal(); $('#cfmNo').focus();
+    });
+  }
+
+  // ---------- 書き出し・読み込み（バックアップ用） ----------
+  function exportJson(prefix){
+    // 退避できず保存を止めているときは、読めなかった元データそのものを出す
+    const raw = readOnly && brokenRaw !== null;
+    const blob = new Blob([raw ? brokenRaw : JSON.stringify({ app: APP_NAME, items: items })], { type: raw ? 'text/plain' : 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'shoes-app-' + (raw ? '元データ-' : (prefix || '')) + todayISO() + (raw ? '.txt' : '.json');
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  $('#exportBtn').addEventListener('click', () => exportJson());
+  $('#importBtn').addEventListener('click', () => $('#importFile').click());
+  $('#importFile').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    try{
+      if(file.size > 5 * 1024 * 1024) throw new Error('ファイルが大きすぎます（5MBまで）');
+      const d = JSON.parse(await file.text());
+      if(!d || !Array.isArray(d.items)) throw new Error('形式が違います');
+      if(d.items.length > 5000) throw new Error('件数が多すぎます（5000件まで）');
+      // 他のアプリのバックアップや、別形式のファイルを取り込まない
+      if(d.app !== undefined && d.app !== APP_NAME) throw new Error('このアプリのバックアップではありません');
+      if(d.items.length && !d.items.some((x) => x && typeof x.name === 'string')) throw new Error('形式が違います');
+      const next = sanitizeList(d.items);
+      let msg = '現在のデータ（' + items.length + '件）を、読み込んだ ' + next.length + ' 件に置き換えます。よろしいですか？';
+      if(!next.length && items.length) msg = '【注意】ファイルは0件です。現在の' + items.length + '件がすべて消えます。 ' + msg;
+      else if(items.length >= 5 && next.length < items.length / 2) msg = '【注意】ファイルの件数が現在の半分未満です。 ' + msg;
+      msg += ' 置き換える前のデータは、念のため自動でダウンロードされます。';
+      if(!(await askConfirm(msg, '置き換える', 'やめる'))) return;
+      // 置き換える前のデータを退避する（日時つきで3世代まで）。あわせてJSONも自動で保存する
+      try{
+        const cur = localStorage.getItem(STORAGE_KEY);
+        if(cur){
+          localStorage.setItem(STORAGE_KEY + '-prev-' + Date.now(), cur);
+          Object.keys(localStorage).filter((k) => k.indexOf(STORAGE_KEY + '-prev-') === 0).sort().slice(0, -3).forEach((k) => localStorage.removeItem(k));
+        }
+      }catch(e2){ /* 退避できなくても、JSONの自動保存で守る */ }
+      exportJson('取り込み前-');
+      const before = items;
+      if(!setItems(next)) return;
+      render();
+      toast('読み込みました', () => { if(setItems(before)) render(); });
+    }catch(err){
+      toast('読み込めませんでした: ' + err.message);
+    }
+  });
+
+  // ---------- 表示の切り替え（自動 → ライト → ダーク） ----------
+  const THEME_NEXT = { auto:'light', light:'dark', dark:'auto' };
+  const THEME_LABEL = { auto:'◐ 自動', light:'☀ ライト', dark:'☾ ダーク' };
+  function getTheme(){
+    try{ const t = localStorage.getItem(THEME_KEY); return (t === 'light' || t === 'dark') ? t : 'auto'; }
+    catch(e){ return 'auto'; }
+  }
+  function applyTheme(t){
+    if(t === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', t);
+    $('#themeBtn').textContent = THEME_LABEL[t];
+    $('#themeBtn').setAttribute('aria-label', '表示の切り替え（現在: ' + THEME_LABEL[t].slice(2) + '。押すと' + THEME_LABEL[THEME_NEXT[t]].slice(2) + '）');
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+      const dark = (m.getAttribute('media') || '').indexOf('dark') >= 0;
+      m.setAttribute('content', t === 'light' ? '#F4F5F7' : (t === 'dark' ? '#0E1116' : (dark ? '#0E1116' : '#F4F5F7')));
+    });
+  }
+  $('#themeBtn').addEventListener('click', () => {
+    const next = THEME_NEXT[getTheme()];
+    try{ localStorage.setItem(THEME_KEY, next); }catch(e){ /* 保存できなくても表示は切り替える */ }
+    applyTheme(next);
+  });
+  applyTheme(getTheme());
+
+  // ---------- オフライン対応（PWA） ----------
+  if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
+    navigator.serviceWorker.register('shoes-sw.js').catch(() => {}); // ★ファイル名を変える
+  }
+
+  load();
+  render();
+
+  // ---------- クラウド同期（cloud-sync.js） ----------
+  function startCloud(){
+    if(!window.CloudSync) return;
+    cloud = CloudSync.init({
+      appName: APP_NAME,
+      key: SYNC_KEY,
+      getData: function(){ return { items: items }; },
+      trustEmpty: function(){ return !loadFailed && !readOnly; }, // 破損で空になっただけなら、空をクラウドへ送らない
+      hasData: function(){ return items.length > 0; },
+      applyData: function(d){
+        if(!d || !Array.isArray(d.items)) throw new Error('データ形式が違います');
+        if(readOnly) throw new Error('元データを守るため、保存を止めています'); // 破損データを退避できていないとき、上書きしない
+        const next = sanitizeList(d.items);
+        // 先に端末へ保存する。失敗したら画面も古いままにして、次回の同期でやり直す
+        try{ const s = JSON.stringify(next); localStorage.setItem(STORAGE_KEY, s); lastRaw = s; }
+        catch(e){ notice('クラウドのデータを端末に保存できませんでした。'); throw e; }
+        items = next;
+        loadFailed = false;
+        clearUndo();
+        render();
+      }
+    });
+  }
+  // 同期スクリプトは defer で後から読むため、読み込みが終わってから始める（CDNが遅くても、一覧は先に出る）
+  if(document.readyState === 'complete') startCloud(); else window.addEventListener('load', startCloud);
+})();
+</script>
+</body>
+</html>
