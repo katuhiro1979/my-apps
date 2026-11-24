@@ -147,6 +147,14 @@
   .tools input[type=search]{ flex:1 1 100%; min-height:44px; padding:0 12px; border:1px solid var(--field-line); border-radius:var(--r-ctl); background:var(--paper); }
   .tools select{ flex:1 1 140px; min-height:44px; padding:0 10px; border:1px solid var(--field-line); border-radius:var(--r-ctl); background:var(--paper); }
   .filterbar{ display:flex; align-items:center; gap:var(--s-2); margin-bottom:var(--s-2); font-size:var(--fs-sm); color:var(--ink); background:var(--surface-2); border-radius:var(--r-pill); padding:0 var(--s-1) 0 var(--s-4); width:fit-content; }
+  /* 状態・区分の管理画面（1行に、名前・扱い・並べ替え・削除） */
+  .mgr .mrow{ display:flex; flex-wrap:wrap; gap:var(--s-2); align-items:center; margin-bottom:var(--s-3); padding-bottom:var(--s-3); border-bottom:1px solid var(--line); }
+  .mgr .mrow input{ flex:1 1 100%; min-width:0; min-height:44px; padding:4px 10px; border:1px solid var(--field-line); border-radius:var(--r-ctl); background:var(--bg); }
+  .mgr .mrow select{ flex:1 1 120px; min-width:0; min-height:44px; padding:0 10px; border:1px solid var(--field-line); border-radius:var(--r-ctl); background:var(--paper); }
+  .mgr .mops{ display:flex; gap:var(--s-1); margin-left:auto; }
+  .mgr .mop{ min-width:44px; padding:0; }
+  .mgr .mop[disabled]{ opacity:.4; }
+  .mgr .mop.del{ color:var(--danger); }
   .filterbar button{ min-height:44px; border:0; background:none; color:var(--ink-soft); text-decoration:underline; }
 
   /* 一覧 */
@@ -243,6 +251,8 @@
       <button id="menuBtn" class="icon-btn" type="button" aria-label="メニュー" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menu" role="menu">
         <button type="button" role="menuitem" id="mTargets">品目の目標数</button>
+        <button type="button" role="menuitem" id="mStatus">状態の管理</button>
+        <button type="button" role="menuitem" id="mSections">区分（タブ）の管理</button>
         <button type="button" role="menuitem" id="mExport">書き出し（JSON）</button>
         <button type="button" role="menuitem" id="mImport">読み込み</button>
         <div class="sep"></div>
@@ -293,15 +303,7 @@
       <option value="priceAsc">価格 安い順</option>
       <option value="name">名前順</option>
     </select>
-    <select id="status" aria-label="状態">
-      <option value="active">所持・購入予定</option>
-      <option value="所持">所持のみ（使用中・保管中を含む）</option>
-      <option value="使用中">使用中のみ</option>
-      <option value="保管中">保管中のみ</option>
-      <option value="購入予定">購入予定のみ</option>
-      <option value="処分済み">処分済み</option>
-      <option value="all">すべて</option>
-    </select>
+    <select id="status" aria-label="状態"></select>
   </div>
   <div class="filterbar" id="filterbar" hidden><span id="filterText"></span><button type="button" id="filterClear">解除</button></div>
 
@@ -376,9 +378,34 @@
     <p class="err" id="sErr" role="alert" style="padding:0 16px"></p>
     <div class="dfoot">
       <button type="button" id="sCancel">キャンセル</button>
-      <button type="submit" class="primary">追加</button>
+      <button type="submit" class="primary" id="sSubmit">追加</button>
     </div>
   </form>
+</dialog>
+
+<!-- 状態の管理 -->
+<dialog id="stdlg" class="mgr" aria-labelledby="stdlgTitle">
+  <h2 id="stdlgTitle" tabindex="-1">状態の管理</h2>
+  <div class="dbody">
+    <p class="hint">「所持」「使用中」などの名前を、自由に変えたり足したりできます（最大12個）。「扱い」で、数え方が決まります。</p>
+    <p class="hint">・手元にある: 目標数・所持の点数・最近買った服に数える。<br>・購入予定: 購入予定ページに出る（「購入済みにする」が使える）。<br>・処分済み: 数えない。<br>扱いは、それぞれ1つ以上必要です。使っている服がある状態は、先に別の状態へ付け替えてから消します。</p>
+    <div id="stList"></div>
+    <p class="err" id="stErr" role="alert"></p>
+    <button type="button" id="stAdd">＋ 状態を追加</button>
+  </div>
+  <div class="dfoot"><button type="button" class="primary" id="stClose">閉じる</button></div>
+</dialog>
+
+<!-- 区分（タブ）の管理 -->
+<dialog id="secdlg" class="mgr" aria-labelledby="secdlgTitle">
+  <h2 id="secdlgTitle" tabindex="-1">区分（タブ）の管理</h2>
+  <div class="dbody">
+    <p class="hint">一覧の上のタブの名前を、変えたり、並べ替えたり、足したり、消したりできます（最大30個）。名前を変えると、その区分の服もまとめて変わります。使っている服がある区分は、先に別の区分へ付け替えてから消します。</p>
+    <div id="secList"></div>
+    <p class="err" id="secErr" role="alert"></p>
+    <button type="button" id="secAdd">＋ 区分を追加</button>
+  </div>
+  <div class="dfoot"><button type="button" class="primary" id="secClose">閉じる</button></div>
 </dialog>
 
 <!-- 品目の目標数 -->
@@ -388,7 +415,7 @@
     <div class="dbody">
       <p class="hint"><b>使い方</b>：品目ごとに「持っておきたい数」を入れます。所持が足りない品目は、ホームの「足りないもの」に出ます。</p>
       <p class="hint">例：Tシャツを5枚持ちたいなら、Tシャツの目標に 5。</p>
-      <p class="hint">・数えるのは、状態が「所持」「使用中」「保管中」のものです（購入予定・処分済みは数えません）。<br>・冬と夏など、区分が違っても、同じ品目なら合計します。<br>・0か空欄にすると、その品目の目標を外します。</p>
+      <p class="hint">・数えるのは、「手元にある」扱いの状態（初期は所持・使用中・保管中）のものです（購入予定・処分済みは数えません）。<br>・冬と夏など、区分が違っても、同じ品目なら合計します。<br>・0か空欄にすると、その品目の目標を外します。</p>
       <div class="trow h"><span>品目</span><span>目標<br>持っておきたい数</span><span>予備<br>別に持つ数</span></div>
       <div id="trows"></div>
       <div class="row2" style="grid-template-columns:1fr auto;margin-top:8px">
@@ -421,10 +448,22 @@
   const BASE_SECTIONS = ['冬', '夏', '年中', '靴下'];
   const SECTION_MAX = 30;
   let SECTIONS = BASE_SECTIONS.slice();
-  const STATUSES = ['所持', '使用中', '保管中', '購入予定', '処分済み'];
-  // 手元にある服の状態（目標数・所持の点数・最近買った服に数える）
-  const OWNED = ['所持', '使用中', '保管中'];
-  const isOwned = (it) => OWNED.includes(it.status);
+  // 状態。kind は「扱い」: own=手元にある（目標数・所持の点数・最近買った服に数える）／plan=購入予定／gone=処分済み
+  // 項目の status には、状態の id を入れる。最初の5つの id は、昔の状態の名前のまま（古いデータ・古い画面と互換）
+  const KINDS = { own: '手元にある', plan: '購入予定', gone: '処分済み' };
+  const DEFAULT_STATUSES = [
+    { id: '所持', name: '所持', kind: 'own' }, { id: '使用中', name: '使用中', kind: 'own' }, { id: '保管中', name: '保管中', kind: 'own' },
+    { id: '購入予定', name: '購入予定', kind: 'plan' }, { id: '処分済み', name: '処分済み', kind: 'gone' }
+  ];
+  const STATUS_MAX = 12;
+  let statuses = DEFAULT_STATUSES.map((x) => Object.assign({}, x));
+  const statusOf = (it) => statuses.find((x) => x.id === it.status);
+  const kindOf = (it) => { const x = statusOf(it); return x ? x.kind : 'own'; };
+  const isOwned = (it) => kindOf(it) === 'own';
+  const isPlan = (it) => kindOf(it) === 'plan';
+  const isGone = (it) => kindOf(it) === 'gone';
+  const statusName = (it) => { const x = statusOf(it); return x ? x.name : String(it.status); };
+  const firstOf = (kind) => (statuses.find((x) => x.kind === kind) || DEFAULT_STATUSES.find((x) => x.kind === kind)).id;
   // カラー名から、カードの左の帯の色を決める（該当しなければ灰色）
   const COLOR_MAP = [
     ['ブラック', '#2C2C2A'], ['黒', '#2C2C2A'], ['ネイビー', '#1F3A6E'], ['紺', '#1F3A6E'],
@@ -464,8 +503,8 @@
     return {
       id: str(String(x.id == null ? '' : x.id), 60) || newId(),
       name,
-      section: str(x.section, 10) || '年中',
-      status: STATUSES.includes(x.status) ? x.status : '所持',
+      section: str(x.section, 10),
+      status: str(x.status, 40) || '所持',
       category: str(x.category, 50),
       size: str(x.size, 20), color: str(x.color, 30),
       price: num(x.price, 9999999, 0), qty: num(x.qty, 9999, 1),
@@ -488,11 +527,33 @@
   }
   // 区分の一覧を作り直す（固定の4つ＋保存された区分＋項目が使っている区分。重複は除く）。items を先に読み込んでから呼ぶ
   function setSections(raw){
-    const out = BASE_SECTIONS.slice();
+    const out = [];
     const add = (v) => { const n = str(v, 10); if(n && !out.includes(n) && out.length < SECTION_MAX) out.push(n); };
     if(Array.isArray(raw)) raw.slice(0, 60).forEach(add);
-    items.forEach((it) => add(it.section));
+    if(!out.length) BASE_SECTIONS.forEach(add);
+    items.forEach((it) => { if(it.section) add(it.section); });
+    items.forEach((it) => { if(!it.section || !out.includes(it.section)) it.section = out[0]; });
     SECTIONS = out;
+  }
+  // 状態の一覧を作り直す。扱い（own・plan・gone）は、それぞれ1つ以上必要。items を先に読み込んでから呼ぶ
+  function setStatuses(raw){
+    const out = [], ids = new Set();
+    if(Array.isArray(raw)) raw.slice(0, 40).forEach((x) => {
+      if(!x || typeof x !== 'object' || out.length >= STATUS_MAX) return;
+      const id = str(x.id, 40), name = str(x.name, 10);
+      if(!id || !name || ids.has(id) || !Object.prototype.hasOwnProperty.call(KINDS, x.kind)) return;
+      ids.add(id); out.push({ id, name, kind: x.kind });
+    });
+    if(!out.length) DEFAULT_STATUSES.forEach((x) => { out.push(Object.assign({}, x)); ids.add(x.id); });
+    Object.keys(KINDS).forEach((k) => {
+      if(out.some((x) => x.kind === k)) return;
+      const d = DEFAULT_STATUSES.find((x) => x.kind === k);
+      let id = d.id; if(ids.has(id)) id = 'st_' + newId().slice(0, 8);
+      ids.add(id); out.push({ id, name: d.name, kind: k });
+    });
+    statuses = out;
+    const own = firstOf('own');
+    items.forEach((it) => { if(!statuses.some((x) => x.id === it.status)) it.status = own; });
   }
   // 同じIDの項目が混ざったら、後のものに新しいIDを振る（編集・削除が効かなくなるのを防ぐ）
   function uniqueIds(list){
@@ -515,9 +576,10 @@
         try{ if(!localStorage.getItem(BROKEN_KEY)) localStorage.setItem(BROKEN_KEY, localStorage.getItem(STORAGE_KEY) || ''); }catch(e2){ /* 退避できなくても続ける */ }
       }
       targets = sanitizeTargets(raw.targets);
+      setStatuses(raw.statuses);
       setSections(raw.sections);
     }catch(e){
-      items = []; targets = Object.create(null); loadFailed = true; SECTIONS = BASE_SECTIONS.slice();
+      items = []; targets = Object.create(null); loadFailed = true; SECTIONS = BASE_SECTIONS.slice(); statuses = DEFAULT_STATUSES.map((x) => Object.assign({}, x));
       // 壊れた元の文字列を、消えないように退避しておく
       try{ if(!localStorage.getItem(BROKEN_KEY)) localStorage.setItem(BROKEN_KEY, localStorage.getItem(STORAGE_KEY) || ''); }catch(e2){ /* 退避できなくても続ける */ }
     }
@@ -525,13 +587,13 @@
       const v = JSON.parse(localStorage.getItem(VIEW_KEY) || '{}');
       if(v.tab === 'all' || SECTIONS.includes(v.tab)) view.tab = v.tab;
       if(['dateDesc','dateAsc','priceDesc','priceAsc','name'].includes(v.sort)) view.sort = v.sort;
-      if(['active','all'].concat(STATUSES).includes(v.status)) view.status = v.status;
+      if(['active','all','own'].concat(statuses.map((x) => x.id)).includes(v.status)) view.status = v.status;
       if(['home','list','plan'].includes(v.page)) view.page = v.page;
     }catch(e){ /* 保存した表示設定が壊れていたら既定のまま */ }
   }
   function save(){
     saveFailed = false;
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets, sections: SECTIONS })); loadFailed = false; /* 新しく保存できたら、壊れた状態は解除する（元の文字列は退避済み） */ }
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets, sections: SECTIONS, statuses: statuses })); loadFailed = false; /* 新しく保存できたら、壊れた状態は解除する（元の文字列は退避済み） */ }
     catch(e){ saveFailed = true; toast('端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
     if(cloud) cloud.notifyChanged(); // 端末へ保存した直後に必ず呼ぶ
   }
@@ -560,7 +622,7 @@
     const own = items.filter(isOwned);
     $('#sCount').textContent = own.reduce((a, it) => a + it.qty, 0) + '点';
     $('#sPrice').textContent = yen(own.reduce((a, it) => a + it.price * it.qty, 0));
-    const plan = items.filter((it) => it.status === '購入予定');
+    const plan = items.filter(isPlan);
     $('#sPlan').textContent = plan.length + '件・' + yen(plan.reduce((a, it) => a + it.price * it.qty, 0));
     $('#navCnt').hidden = plan.length === 0;
     $('#navCnt').textContent = plan.length;
@@ -594,7 +656,7 @@
   }
   // 購入予定ページ
   function renderPlan(){
-    const plan = items.filter((it) => it.status === '購入予定').sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    const plan = items.filter(isPlan).sort((a, b) => a.name.localeCompare(b.name, 'ja'));
     const sum = plan.reduce((a, it) => a + it.price * it.qty, 0);
     $('#planTotal').textContent = plan.length ? plan.length + '件・合計 ' + yen(sum) : '';
     $('#planList').innerHTML = plan.length ? plan.map(cardHtml).join('') : '<p class="empty">購入予定はありません。右下の＋から、状態を「購入予定」にして追加します。</p>';
@@ -620,12 +682,13 @@
       '<button type="button" class="tab" data-tab="' + esc(p[0]) + '" aria-pressed="' + (view.tab === p[0]) + '">' + esc(p[1]) + '</button>').join('') +
       '<button type="button" class="tab tab-add" id="tabAdd" aria-label="区分を追加">＋</button>';
     fillSectionOptions();
+    if(view.tab !== 'all' && !SECTIONS.includes(view.tab)){ view.tab = 'all'; saveView(); } // 消した区分を選んでいたら「すべて」へ
   }
   function visibleItems(){
     const q = $('#q').value.trim().toLowerCase();
     let list = items.filter((it) => {
       if(view.tab !== 'all' && it.section !== view.tab) return false;
-      if(view.status === 'active' ? it.status === '処分済み' : (view.status !== 'all' && (view.status === '所持' ? !isOwned(it) : it.status !== view.status))) return false;
+      if(view.status === 'active' ? isGone(it) : view.status === 'own' ? !isOwned(it) : (view.status !== 'all' && it.status !== view.status)) return false;
       if(catFilter && catName(it) !== catFilter) return false;
       if(q && [it.name, it.productNo, it.color, it.size, it.category, it.shop, it.note].join(' ').toLowerCase().indexOf(q) < 0) return false;
       return true;
@@ -643,12 +706,12 @@
     const sub1 = [it.size, it.color, it.productNo ? '#' + it.productNo : ''].filter(Boolean).join('・');
     const sub2 = [ymd(it.boughtAt), it.price ? yen(it.price) : ''].filter(Boolean).join('・');
     const sub = [sub1, sub2].filter(Boolean).map(esc).join('<br>');
-    return '<div class="cw"><div class="card' + (it.status === '処分済み' ? ' gone' : '') + '" tabindex="0" role="button" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + 'を編集">' +
+    return '<div class="cw"><div class="card' + (isGone(it) ? ' gone' : '') + '" tabindex="0" role="button" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + 'を編集">' +
       '<span class="dot" style="background:' + dotColor(it) + '"></span>' +
-      '<div class="body"><div class="t">' + (it.status === '購入予定' ? '<span class="badge">購入予定</span>' : (it.status === '処分済み' || it.status === '使用中' || it.status === '保管中') ? '<span class="badge">' + it.status + '</span>' : '') + esc(it.name) + '</div>' +
+      '<div class="body"><div class="t">' + (it.status !== firstOf('own') ? '<span class="badge">' + esc(statusName(it)) + '</span>' : '') + esc(it.name) + '</div>' +
       '<div class="s">' + (sub || '詳細なし') + '</div></div>' +
       '<div class="qty"><b>×' + it.qty + '</b></div></div>' +
-      (it.status === '購入予定' ? '<button type="button" class="buy" data-buy="' + esc(it.id) + '">購入済みにする</button>' : '') + '</div>';
+      (isPlan(it) ? '<button type="button" class="buy" data-buy="' + esc(it.id) + '">購入済みにする</button>' : '') + '</div>';
   }
   function renderList(){
     const list = visibleItems();
@@ -680,7 +743,7 @@
       return '<div class="gh"><b>' + esc(g.cat) + '</b>' + st + '</div>' + g.items.map(cardHtml).join('');
     }).join('');
   }
-  function render(){ renderHome(); renderTabs(); renderList(); renderPlan(); showPage(); }
+  function render(){ fillStatusOptions(); renderHome(); renderTabs(); renderList(); renderPlan(); showPage(); }
 
   // ---------- 操作（一覧） ----------
   $('#tabs').addEventListener('click', (e) => {
@@ -733,7 +796,7 @@
       const it = items.find((x) => x.id === buy.dataset.buy);
       if(!it) return;
       const before = { status: it.status, boughtAt: it.boughtAt };
-      it.status = '所持'; if(!it.boughtAt) it.boughtAt = todayStr();
+      it.status = firstOf('own'); if(!it.boughtAt) it.boughtAt = todayStr();
       save(); render();
       toast('購入済みにしました', () => { it.status = before.status; it.boughtAt = before.boughtAt; save(); render(); });
       return;
@@ -755,7 +818,18 @@
     if(cur && SECTIONS.includes(cur)) sel.value = cur;
   }
   fillSectionOptions();
-  $('#fStatus').innerHTML = STATUSES.map((s) => '<option>' + s + '</option>').join('');
+  // 状態の選択肢（編集画面と、一覧の絞り込み）。状態を足す・直すたびに作り直す
+  function fillStatusOptions(){
+    const f = $('#fStatus'), cur = f.value;
+    f.innerHTML = statuses.map((x) => '<option value="' + esc(x.id) + '">' + esc(x.name) + '</option>').join('');
+    if(cur && statuses.some((x) => x.id === cur)) f.value = cur;
+    const sel = $('#status');
+    sel.innerHTML = '<option value="active">処分済みを除く</option><option value="own">手元にあるもの</option>' +
+      statuses.map((x) => '<option value="' + esc(x.id) + '">' + esc(x.name) + 'のみ</option>').join('') + '<option value="all">すべて</option>';
+    if(!['active','all','own'].concat(statuses.map((x) => x.id)).includes(view.status)) view.status = 'active';
+    sel.value = view.status;
+  }
+  fillStatusOptions();
   function fillCatList(){
     const names = new Set(Object.keys(targets));
     items.forEach((it) => { if(it.category) names.add(it.category); });
@@ -764,11 +838,11 @@
   function openEdit(id){
     const it = id ? items.find((x) => x.id === id) : null;
     editingId = it ? it.id : null;
-    fillCatList(); fillSectionOptions();
+    fillCatList(); fillSectionOptions(); fillStatusOptions();
     $('#dlgTitle').textContent = it ? '衣服を編集' : '衣服を追加';
     $('#fDel').hidden = !it;
     $('#fCopy').hidden = !it;
-    const d = it || { name: '', section: SECTIONS.includes(view.tab) ? view.tab : '冬', status: view.page === 'plan' ? '購入予定' : '所持', category: catFilter, size: '', color: '', price: '', qty: 1, boughtAt: view.page === 'plan' ? '' : todayStr(), shop: '', productNo: '', feel: '', note: '' };
+    const d = it || { name: '', section: SECTIONS.includes(view.tab) ? view.tab : (SECTIONS.includes('冬') ? '冬' : SECTIONS[0]), status: view.page === 'plan' ? firstOf('plan') : firstOf('own'), category: catFilter, size: '', color: '', price: '', qty: 1, boughtAt: view.page === 'plan' ? '' : todayStr(), shop: '', productNo: '', feel: '', note: '' };
     $('#fName').value = d.name; $('#fSection').value = d.section; $('#fStatus').value = d.status;
     $('#fCat').value = d.category; $('#fSize').value = d.size; $('#fColor').value = d.color;
     $('#fPrice').value = d.price === 0 ? '' : d.price; $('#fQty').value = d.qty; $('#fDate').value = d.boughtAt;
@@ -800,8 +874,9 @@
   // 状態を切り替えたとき、購入日を合わせる（購入予定は空、所持は今日）
   $('#fStatus').addEventListener('change', () => {
     if(editingId) return;
-    if($('#fStatus').value === '購入予定' && $('#fDate').value === todayStr()) $('#fDate').value = '';
-    else if(OWNED.includes($('#fStatus').value) && !$('#fDate').value) $('#fDate').value = todayStr();
+    const k = (statuses.find((x) => x.id === $('#fStatus').value) || {}).kind;
+    if(k === 'plan' && $('#fDate').value === todayStr()) $('#fDate').value = '';
+    else if(k === 'own' && !$('#fDate').value) $('#fDate').value = todayStr();
   });
   $('#fCancel').addEventListener('click', () => dlg.close());
   $('#fName').addEventListener('input', () => { $('#fErr').textContent = ''; $('#fName').removeAttribute('aria-invalid'); });
@@ -829,6 +904,117 @@
     save(); dlg.close(); render();
     toast('削除しました', () => { if(items.some((x) => x.id === removed.id)) return; items.splice(Math.min(i, items.length), 0, removed); save(); render(); });
   });
+
+  // ---------- 状態・区分の管理（ToDoの「状態の管理」「タブの管理」と同じ作り）----------
+  const stdlg = $('#stdlg'), secdlg = $('#secdlg');
+  const opsHtml = (i, last) => '<div class="mops"><button type="button" class="mop" data-op="up" aria-label="上へ"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+    '<button type="button" class="mop" data-op="down" aria-label="下へ"' + (last ? ' disabled' : '') + '>↓</button>' +
+    '<button type="button" class="mop del" data-op="del" aria-label="削除">×</button></div>';
+  const uniqueName = (base, list) => { let n = base, i = 2; while(list.includes(n)) n = base + i++; return n; };
+
+  // 状態の管理
+  const statusUse = (id) => items.filter((it) => it.status === id).length;
+  function renderStatusMgr(){
+    $('#stList').innerHTML = statuses.map((x, i) =>
+      '<div class="mrow" data-id="' + esc(x.id) + '">' +
+      '<input class="m-name" value="' + esc(x.name) + '" maxlength="10" aria-label="状態の名前">' +
+      '<select class="m-kind" aria-label="扱い">' + Object.keys(KINDS).map((k) => '<option value="' + k + '"' + (k === x.kind ? ' selected' : '') + '>' + KINDS[k] + '</option>').join('') + '</select>' +
+      opsHtml(i, i === statuses.length - 1) + '</div>').join('');
+  }
+  function openStatusMgr(){ $('#stErr').textContent = ''; renderStatusMgr(); stdlg.showModal(); $('#stdlgTitle').focus(); }
+  $('#stList').addEventListener('change', (e) => {
+    const row = e.target.closest('.mrow'); if(!row) return;
+    const x = statuses.find((v) => v.id === row.dataset.id); if(!x) return;
+    $('#stErr').textContent = '';
+    if(e.target.classList.contains('m-name')){
+      const v = e.target.value.trim().slice(0, 10);
+      if(!v){ e.target.value = x.name; $('#stErr').textContent = '名前を入力してください。'; return; }
+      x.name = v; e.target.value = v;
+    } else if(e.target.classList.contains('m-kind')){
+      const k = e.target.value;
+      if(!Object.prototype.hasOwnProperty.call(KINDS, k)) return;
+      if(!statuses.some((v) => v !== x && v.kind === x.kind)){ e.target.value = x.kind; $('#stErr').textContent = '「' + KINDS[x.kind] + '」の扱いの状態は、1つ以上必要です。'; return; }
+      x.kind = k;
+    } else return;
+    save(); render();
+  });
+  $('#stList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-op]'); if(!b) return;
+    const row = b.closest('.mrow'); const i = statuses.findIndex((v) => v.id === row.dataset.id); if(i < 0) return;
+    $('#stErr').textContent = '';
+    if(b.dataset.op === 'up' && i > 0) [statuses[i - 1], statuses[i]] = [statuses[i], statuses[i - 1]];
+    else if(b.dataset.op === 'down' && i < statuses.length - 1) [statuses[i + 1], statuses[i]] = [statuses[i], statuses[i + 1]];
+    else if(b.dataset.op === 'del'){
+      const x = statuses[i], n = statusUse(x.id);
+      if(n > 0){ $('#stErr').textContent = '「' + x.name + '」は ' + n + ' 件の服で使われています。先に別の状態へ付け替えてください。'; return; }
+      if(!statuses.some((v) => v !== x && v.kind === x.kind)){ $('#stErr').textContent = '「' + KINDS[x.kind] + '」の扱いの状態は、1つ以上必要です。'; return; }
+      if(!confirm('状態「' + x.name + '」を削除します。よろしいですか？')) return;
+      const k = statuses.findIndex((v) => v.id === x.id);
+      if(k < 0 || statusUse(x.id) > 0) return;
+      statuses.splice(k, 1);
+    } else return;
+    save(); renderStatusMgr(); render();
+  });
+  $('#stAdd').addEventListener('click', () => {
+    if(statuses.length >= STATUS_MAX){ $('#stErr').textContent = '状態は' + STATUS_MAX + '個までです。'; return; }
+    $('#stErr').textContent = '';
+    statuses.push({ id: 'st_' + newId().slice(0, 8), name: uniqueName('新しい状態', statuses.map((v) => v.name)), kind: 'own' });
+    save(); renderStatusMgr(); render();
+    const inputs = $('#stList').querySelectorAll('.m-name'), last = inputs[inputs.length - 1];
+    if(last){ last.focus(); last.select(); }
+  });
+  $('#stClose').addEventListener('click', () => stdlg.close());
+  $('#mStatus').addEventListener('click', openStatusMgr);
+
+  // 区分（タブ）の管理
+  const secUse = (name) => items.filter((it) => it.section === name).length;
+  function renderSecMgr(){
+    $('#secList').innerHTML = SECTIONS.map((name, i) =>
+      '<div class="mrow" data-name="' + esc(name) + '"><input class="m-name" value="' + esc(name) + '" maxlength="10" aria-label="区分の名前">' + opsHtml(i, i === SECTIONS.length - 1) + '</div>').join('');
+  }
+  function openSecMgr(){ $('#secErr').textContent = ''; renderSecMgr(); secdlg.showModal(); $('#secdlgTitle').focus(); }
+  $('#secList').addEventListener('change', (e) => {
+    const row = e.target.closest('.mrow'); if(!row || !e.target.classList.contains('m-name')) return;
+    const old = row.dataset.name, i = SECTIONS.indexOf(old); if(i < 0) return;
+    const v = e.target.value.trim().slice(0, 10);
+    $('#secErr').textContent = '';
+    if(!v){ e.target.value = old; $('#secErr').textContent = '名前を入力してください。'; return; }
+    if(v === old){ e.target.value = old; return; }
+    if(v === 'すべて' || SECTIONS.includes(v)){ e.target.value = old; $('#secErr').textContent = '同じ名前の区分があります。'; return; }
+    // 名前を変える: 一覧と、その区分の服をまとめて新しい名前にする（順番は変えない）
+    SECTIONS[i] = v; items.forEach((it) => { if(it.section === old) it.section = v; });
+    if(view.tab === old){ view.tab = v; saveView(); }
+    row.dataset.name = v; e.target.value = v;
+    save(); render();
+  });
+  $('#secList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-op]'); if(!b) return;
+    const row = b.closest('.mrow'); const i = SECTIONS.indexOf(row.dataset.name); if(i < 0) return;
+    $('#secErr').textContent = '';
+    if(b.dataset.op === 'up' && i > 0) [SECTIONS[i - 1], SECTIONS[i]] = [SECTIONS[i], SECTIONS[i - 1]];
+    else if(b.dataset.op === 'down' && i < SECTIONS.length - 1) [SECTIONS[i + 1], SECTIONS[i]] = [SECTIONS[i], SECTIONS[i + 1]];
+    else if(b.dataset.op === 'del'){
+      const name = SECTIONS[i], n = secUse(name);
+      if(n > 0){ $('#secErr').textContent = '「' + name + '」は ' + n + ' 件の服で使われています。先に別の区分へ付け替えてください。'; return; }
+      if(SECTIONS.length <= 1){ $('#secErr').textContent = '区分は、1つ以上必要です。'; return; }
+      if(!confirm('区分「' + name + '」を削除します。よろしいですか？')) return;
+      const k = SECTIONS.indexOf(name);
+      if(k < 0 || secUse(name) > 0) return;
+      SECTIONS.splice(k, 1);
+      if(view.tab === name){ view.tab = 'all'; saveView(); }
+    } else return;
+    save(); renderSecMgr(); render();
+  });
+  $('#secAdd').addEventListener('click', () => {
+    if(SECTIONS.length >= SECTION_MAX){ $('#secErr').textContent = '区分は、' + SECTION_MAX + '個までです。'; return; }
+    $('#secErr').textContent = '';
+    SECTIONS.push(uniqueName('新しい区分', SECTIONS));
+    save(); renderSecMgr(); render();
+    const inputs = $('#secList').querySelectorAll('.m-name'), last = inputs[inputs.length - 1];
+    if(last){ last.focus(); last.select(); }
+  });
+  $('#secClose').addEventListener('click', () => secdlg.close());
+  $('#mSections').addEventListener('click', openSecMgr);
 
   // ---------- 品目の目標数 ----------
   const tdlg = $('#tdlg');
@@ -903,7 +1089,7 @@
 
   // ---------- 書き出し・読み込み（バックアップ用） ----------
   $('#mExport').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify({ app: APP_NAME, items, targets, sections: SECTIONS })], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ app: APP_NAME, items, targets, sections: SECTIONS, statuses: statuses })], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'clothes-manager-' + todayStr() + '.json';
@@ -921,11 +1107,11 @@
       if(d.app && d.app !== APP_NAME) throw new Error('他のアプリのファイルです');
       const next = uniqueIds(d.items.slice(0, 5000).map(sanitizeItem).filter(Boolean));
       if(!confirm('現在のデータを、読み込んだ ' + next.length + ' 件に置き換えます。よろしいですか？')) return;
-      const before = { items, targets, sections: SECTIONS };
-      try{ localStorage.setItem(BACKUP_KEY, JSON.stringify({ at: new Date().toLocaleString('ja-JP'), items, targets, sections: SECTIONS })); }catch(e2){ /* 退避できなくても続ける */ }
-      items = next; targets = sanitizeTargets(d.targets); setSections(d.sections);
+      const before = { items, targets, sections: SECTIONS, statuses: statuses };
+      try{ localStorage.setItem(BACKUP_KEY, JSON.stringify({ at: new Date().toLocaleString('ja-JP'), items, targets, sections: SECTIONS, statuses: statuses })); }catch(e2){ /* 退避できなくても続ける */ }
+      items = next; targets = sanitizeTargets(d.targets); setStatuses(d.statuses); setSections(d.sections);
       save(); render();
-      toast('読み込みました', () => { items = before.items; targets = before.targets; SECTIONS = before.sections; save(); render(); });
+      toast('読み込みました', () => { items = before.items; targets = before.targets; SECTIONS = before.sections; statuses = before.statuses; save(); render(); });
     }catch(err){
       toast('読み込めませんでした: ' + err.message);
     }
@@ -961,7 +1147,7 @@
 
   load();
   $('#sort').value = view.sort;
-  $('#status').value = view.status;
+  fillStatusOptions();
   render();
   if(loadFailed) toast('端末のデータが読めませんでした。壊れたデータは退避しました。ログイン済みなら、☁の同期でクラウドから戻せます。');
   else if(droppedCount > 0) toast(droppedCount + '件の項目が読めなかったため、表示していません。元のデータは退避しました。');
@@ -971,21 +1157,23 @@
     cloud = CloudSync.init({
       appName: APP_NAME,
       key: SYNC_KEY,
-      getData: function(){ return { items: items, targets: targets, sections: SECTIONS }; },
+      getData: function(){ return { items: items, targets: targets, sections: SECTIONS, statuses: statuses }; },
       hasData: function(){ return !loadFailed && (items.length > 0 || Object.keys(targets).length > 0); },
       trustEmpty: function(){ return !loadFailed; },
       applyData: function(d){
         if(!d || !Array.isArray(d.items)) throw new Error('衣服管理のデータ形式が違います');
         items = uniqueIds(d.items.map(sanitizeItem).filter(Boolean));
         targets = sanitizeTargets(d.targets);
-        setSections(d.sections);
+        setStatuses(d.statuses); setSections(d.sections);
         loadFailed = false;
         // 開いている入力画面は、古い内容で保存してしまわないよう閉じる。元に戻すも無効にする
         if(dlg.open) dlg.close();
         if(tdlg.open) tdlg.close();
         if(sdlg.open) sdlg.close();
+        if(stdlg.open) stdlg.close();
+        if(secdlg.open) secdlg.close();
         undoFn = null; $('#toast').classList.remove('show');
-        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets, sections: SECTIONS })); }
+        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets, sections: SECTIONS, statuses: statuses })); }
         catch(e){ toast('クラウドのデータを端末に保存できませんでした。'); }
         render();
       }
