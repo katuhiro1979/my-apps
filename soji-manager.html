@@ -21,6 +21,8 @@
   /* ===== デザイントークン（ライト／ダーク。ダークは端末の設定に自動で従う） ===== */
   :root{
     color-scheme:light dark;
+    --done-gray:#B4BAC4; /* 実施済みのグレー */
+    --fs:1; /* 文字サイズの倍率（「⋯」メニューで変更） */
     --bg:#F4F5F7; --paper:#FFFFFF; --surface-2:#EEF0F4;
     --ink:#1B2333; --ink-soft:#505A6E; --line:#D7DBE3;
     --accent:#1B2333; --on-accent:#FFFFFF;
@@ -38,7 +40,7 @@
       --bg:#0E1116; --paper:#171B22; --surface-2:#1F242C;
       --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440;
       --accent:#E8ECF2; --on-accent:#0E1116;
-      --ok:#4CC38A; --ok-bg:#12301F;
+      --ok:#4CC38A; --ok-bg:#12301F; --done-gray:#5A6475;
       --warn:#F0A742; --warn-bg:#3A2A0C;
       --danger:#FF8176; --danger-bg:#3D1A17;
       --overlay:rgba(0,0,0,.6);
@@ -52,7 +54,7 @@
     --bg:#0E1116; --paper:#171B22; --surface-2:#1F242C;
     --ink:#E8ECF2; --ink-soft:#A3ADBD; --line:#2D3440;
     --accent:#E8ECF2; --on-accent:#0E1116;
-    --ok:#4CC38A; --ok-bg:#12301F;
+    --ok:#4CC38A; --ok-bg:#12301F; --done-gray:#5A6475;
     --warn:#F0A742; --warn-bg:#3A2A0C;
     --danger:#FF8176; --danger-bg:#3D1A17;
     --overlay:rgba(0,0,0,.6);
@@ -89,9 +91,9 @@
     padding-bottom:14px;
     border-bottom:1px solid var(--line);
   }
-  .app-header h1{ font-size:24px; font-weight:800; margin:0; letter-spacing:.02em; line-height:1.3; }
+  .app-header h1{ font-size:calc(24px*var(--fs)); font-weight:800; margin:0; letter-spacing:.02em; line-height:1.3; }
   .app-header h1 span{ display:inline-block; } /* 折り返しは「掃除タスク／マネージャー」の切れ目で */
-  .app-header .sub{ font-size:13px; color:var(--ink-soft); margin-top:2px; }
+  .app-header .sub{ font-size:calc(13px*var(--fs)); color:var(--ink-soft); margin-top:2px; }
   .header-actions{ display:flex; align-items:center; gap:8px; flex-shrink:0; position:relative; }
   .add-btn{
     background:var(--accent);
@@ -100,7 +102,7 @@
     border-radius:999px;
     min-height:44px;
     padding:0 20px;
-    font-size:15px;
+    font-size:calc(15px*var(--fs));
     font-weight:700;
     cursor:pointer;
     white-space:nowrap;
@@ -109,10 +111,17 @@
   .menu-btn{
     width:44px; height:44px; border-radius:50%;
     border:1px solid var(--line); background:var(--paper); color:var(--ink);
-    font-size:22px; line-height:1; cursor:pointer;
+    font-size:calc(22px*var(--fs)); line-height:1; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
   }
   .menu-btn:hover{ background:var(--surface-2); }
+  /* 文字サイズの切替（ヘッダーに常に表示） */
+  .fs-btn{
+    appearance:none; border:none; background:none; color:var(--ink-soft);
+    min-height:44px; padding:0 8px; border-radius:10px;
+    font-size:calc(13px*var(--fs)); cursor:pointer; white-space:nowrap;
+  }
+  .fs-btn:hover{ background:var(--surface-2); }
   .menu-backdrop{ position:fixed; inset:0; z-index:30; display:none; }
   .menu-backdrop.show{ display:block; }
   .pop-menu{
@@ -131,13 +140,13 @@
   .pop-menu button{
     text-align:left; background:none; border:none; color:var(--ink);
     min-height:44px; padding:0 12px; border-radius:var(--r-s);
-    font-size:15px; cursor:pointer; white-space:nowrap;
+    font-size:calc(15px*var(--fs)); cursor:pointer; white-space:nowrap;
   }
   .pop-menu button:hover{ background:var(--surface-2); }
 
   .autosave-bar{
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-    font-size:13px; color:var(--ink-soft);
+    font-size:calc(13px*var(--fs)); color:var(--ink-soft);
     margin:-8px 0 18px;
   }
   .autosave-dot{ width:8px; height:8px; border-radius:50%; background:var(--line); flex-shrink:0; }
@@ -157,9 +166,9 @@
   .today.has-due{ border-color:var(--warn); }
   .today.has-over{ border-color:var(--danger); }
   .today-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:6px; }
-  .today-head h2{ font-size:16px; font-weight:800; margin:0; }
-  .today-count{ font-size:13px; font-weight:700; color:var(--ink-soft); }
-  .today-empty{ font-size:14px; color:var(--ink-soft); margin:2px 0 0; }
+  .today-head h2{ font-size:calc(16px*var(--fs)); font-weight:800; margin:0; }
+  .today-count{ font-size:calc(13px*var(--fs)); font-weight:700; color:var(--ink-soft); }
+  .today-empty{ font-size:calc(14px*var(--fs)); color:var(--ink-soft); margin:2px 0 0; }
   .today-item{
     display:flex; align-items:center; gap:12px;
     padding:10px 0;
@@ -168,8 +177,8 @@
   .today-item.first{ border-top:none; }
   .today-dot{ width:10px; height:10px; border-radius:50%; background:var(--member-color, var(--ink)); flex-shrink:0; }
   .today-main{ flex:1; min-width:0; }
-  .today-title{ font-size:16px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .today-sub{ font-size:13px; color:var(--ink-soft); }
+  .today-title{ font-size:calc(16px*var(--fs)); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .today-sub{ font-size:calc(13px*var(--fs)); color:var(--ink-soft); }
   .today-sub .over{ color:var(--danger); font-weight:700; }
   .today-sub .now{ color:var(--warn); font-weight:700; }
 
@@ -187,8 +196,8 @@
     padding:10px 14px;
     display:flex; flex-direction:column; gap:2px; min-width:0;
   }
-  .summary-cell .label{ font-size:12px; color:var(--ink-soft); white-space:nowrap; }
-  .summary-cell .value{ font-size:22px; font-weight:800; line-height:1.2; white-space:nowrap; }
+  .summary-cell .label{ font-size:calc(12px*var(--fs)); color:var(--ink-soft); white-space:nowrap; }
+  .summary-cell .value{ font-size:calc(22px*var(--fs)); font-weight:800; line-height:1.2; white-space:nowrap; }
   .summary-cell.warn .value{ color:var(--warn); }
 
   /* ---------- Mini calendar ---------- */
@@ -200,15 +209,15 @@
     margin-bottom:20px;
   }
   .mc-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-  .mc-title{ font-size:16px; font-weight:800; }
+  .mc-title{ font-size:calc(16px*var(--fs)); font-weight:800; }
   .mc-nav{
     border:1px solid var(--line); background:none; border-radius:var(--r-s);
-    width:44px; height:44px; font-size:20px; line-height:1; color:var(--ink-soft); cursor:pointer;
+    width:44px; height:44px; font-size:calc(20px*var(--fs)); line-height:1; color:var(--ink-soft); cursor:pointer;
   }
   .mc-nav:hover{ border-color:var(--ink); color:var(--ink); }
   .mc-weekdays{
     display:grid; grid-template-columns:repeat(7,minmax(0,1fr));
-    text-align:center; font-size:12px; color:var(--ink-soft); margin-bottom:4px;
+    text-align:center; font-size:calc(12px*var(--fs)); color:var(--ink-soft); margin-bottom:4px;
   }
   .mc-grid{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px; width:100%; }
   .mc-day{
@@ -216,7 +225,7 @@
     display:flex; flex-direction:column; align-items:center;
     padding:4px 2px; gap:3px;
     border-radius:var(--r-s); border:1px solid transparent;
-    font-size:13px; color:var(--ink); cursor:default;
+    font-size:calc(13px*var(--fs)); color:var(--ink); cursor:default;
   }
   .mc-day.blank{ visibility:hidden; }
   .mc-day.has-event{ cursor:pointer; }
@@ -231,7 +240,7 @@
   .mc-chips{ display:none; flex-direction:column; gap:2px; width:100%; }
   /* 薄い地に文字色は ink、色は左の線で示す（白文字だとコントラストが足りないため） */
   .mc-chip{
-    display:block; width:100%; font-size:11px; line-height:1.35; padding:1px 4px;
+    display:block; width:100%; font-size:calc(11px*var(--fs)); line-height:1.35; padding:1px 4px;
     border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     background:var(--surface-2); color:var(--ink); text-align:left; cursor:pointer;
     border-left:3px solid var(--member-color, var(--ink));
@@ -239,24 +248,25 @@
   @supports (background:color-mix(in srgb, red 10%, white)){
     .mc-chip{ background:color-mix(in srgb, var(--member-color, var(--ink)) 16%, var(--paper)); }
   }
-  .mc-chip.mc-done{ background:var(--ok-bg); border-left-color:var(--ok); }
-  .mc-more{ font-size:11px; color:var(--ink-soft); line-height:1.2; }
+  /* 実施済みは薄いグレーにして、これからの予定と見分ける */
+  .mc-chip.mc-done{ background:var(--surface-2); color:var(--ink-soft); border-left-color:var(--done-gray); }
+  .mc-more{ font-size:calc(11px*var(--fs)); color:var(--ink-soft); line-height:1.2; }
   .mc-dots{ display:flex; gap:3px; flex-wrap:wrap; justify-content:center; min-height:8px; }
   .mc-dot{ width:8px; height:8px; border-radius:50%; background:var(--member-color, var(--ink)); }
-  .mc-dot.done{ border-radius:2px; background:var(--ok); }
-  .mc-legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:12.5px; color:var(--ink-soft); }
+  .mc-dot.done{ border-radius:2px; background:var(--done-gray); }
+  .mc-legend{ display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:calc(12.5px*var(--fs)); color:var(--ink-soft); }
   .mc-legend span{ display:inline-flex; align-items:center; gap:6px; }
   .mc-legend .mc-swatch{ display:inline-block; width:10px; height:10px; border-radius:50%; }
   .mc-legend .mc-swatch.sq{ border-radius:2px; }
   .mc-day-detail{ margin-top:10px; }
   .mc-day-detail:empty{ margin-top:0; }
-  .mc-detail-block{ font-size:14px; margin-bottom:6px; }
+  .mc-detail-block{ font-size:calc(14px*var(--fs)); margin-bottom:6px; }
   .mc-detail-block .mc-detail-label{ color:var(--ink-soft); margin-right:6px; }
   .mc-detail-tag{
     display:inline-flex; align-items:center; gap:6px;
     background:var(--surface-2); border-radius:999px;
     padding:4px 12px 4px 8px; margin:3px 4px 3px 0;
-    font:inherit; font-size:13px; color:var(--ink); min-height:44px;
+    font:inherit; font-size:calc(13px*var(--fs)); color:var(--ink); min-height:44px;
     cursor:pointer; border:1.5px solid transparent;
   }
   .mc-detail-tag:hover{ border-color:var(--ink); }
@@ -276,7 +286,7 @@
   }
   .sort-toggle{
     flex-shrink:0; background:none; border:1px solid var(--line); border-radius:999px;
-    min-height:44px; padding:0 14px; font-size:13px; font-weight:700; color:var(--ink-soft);
+    min-height:44px; padding:0 14px; font-size:calc(13px*var(--fs)); font-weight:700; color:var(--ink-soft);
     cursor:pointer; white-space:nowrap;
   }
   .sort-toggle:hover{ border-color:var(--ink); color:var(--ink); }
@@ -284,7 +294,7 @@
     display:flex; align-items:center; gap:7px;
     min-height:44px; padding:0 14px 0 10px;
     border-radius:999px; border:1px solid var(--line); background:var(--paper);
-    font-family:inherit; font-size:14px; font-weight:500; cursor:pointer; color:var(--ink-soft);
+    font-family:inherit; font-size:calc(14px*var(--fs)); font-weight:500; cursor:pointer; color:var(--ink-soft);
   }
   .chip .dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
   .chip.active{ border-color:var(--ink); color:var(--ink); font-weight:700; background:var(--surface-2); }
@@ -295,7 +305,7 @@
     text-align:center; padding:48px 20px; color:var(--ink-soft);
     border:1.5px dashed var(--line); border-radius:var(--radius);
   }
-  .empty .big{ font-size:16px; color:var(--ink); font-weight:700; margin-bottom:6px; }
+  .empty .big{ font-size:calc(16px*var(--fs)); color:var(--ink); font-weight:700; margin-bottom:6px; }
 
   .ticket{
     position:relative;
@@ -312,16 +322,16 @@
   /* 担当者名は ink 文字のタグ。色は先頭の丸で示す */
   .member-tag{
     display:inline-flex; align-items:center; gap:6px;
-    font-size:13px; font-weight:700; padding:2px 10px 2px 8px; border-radius:999px;
+    font-size:calc(13px*var(--fs)); font-weight:700; padding:2px 10px 2px 8px; border-radius:999px;
     color:var(--ink); background:var(--surface-2); border:1px solid var(--line);
   }
   .member-tag::before{
     content:""; width:10px; height:10px; border-radius:50%; flex-shrink:0;
     background:var(--member-color, var(--ink));
   }
-  .route{ font-size:17px; font-weight:800; letter-spacing:.01em; }
+  .route{ font-size:calc(17px*var(--fs)); font-weight:800; letter-spacing:.01em; }
   .status-tag{
-    margin-left:auto; font-size:13px; font-weight:700;
+    margin-left:auto; font-size:calc(13px*var(--fs)); font-weight:700;
     padding:3px 10px; border-radius:999px; white-space:nowrap;
   }
   .status-ok{ background:var(--ok-bg); color:var(--ok); }
@@ -329,7 +339,7 @@
   .status-today{ background:var(--warn); color:var(--bg); } /* 本日：塗りつぶしで強調 */
   .status-danger{ background:var(--danger-bg); color:var(--danger); }
 
-  .timeline{ display:flex; align-items:center; gap:10px; font-size:13px; color:var(--ink-soft); margin-bottom:4px; }
+  .timeline{ display:flex; align-items:center; gap:10px; font-size:calc(13px*var(--fs)); color:var(--ink-soft); margin-bottom:4px; }
   .timeline .start-date{ flex-shrink:0; }
   .timeline .track{ flex:1; height:8px; background:var(--surface-2); border-radius:999px; position:relative; min-width:90px; }
   .timeline .track .fill{
@@ -343,11 +353,11 @@
   }
   .timeline .end-date{ color:var(--ink); font-weight:700; flex-shrink:0; }
   .timeline .pct-label{
-    font-size:13px; font-weight:800; color:var(--ink);
+    font-size:calc(13px*var(--fs)); font-weight:800; color:var(--ink);
     background:var(--surface-2); flex-shrink:0;
     padding:2px 10px; border-radius:999px; text-align:center; white-space:nowrap;
   }
-  .meta-row{ display:flex; gap:4px 16px; flex-wrap:wrap; font-size:13px; color:var(--ink-soft); margin-top:8px; }
+  .meta-row{ display:flex; gap:4px 16px; flex-wrap:wrap; font-size:calc(13px*var(--fs)); color:var(--ink-soft); margin-top:8px; }
   .meta-row b{ color:var(--ink); font-weight:700; }
 
   .ticket-actions{
@@ -356,18 +366,18 @@
   }
   .icon-btn{
     border:1px solid var(--line); border-radius:var(--r-s); background:none;
-    cursor:pointer; font-size:14px; font-weight:700; color:var(--ink-soft);
+    cursor:pointer; font-size:calc(14px*var(--fs)); font-weight:700; color:var(--ink-soft);
     text-align:center; min-height:44px; padding:0 16px; white-space:nowrap;
   }
   .icon-btn:hover{ color:var(--ink); border-color:var(--ink); }
   .icon-btn:disabled, .icon-btn.primary:disabled{
     background:none; color:var(--ink-soft); border-color:var(--line); opacity:.75; cursor:default;
   }
-  .icon-btn.primary{ color:#fff; background:var(--ok); border-color:var(--ok); font-size:15px; }
+  .icon-btn.primary{ color:#fff; background:var(--ok); border-color:var(--ok); font-size:calc(15px*var(--fs)); }
   .icon-btn.primary:hover{ opacity:.88; color:#fff; }
   :root[data-theme="dark"] .icon-btn.primary{ color:#06210f; }
   @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .icon-btn.primary{ color:#06210f; } }
-  .more-btn{ font-size:20px; line-height:1; }
+  .more-btn{ font-size:calc(20px*var(--fs)); line-height:1; }
   .t-menu{
     display:none; position:absolute; right:10px; top:calc(100% - 6px); z-index:20;
     min-width:150px; background:var(--paper); border:1px solid var(--line);
@@ -376,7 +386,7 @@
   .t-menu.show{ display:flex; }
   .t-menu button{
     text-align:left; background:none; border:none; color:var(--ink);
-    min-height:44px; padding:0 12px; border-radius:var(--r-s); font-size:15px; cursor:pointer;
+    min-height:44px; padding:0 12px; border-radius:var(--r-s); font-size:calc(15px*var(--fs)); cursor:pointer;
   }
   .t-menu button:hover{ background:var(--surface-2); }
   .t-menu button.danger{ color:var(--danger); }
@@ -393,20 +403,20 @@
     padding:24px 22px 22px; max-height:calc(100vh - 48px); max-height:calc(100dvh - 48px); overflow-y:auto;
     box-shadow:var(--shadow-lg);
   }
-  .modal h2{ margin:0 0 16px; font-size:20px; font-weight:800; }
+  .modal h2{ margin:0 0 16px; font-size:calc(20px*var(--fs)); font-weight:800; }
   .field{ margin-bottom:14px; }
-  .field label{ display:block; font-size:13px; font-weight:700; color:var(--ink-soft); margin-bottom:5px; }
+  .field label{ display:block; font-size:calc(13px*var(--fs)); font-weight:700; color:var(--ink-soft); margin-bottom:5px; }
   .field input, .field select, .history-add input, .history-item .h-input{
     width:100%; min-height:44px; padding:0 12px;
     border:1px solid var(--line); border-radius:var(--r-s);
-    font-family:inherit; font-size:16px; color:var(--ink); background:var(--surface-2);
+    font-family:inherit; font-size:calc(16px*var(--fs)); color:var(--ink); background:var(--surface-2);
   }
   .field input:focus, .field select:focus{ background:var(--paper); border-color:var(--ink); }
   .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .freq-presets{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .freq-chip{
     border:1px solid var(--line); background:var(--paper); border-radius:999px;
-    min-height:44px; padding:0 14px; font-size:13px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+    min-height:44px; padding:0 14px; font-size:calc(13px*var(--fs)); font-weight:700; color:var(--ink-soft); cursor:pointer;
   }
   .freq-chip:hover, .freq-chip.active{ border-color:var(--ink); color:var(--ink); background:var(--surface-2); }
   .color-picker{ display:flex; gap:10px; flex-wrap:wrap; }
@@ -422,15 +432,15 @@
   /* ダイアログを開いている間は、右下の同期ボタンを隠す */
   body:has(.overlay.show) #cs-btn, body:has(.overlay.show) #cs-panel{ display:none; }
   .history-list{ display:flex; flex-direction:column; gap:8px; max-height:320px; overflow-y:auto; }
-  .history-empty{ text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:14px; }
+  .history-empty{ text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:calc(14px*var(--fs)); }
   .history-item{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
     padding:6px 12px; min-height:48px;
-    border:1px solid var(--line); border-radius:var(--r-s); font-size:15px;
+    border:1px solid var(--line); border-radius:var(--r-s); font-size:calc(15px*var(--fs));
   }
   .history-item .h-date{ font-weight:700; }
   .history-item .h-delete, .history-item .h-edit, .history-item .h-save, .history-item .h-cancel{
-    border:none; background:none; cursor:pointer; font-size:14px; color:var(--ink-soft);
+    border:none; background:none; cursor:pointer; font-size:calc(14px*var(--fs)); color:var(--ink-soft);
     min-height:44px; padding:0 10px;
   }
   .history-item .h-btns{ display:flex; gap:2px; flex-shrink:0; }
@@ -442,12 +452,12 @@
   .history-add input{ flex:1; min-width:0; }
   .btn-secondary{
     background:none; border:1px solid var(--line); border-radius:999px;
-    min-height:44px; padding:0 18px; font-size:14px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+    min-height:44px; padding:0 18px; font-size:calc(14px*var(--fs)); font-weight:700; color:var(--ink-soft); cursor:pointer;
   }
   .btn-secondary:hover{ border-color:var(--ink); color:var(--ink); }
   .btn-primary{
     background:var(--accent); color:var(--on-accent); border:none; border-radius:999px;
-    min-height:44px; padding:0 22px; font-size:14px; font-weight:700; cursor:pointer;
+    min-height:44px; padding:0 22px; font-size:calc(14px*var(--fs)); font-weight:700; cursor:pointer;
   }
   .btn-primary:hover{ opacity:.88; }
 
@@ -458,25 +468,25 @@
   }
   .toast{
     background:var(--ink); color:var(--bg); padding:11px 20px; border-radius:999px;
-    font-size:14px; font-weight:600; box-shadow:var(--shadow-lg);
+    font-size:calc(14px*var(--fs)); font-weight:600; box-shadow:var(--shadow-lg);
     max-width:calc(100vw - 32px); text-align:center;
     display:flex; align-items:center; gap:14px; pointer-events:auto;
   }
   .toast-action{
     flex:none; min-height:36px; padding:4px 14px; border-radius:999px;
     border:1px solid currentColor; background:transparent; color:inherit;
-    font:inherit; font-size:14px; font-weight:700; cursor:pointer;
+    font:inherit; font-size:calc(14px*var(--fs)); font-weight:700; cursor:pointer;
   }
 
   /* ---------- スマホ幅 ---------- */
   @media (max-width:640px){
     .app{ padding:calc(16px + env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom)); }
-    .app-header h1{ font-size:21px; }
+    .app-header h1{ font-size:calc(21px*var(--fs)); }
     .app-header .sub{ display:none; }
     .add-long{ display:none; }
     .summary{ gap:6px; }
     .summary-cell{ padding:8px 10px; }
-    .summary-cell .value{ font-size:19px; }
+    .summary-cell .value{ font-size:calc(19px*var(--fs)); }
     .list-controls{ flex-direction:column; align-items:stretch; }
     .sort-toggle{ width:100%; }
     .timeline{ flex-wrap:wrap; row-gap:4px; }
@@ -524,6 +534,7 @@
     </div>
     <div class="header-actions">
       <button class="add-btn" id="openAdd">＋ <span class="add-long">タスクを</span>追加</button>
+      <button class="fs-btn" id="fsBtn" type="button">文字 標準</button>
       <button class="menu-btn" id="menuBtn" aria-label="メニュー" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu-backdrop" id="menuBackdrop"></div>
       <div class="pop-menu" id="headerMenu">
@@ -555,7 +566,7 @@
     </div>
     <div class="mc-grid" id="mcGrid"></div>
     <div class="mc-legend">
-      <span><span class="mc-swatch sq" style="background:var(--ok)"></span>実施した日</span>
+      <span><span class="mc-swatch sq" style="background:var(--done-gray)"></span>実施した日</span>
       <span><span class="mc-swatch" style="background:var(--ink-soft)"></span>予定日（色は担当者）</span>
     </div>
     <div class="mc-day-detail" id="mcDayDetail"></div>
@@ -655,8 +666,8 @@
 <div class="overlay" id="importOverlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
     <h2 id="importTitle">インポート方法を選択</h2>
-    <p id="importInfo" style="font-size:13.5px; margin:0 0 6px;"></p>
-    <p style="font-size:12.5px; color:var(--ink-soft); margin:0;">どちらの方法でも、実行前のデータは退避され、「直前のインポートを取り消す」で元に戻せます。</p>
+    <p id="importInfo" style="font-size:calc(13.5px*var(--fs)); margin:0 0 6px;"></p>
+    <p style="font-size:calc(12.5px*var(--fs)); color:var(--ink-soft); margin:0;">どちらの方法でも、実行前のデータは退避され、「直前のインポートを取り消す」で元に戻せます。</p>
     <div class="modal-actions" style="flex-wrap:wrap;">
       <button type="button" class="btn-secondary" id="importCancelBtn">中止</button>
       <button type="button" class="btn-secondary" id="importReplaceBtn">置き換える</button>
@@ -1996,6 +2007,28 @@
   headerMenu.addEventListener('click', (e) => {
     if(e.target.closest('button') && e.target.id !== 'themeBtn') setMenu(false);
   });
+
+  // 文字サイズ（この端末だけ）
+  const FS_KEY = 'soji-manager-font-size';
+  const FS_LIST = ['s','m','l','xl'];
+  const FS_LABEL = { s:'小', m:'標準', l:'大', xl:'特大' };
+  const FS_SCALE = { s:0.9, m:1, l:1.15, xl:1.3 };
+  function getFontSize(){
+    try{ const t = localStorage.getItem(FS_KEY); if(FS_LIST.includes(t)) return t; }catch(e){}
+    return 'm';
+  }
+  function applyFontSize(t){
+    document.documentElement.style.setProperty('--fs', String(FS_SCALE[t] || 1));
+    const b = $('#fsBtn');
+    b.textContent = '文字 ' + FS_LABEL[t];
+    b.setAttribute('aria-label', '文字サイズ：' + FS_LABEL[t] + '（タップで切替）');
+  }
+  $('#fsBtn').addEventListener('click', () => {
+    const next = FS_LIST[(FS_LIST.indexOf(getFontSize()) + 1) % FS_LIST.length];
+    try{ localStorage.setItem(FS_KEY, next); }catch(e){ /* 保存できなくても表示は切り替える */ }
+    applyFontSize(next);
+  });
+  applyFontSize(getFontSize());
 
   const THEME_KEY = 'soji-manager-theme';
   const THEME_NEXT = { auto:'light', light:'dark', dark:'auto' };
