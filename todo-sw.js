@@ -1,6 +1,6 @@
 // ToDoのオフライン対応。このアプリのファイルだけを扱い、他のアプリには触れない
 // ネットワーク優先のため、ファイルを更新しても通常は番号の更新は不要（古いキャッシュを捨てたいときだけ上げる）。
-var CACHE='todo-app-v1';
+var CACHE='todo-app-v2';
 var FILES=['todo.html','cloud-sync.js','todo-manifest.json','todo-icon-192.png','todo-icon-512.png'];
 
 self.addEventListener('install',function(e){

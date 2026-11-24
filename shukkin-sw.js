@@ -1,6 +1,6 @@
 // 出勤簿のオフライン対応。このアプリのファイルだけを扱い、他のアプリには触れない
 // ネットワーク優先のため、ファイルを更新しても通常は番号の更新は不要（古いキャッシュを捨てたいときだけ上げる）。
-var CACHE='shukkin-app-v1';
+var CACHE='shukkin-app-v2';
 var FILES=['shukkin-manager.html','cloud-sync.js','shukkin-manifest.json','shukkin-icon-192.png','shukkin-icon-512.png'];
 var WAIT_MS=3000; // 電波が弱くて応答が遅いとき、この時間を過ぎたら保存済みの版を先に出す
 
