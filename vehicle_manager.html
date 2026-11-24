@@ -473,8 +473,18 @@
     return {vehicles:[]};
   }
   function save(){
-    try{localStorage.setItem(KEY,JSON.stringify(data));if(cloud)cloud.notifyChanged();}
-    catch(e){alert('保存できませんでした（容量が足りない可能性があります）');}
+    try{localStorage.setItem(KEY,JSON.stringify(data));unsavedBanner(false);if(cloud)cloud.notifyChanged();}
+    catch(e){unsavedBanner(true);alert('保存できませんでした（容量が足りない可能性があります）。写真を減らすか、バックアップを書き出してください。');}
+  }
+  // 保存に失敗している間は、画面上部に「未保存」を出し続ける
+  function unsavedBanner(on){
+    var b=document.getElementById('unsavedBanner');
+    if(!on){if(b)b.remove();return;}
+    if(b)return;
+    b=document.createElement('div');b.id='unsavedBanner';b.setAttribute('role','alert');
+    b.textContent='⚠ 未保存：容量不足で保存できていません。写真を減らすか、バックアップを書き出してください';
+    b.style.cssText='position:sticky;top:0;z-index:99990;padding:8px 14px;background:var(--danger-bg);color:var(--danger);font-size:13px;font-weight:600;text-align:center;';
+    document.body.insertBefore(b,document.body.firstChild);
   }
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -512,13 +522,13 @@
       var im=new Image();
       im.onerror=function(){cb(null);};   // 読めない形式（HEIC など）や壊れた画像
       im.onload=function(){
-        var max=600,s=Math.min(1,max/Math.max(im.width,im.height));
+        var max=480,s=Math.min(1,max/Math.max(im.width,im.height));
         var c=document.createElement('canvas');
         c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);
         var g=c.getContext('2d');
         g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);   // 透過PNGが黒くならないように
         g.drawImage(im,0,0,c.width,c.height);
-        cb(c.toDataURL('image/jpeg',0.8));
+        cb(c.toDataURL('image/jpeg',0.7));
       };
       im.src=r.result;
     };
