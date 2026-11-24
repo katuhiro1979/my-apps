@@ -438,7 +438,12 @@
       if(!s||seen[s])s=uid();
       seen[s]=1;return s;
     }
-    var isDate=function(s){return /^\d{4}-\d{2}-\d{2}$/.test(s);};
+    // 形だけでなく、実在する日付か（2025-13-45 などを弾く）
+    var isDate=function(s){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;
+      var p=s.split('-'),dt=new Date(+p[0],+p[1]-1,+p[2]);
+      return dt.getFullYear()===+p[0]&&dt.getMonth()===+p[1]-1&&dt.getDate()===+p[2];
+    };
     var out=[];
     ((d&&d.vehicles)||[]).forEach(function(v){
       if(!v||typeof v!=='object')return;
@@ -453,6 +458,7 @@
       o.maintenance=(Array.isArray(v.maintenance)?v.maintenance:[]).filter(function(x){return x&&isDate(str(x.date));}).map(function(x){
         var m={id:safeId(x.id)};
         ['date','odometer','title','cost','shop','nextDate','nextOdometer','note'].forEach(function(k){m[k]=str(x[k]);});
+        if(m.nextDate&&!isDate(m.nextDate))m.nextDate='';   // 次回予定の日付が不正なら空にする
         return m;
       });
       out.push(o);
@@ -1200,6 +1206,18 @@
 
   showBroken();
   render();
+
+  // 日付が変わったら「あと◯日」を更新する（開いたままの翌日・画面に戻ったとき）
+  var shownDay=ymd(new Date());
+  function refreshIfNewDay(){
+    if(document.hidden||ymd(new Date())===shownDay)return;
+    if(document.querySelector('dialog[open]'))return;   // ダイアログを開いている間は延期
+    shownDay=ymd(new Date());
+    render();
+  }
+  document.addEventListener('visibilitychange',refreshIfNewDay);
+  window.addEventListener('focus',refreshIfNewDay);
+  setInterval(refreshIfNewDay,60000);
 
   // クラウド同期（cloud-sync.js）。端末内が主で、ログイン中のみクラウドと合わせる
   if(window.CloudSync){
