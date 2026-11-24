@@ -365,6 +365,22 @@
   </form>
 </dialog>
 
+<!-- 区分（タブ）の追加 -->
+<dialog id="sdlg" aria-labelledby="sdlgTitle">
+  <form id="sform" novalidate>
+    <h2 id="sdlgTitle">区分を追加</h2>
+    <div class="dbody">
+      <p class="hint">一覧の上のタブに並ぶ区分です。例：春秋、部屋着、スーツ。</p>
+      <label class="f">名前（10文字まで）<input id="sName" maxlength="10" autocomplete="off"></label>
+    </div>
+    <p class="err" id="sErr" role="alert" style="padding:0 16px"></p>
+    <div class="dfoot">
+      <button type="button" id="sCancel">キャンセル</button>
+      <button type="submit" class="primary">追加</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- 品目の目標数 -->
 <dialog id="tdlg" aria-labelledby="tdlgTitle">
   <form id="tform" novalidate>
@@ -401,7 +417,10 @@
   const APP_NAME = '衣服管理'; // クラウドの app_name（他のアプリと重複させない）
   const SYNC_KEY = 'data-v1';
 
-  const SECTIONS = ['冬', '夏', '年中', '靴下'];
+  // 区分（タブ）。最初の4つは固定。足した区分は、データの sections に保存する
+  const BASE_SECTIONS = ['冬', '夏', '年中', '靴下'];
+  const SECTION_MAX = 30;
+  let SECTIONS = BASE_SECTIONS.slice();
   const STATUSES = ['所持', '使用中', '保管中', '購入予定', '処分済み'];
   // 手元にある服の状態（目標数・所持の点数・最近買った服に数える）
   const OWNED = ['所持', '使用中', '保管中'];
@@ -445,7 +464,7 @@
     return {
       id: str(String(x.id == null ? '' : x.id), 60) || newId(),
       name,
-      section: SECTIONS.includes(x.section) ? x.section : '年中',
+      section: str(x.section, 10) || '年中',
       status: STATUSES.includes(x.status) ? x.status : '所持',
       category: str(x.category, 50),
       size: str(x.size, 20), color: str(x.color, 30),
@@ -466,6 +485,14 @@
       if(target > 0 || spare > 0) out[name] = { target, spare };
     });
     return out;
+  }
+  // 区分の一覧を作り直す（固定の4つ＋保存された区分＋項目が使っている区分。重複は除く）。items を先に読み込んでから呼ぶ
+  function setSections(raw){
+    const out = BASE_SECTIONS.slice();
+    const add = (v) => { const n = str(v, 10); if(n && !out.includes(n) && out.length < SECTION_MAX) out.push(n); };
+    if(Array.isArray(raw)) raw.slice(0, 60).forEach(add);
+    items.forEach((it) => add(it.section));
+    SECTIONS = out;
   }
   // 同じIDの項目が混ざったら、後のものに新しいIDを振る（編集・削除が効かなくなるのを防ぐ）
   function uniqueIds(list){
@@ -488,8 +515,9 @@
         try{ if(!localStorage.getItem(BROKEN_KEY)) localStorage.setItem(BROKEN_KEY, localStorage.getItem(STORAGE_KEY) || ''); }catch(e2){ /* 退避できなくても続ける */ }
       }
       targets = sanitizeTargets(raw.targets);
+      setSections(raw.sections);
     }catch(e){
-      items = []; targets = Object.create(null); loadFailed = true;
+      items = []; targets = Object.create(null); loadFailed = true; SECTIONS = BASE_SECTIONS.slice();
       // 壊れた元の文字列を、消えないように退避しておく
       try{ if(!localStorage.getItem(BROKEN_KEY)) localStorage.setItem(BROKEN_KEY, localStorage.getItem(STORAGE_KEY) || ''); }catch(e2){ /* 退避できなくても続ける */ }
     }
@@ -503,7 +531,7 @@
   }
   function save(){
     saveFailed = false;
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets })); loadFailed = false; /* 新しく保存できたら、壊れた状態は解除する（元の文字列は退避済み） */ }
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets, sections: SECTIONS })); loadFailed = false; /* 新しく保存できたら、壊れた状態は解除する（元の文字列は退避済み） */ }
     catch(e){ saveFailed = true; toast('端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
     if(cloud) cloud.notifyChanged(); // 端末へ保存した直後に必ず呼ぶ
   }
@@ -589,7 +617,9 @@
   function renderTabs(){
     const all = [['all', 'すべて']].concat(SECTIONS.map((s) => [s, s]));
     $('#tabs').innerHTML = all.map((p) =>
-      '<button type="button" class="tab" data-tab="' + p[0] + '" aria-pressed="' + (view.tab === p[0]) + '">' + p[1] + '</button>').join('');
+      '<button type="button" class="tab" data-tab="' + esc(p[0]) + '" aria-pressed="' + (view.tab === p[0]) + '">' + esc(p[1]) + '</button>').join('') +
+      '<button type="button" class="tab tab-add" id="tabAdd" aria-label="区分を追加">＋</button>';
+    fillSectionOptions();
   }
   function visibleItems(){
     const q = $('#q').value.trim().toLowerCase();
@@ -654,9 +684,29 @@
 
   // ---------- 操作（一覧） ----------
   $('#tabs').addEventListener('click', (e) => {
+    if(e.target.closest('#tabAdd')){ openSecDlg(); return; }
     const b = e.target.closest('[data-tab]');
     if(!b) return;
     view.tab = b.dataset.tab; saveView(); render();
+  });
+  // ---------- 区分（タブ）の追加 ----------
+  const sdlg = $('#sdlg');
+  function openSecDlg(){
+    $('#sName').value = ''; $('#sErr').textContent = ''; $('#sName').removeAttribute('aria-invalid');
+    sdlg.showModal(); $('#sName').focus();
+  }
+  $('#sCancel').addEventListener('click', () => sdlg.close());
+  $('#sName').addEventListener('input', () => { $('#sErr').textContent = ''; $('#sName').removeAttribute('aria-invalid'); });
+  $('#sform').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = $('#sName').value.trim();
+    const fail = (m) => { $('#sErr').textContent = m; $('#sName').setAttribute('aria-invalid', 'true'); $('#sName').focus(); };
+    if(!name) return fail('区分の名前を入力してください');
+    if(name === 'すべて' || SECTIONS.includes(name)) return fail('同じ名前の区分があります');
+    if(SECTIONS.length >= SECTION_MAX) return fail('区分は、' + SECTION_MAX + '個までです');
+    SECTIONS.push(name);
+    view.tab = name; saveView(); save(); sdlg.close(); render();
+    toast('区分「' + name + '」を追加しました');
   });
   $('#q').addEventListener('input', renderList);
   $('#sort').addEventListener('change', (e) => { view.sort = e.target.value; saveView(); renderList(); });
@@ -699,7 +749,12 @@
 
   // ---------- 入力ダイアログ ----------
   const dlg = $('#dlg');
-  $('#fSection').innerHTML = SECTIONS.map((s) => '<option>' + s + '</option>').join('');
+  function fillSectionOptions(){
+    const sel = $('#fSection'), cur = sel.value;
+    sel.innerHTML = SECTIONS.map((s) => '<option>' + esc(s) + '</option>').join('');
+    if(cur && SECTIONS.includes(cur)) sel.value = cur;
+  }
+  fillSectionOptions();
   $('#fStatus').innerHTML = STATUSES.map((s) => '<option>' + s + '</option>').join('');
   function fillCatList(){
     const names = new Set(Object.keys(targets));
@@ -709,7 +764,7 @@
   function openEdit(id){
     const it = id ? items.find((x) => x.id === id) : null;
     editingId = it ? it.id : null;
-    fillCatList();
+    fillCatList(); fillSectionOptions();
     $('#dlgTitle').textContent = it ? '衣服を編集' : '衣服を追加';
     $('#fDel').hidden = !it;
     $('#fCopy').hidden = !it;
@@ -848,7 +903,7 @@
 
   // ---------- 書き出し・読み込み（バックアップ用） ----------
   $('#mExport').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify({ app: APP_NAME, items, targets })], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ app: APP_NAME, items, targets, sections: SECTIONS })], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'clothes-manager-' + todayStr() + '.json';
@@ -866,11 +921,11 @@
       if(d.app && d.app !== APP_NAME) throw new Error('他のアプリのファイルです');
       const next = uniqueIds(d.items.slice(0, 5000).map(sanitizeItem).filter(Boolean));
       if(!confirm('現在のデータを、読み込んだ ' + next.length + ' 件に置き換えます。よろしいですか？')) return;
-      const before = { items, targets };
-      try{ localStorage.setItem(BACKUP_KEY, JSON.stringify({ at: new Date().toLocaleString('ja-JP'), items, targets })); }catch(e2){ /* 退避できなくても続ける */ }
-      items = next; targets = sanitizeTargets(d.targets);
+      const before = { items, targets, sections: SECTIONS };
+      try{ localStorage.setItem(BACKUP_KEY, JSON.stringify({ at: new Date().toLocaleString('ja-JP'), items, targets, sections: SECTIONS })); }catch(e2){ /* 退避できなくても続ける */ }
+      items = next; targets = sanitizeTargets(d.targets); setSections(d.sections);
       save(); render();
-      toast('読み込みました', () => { items = before.items; targets = before.targets; save(); render(); });
+      toast('読み込みました', () => { items = before.items; targets = before.targets; SECTIONS = before.sections; save(); render(); });
     }catch(err){
       toast('読み込めませんでした: ' + err.message);
     }
@@ -916,19 +971,21 @@
     cloud = CloudSync.init({
       appName: APP_NAME,
       key: SYNC_KEY,
-      getData: function(){ return { items: items, targets: targets }; },
+      getData: function(){ return { items: items, targets: targets, sections: SECTIONS }; },
       hasData: function(){ return !loadFailed && (items.length > 0 || Object.keys(targets).length > 0); },
       trustEmpty: function(){ return !loadFailed; },
       applyData: function(d){
         if(!d || !Array.isArray(d.items)) throw new Error('衣服管理のデータ形式が違います');
         items = uniqueIds(d.items.map(sanitizeItem).filter(Boolean));
         targets = sanitizeTargets(d.targets);
+        setSections(d.sections);
         loadFailed = false;
         // 開いている入力画面は、古い内容で保存してしまわないよう閉じる。元に戻すも無効にする
         if(dlg.open) dlg.close();
         if(tdlg.open) tdlg.close();
+        if(sdlg.open) sdlg.close();
         undoFn = null; $('#toast').classList.remove('show');
-        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets })); }
+        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets, sections: SECTIONS })); }
         catch(e){ toast('クラウドのデータを端末に保存できませんでした。'); }
         render();
       }
