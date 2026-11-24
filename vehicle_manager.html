@@ -113,7 +113,7 @@
   .thumb{width:56px;height:56px;border-radius:12px;object-fit:cover;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:26px;flex:none;}
   .v-info{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;}
   .v-name{font-size:17px;font-weight:700;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .v-meta{font-size:12.5px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .v-meta{font-size:12.5px;color:var(--ink-soft);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;}
   .v-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:1px;}
   .chev{font-size:14px;color:var(--ink-soft);transition:transform .18s;flex:none;}
   .v-toggle[aria-expanded="true"] .chev{transform:rotate(180deg);}
@@ -751,7 +751,8 @@
     if(nr)chips+='<span class="chip '+lv+'">'+esc(typeLabel(nr.d))+'：'+leftText(nr.n)+'</span>';
     else chips+='<span class="chip none">期限の登録なし</span>';
     if(v.status&&v.status!=='使用中')chips+='<span class="chip none">'+esc(v.status)+'</span>';
-    var meta=[[v.maker,v.model].filter(Boolean).join(' '),v.plate,v.odometer?num(v.odometer)+' km':''].filter(Boolean).join(' ・ ');
+    // 識別に使うナンバーを先頭に出す（切れにくくする）
+    var meta=[v.plate,[v.maker,v.model].filter(Boolean).join(' '),v.odometer?num(v.odometer)+' km':''].filter(Boolean).join(' ・ ');
     var thumb=v.image?'<img class="thumb" src="'+esc(v.image)+'" alt="">':'<span class="thumb" aria-hidden="true">🚗</span>';
     var head='<div class="v-head"><button type="button" class="v-toggle" data-act="vtoggle" data-v="'+esc(v.id)+'" aria-expanded="'+open+'" aria-controls="vb-'+esc(v.id)+'">'
       +thumb+'<span class="v-info"><span class="v-name">'+esc(v.name)+'</span>'
@@ -765,7 +766,10 @@
         .map(function(s){return '<div><dt>'+s[0]+'</dt><dd>'+esc(s[1])+'</dd></div>';}).join('');
       if(v.vin)specs+='<div class="v-vin"><dt>車台番号</dt><dd>'+esc(v.vin)+'</dd></div>';
       var dls=(v.deadlines||[]).slice().sort(function(a,b){return a.dueDate<b.dueDate?-1:1;});
-      var dlHtml=dls.map(function(d){
+      // 「更新する」を塗りにするのは、いちばん急ぐ1件だけ（残りは枠線）
+      var firstUrgent=-1;
+      dls.forEach(function(d,i){if(firstUrgent<0&&level(daysLeft(d.dueDate))!=='ok')firstUrgent=i;});
+      var dlHtml=dls.map(function(d,i){
         var n=daysLeft(d.dueDate),l=level(n);
         var hist=(d.history&&d.history.length)?'<div class="dl-hist">更新履歴：'+d.history.slice(-3).reverse().map(function(h){return esc(h.due)+'分（'+esc(h.doneAt)+'に更新）';}).join('、')+'</div>':'';
         var tl=typeLabel(d);
@@ -775,7 +779,7 @@
           +'<div class="dl-sub">'+sub+'</div>'
           +'<div class="bar" aria-hidden="true"><i style="width:'+barPct(d,n)+'%"></i></div></div>'
           // 強調するのは対応が必要な（超過・まもなく）期限だけ
-          +'<button type="button" class="btn sm'+(l==='ok'?'':' primary')+'" data-act="renew" data-v="'+esc(v.id)+'" data-d="'+esc(d.id)+'" aria-label="'+esc(tl)+'を更新する">更新する</button>'
+          +'<button type="button" class="btn sm'+(i===firstUrgent?' primary':'')+'" data-act="renew" data-v="'+esc(v.id)+'" data-d="'+esc(d.id)+'" aria-label="'+esc(tl)+'を更新する">更新する</button>'
           +'<button type="button" class="icon-btn" data-act="dmenu" data-v="'+esc(v.id)+'" data-d="'+esc(d.id)+'" aria-haspopup="menu" aria-expanded="false" aria-label="'+esc(tl)+'のメニュー">⋯</button>'
           +hist+'</li>';
       }).join('');
