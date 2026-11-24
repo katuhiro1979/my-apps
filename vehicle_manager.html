@@ -85,7 +85,7 @@
   .stat .num{font-size:26px;font-weight:700;line-height:1.2;}
   .stat .num small{font-size:12px;font-weight:600;margin-left:3px;color:var(--ink-soft);}
   .stat.zero .num{color:var(--ink-soft);}
-  .stat .label{font-size:12px;color:var(--ink-soft);line-height:1.4;}
+  .stat .label{font-size:13px;color:var(--ink-soft);line-height:1.4;}
   .stat.soon:not(.zero) .num{color:var(--warn);}
   .stat.overdue:not(.zero) .num{color:var(--danger);}
   .stat.overdue:not(.zero){background:var(--danger-bg);border-color:transparent;}
@@ -282,7 +282,7 @@
 
   <section class="stats" aria-label="状況のまとめ">
     <div class="stat"><span class="num"><span id="stCount">0</span><small>台</small></span><span class="label">登録台数</span></div>
-    <button type="button" class="stat soon" id="stSoonB" data-jump="soon"><span class="num"><span id="stSoon">0</span><small>件</small></span><span class="label">まもなく期限（30日以内）</span></button>
+    <button type="button" class="stat soon" id="stSoonB" data-jump="soon"><span class="num"><span id="stSoon">0</span><small>件</small></span><span class="label" aria-label="まもなく期限（30日以内）">30日以内</span></button>
     <button type="button" class="stat overdue" id="stOverB" data-jump="overdue"><span class="num"><span id="stOver">0</span><small>件</small></span><span class="label">期限切れ</span></button>
   </section>
 
@@ -491,8 +491,9 @@
   function level(n){return n<0?'overdue':(n<=30?'soon':'ok');}
   function leftText(n){
     if(n<0)return Math.abs(n)+'日超過';
-    if(n===0)return '今日まで';
-    return 'あと'+n+'日';
+    // まもなく（30日以内）は色だけに頼らず、先頭に「！」を付ける
+    if(n===0)return '！今日まで';
+    return (n<=30?'！':'')+'あと'+n+'日';
   }
   // 年を加算（2/29 などは月末に丸める）
   function addYears(s,n){
@@ -1195,7 +1196,8 @@
     cloud=CloudSync.init({
       appName:'車両管理',
       key:'data-v1',
-      getData:function(){return {vehicles:data.vehicles};},
+      // キーの順番を固定してから渡す（順番の違いだけで「変更あり」と判定されるのを防ぐ）
+      getData:function(){return normalize(data);},
       hasData:function(){return data.vehicles.length>0;},
       applyData:function(d){
         if(!d||!Array.isArray(d.vehicles))throw new Error('車両管理のデータ形式が違います');
