@@ -295,7 +295,9 @@
     </select>
     <select id="status" aria-label="状態">
       <option value="active">所持・購入予定</option>
-      <option value="所持">所持のみ</option>
+      <option value="所持">所持のみ（使用中・保管中を含む）</option>
+      <option value="使用中">使用中のみ</option>
+      <option value="保管中">保管中のみ</option>
       <option value="購入予定">購入予定のみ</option>
       <option value="処分済み">処分済み</option>
       <option value="all">すべて</option>
@@ -370,7 +372,7 @@
     <div class="dbody">
       <p class="hint"><b>使い方</b>：品目ごとに「持っておきたい数」を入れます。所持が足りない品目は、ホームの「足りないもの」に出ます。</p>
       <p class="hint">例：Tシャツを5枚持ちたいなら、Tシャツの目標に 5。</p>
-      <p class="hint">・数えるのは、状態が「所持」のものだけです（購入予定・処分済みは数えません）。<br>・冬と夏など、区分が違っても、同じ品目なら合計します。<br>・0か空欄にすると、その品目の目標を外します。</p>
+      <p class="hint">・数えるのは、状態が「所持」「使用中」「保管中」のものです（購入予定・処分済みは数えません）。<br>・冬と夏など、区分が違っても、同じ品目なら合計します。<br>・0か空欄にすると、その品目の目標を外します。</p>
       <div class="trow h"><span>品目</span><span>目標<br>持っておきたい数</span><span>予備<br>別に持つ数</span></div>
       <div id="trows"></div>
       <div class="row2" style="grid-template-columns:1fr auto;margin-top:8px">
@@ -400,7 +402,10 @@
   const SYNC_KEY = 'data-v1';
 
   const SECTIONS = ['冬', '夏', '年中', '靴下'];
-  const STATUSES = ['所持', '購入予定', '処分済み'];
+  const STATUSES = ['所持', '使用中', '保管中', '購入予定', '処分済み'];
+  // 手元にある服の状態（目標数・所持の点数・最近買った服に数える）
+  const OWNED = ['所持', '使用中', '保管中'];
+  const isOwned = (it) => OWNED.includes(it.status);
   // カラー名から、カードの左の帯の色を決める（該当しなければ灰色）
   const COLOR_MAP = [
     ['ブラック', '#2C2C2A'], ['黒', '#2C2C2A'], ['ネイビー', '#1F3A6E'], ['紺', '#1F3A6E'],
@@ -518,13 +523,13 @@
   // 品目ごとの所持数（状態が「所持」のものだけ。区分・絞り込みに関係なく全体で数える）
   function ownedByCat(){
     const m = Object.create(null);
-    items.forEach((it) => { if(it.status === '所持') m[it.category] = (m[it.category] || 0) + it.qty; });
+    items.forEach((it) => { if(isOwned(it)) m[it.category] = (m[it.category] || 0) + it.qty; });
     return m;
   }
 
   // ---------- 画面 ----------
   function renderSummary(){
-    const own = items.filter((it) => it.status === '所持');
+    const own = items.filter(isOwned);
     $('#sCount').textContent = own.reduce((a, it) => a + it.qty, 0) + '点';
     $('#sPrice').textContent = yen(own.reduce((a, it) => a + it.price * it.qty, 0));
     const plan = items.filter((it) => it.status === '購入予定');
@@ -549,7 +554,7 @@
     const lack = cats.filter((c) => targets[c].target > (owned[c] || 0))
       .sort((a, b) => (targets[b].target - (owned[b] || 0)) - (targets[a].target - (owned[a] || 0)));
     // 最近買った服（所持のうち、購入日が新しい順に3件）
-    const recent = items.filter((it) => it.status === '所持' && it.boughtAt && it.boughtAt <= todayStr()).sort((a, b) => b.boughtAt.localeCompare(a.boughtAt)).slice(0, 3);
+    const recent = items.filter((it) => isOwned(it) && it.boughtAt && it.boughtAt <= todayStr()).sort((a, b) => b.boughtAt.localeCompare(a.boughtAt)).slice(0, 3);
     $('#recentWrap').hidden = recent.length === 0;
     $('#recentList').innerHTML = recent.map(cardHtml).join('');
     $('#shortList').innerHTML = lack.length
@@ -590,7 +595,7 @@
     const q = $('#q').value.trim().toLowerCase();
     let list = items.filter((it) => {
       if(view.tab !== 'all' && it.section !== view.tab) return false;
-      if(view.status === 'active' ? it.status === '処分済み' : (view.status !== 'all' && it.status !== view.status)) return false;
+      if(view.status === 'active' ? it.status === '処分済み' : (view.status !== 'all' && (view.status === '所持' ? !isOwned(it) : it.status !== view.status))) return false;
       if(catFilter && catName(it) !== catFilter) return false;
       if(q && [it.name, it.productNo, it.color, it.size, it.category, it.shop, it.note].join(' ').toLowerCase().indexOf(q) < 0) return false;
       return true;
@@ -610,7 +615,7 @@
     const sub = [sub1, sub2].filter(Boolean).map(esc).join('<br>');
     return '<div class="cw"><div class="card' + (it.status === '処分済み' ? ' gone' : '') + '" tabindex="0" role="button" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + 'を編集">' +
       '<span class="dot" style="background:' + dotColor(it) + '"></span>' +
-      '<div class="body"><div class="t">' + (it.status === '購入予定' ? '<span class="badge">購入予定</span>' : it.status === '処分済み' ? '<span class="badge">処分済み</span>' : '') + esc(it.name) + '</div>' +
+      '<div class="body"><div class="t">' + (it.status === '購入予定' ? '<span class="badge">購入予定</span>' : (it.status === '処分済み' || it.status === '使用中' || it.status === '保管中') ? '<span class="badge">' + it.status + '</span>' : '') + esc(it.name) + '</div>' +
       '<div class="s">' + (sub || '詳細なし') + '</div></div>' +
       '<div class="qty"><b>×' + it.qty + '</b></div></div>' +
       (it.status === '購入予定' ? '<button type="button" class="buy" data-buy="' + esc(it.id) + '">購入済みにする</button>' : '') + '</div>';
@@ -741,7 +746,7 @@
   $('#fStatus').addEventListener('change', () => {
     if(editingId) return;
     if($('#fStatus').value === '購入予定' && $('#fDate').value === todayStr()) $('#fDate').value = '';
-    else if($('#fStatus').value === '所持' && !$('#fDate').value) $('#fDate').value = todayStr();
+    else if(OWNED.includes($('#fStatus').value) && !$('#fDate').value) $('#fDate').value = todayStr();
   });
   $('#fCancel').addEventListener('click', () => dlg.close());
   $('#fName').addEventListener('input', () => { $('#fErr').textContent = ''; $('#fName').removeAttribute('aria-invalid'); });
