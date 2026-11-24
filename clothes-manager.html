@@ -175,7 +175,12 @@
   .card .s{ font-size:var(--fs-xs); color:var(--ink-soft); word-break:break-word; line-height:1.5; }
   .card .qty{ flex:none; }
   .card .qty b{ display:block; min-width:44px; padding:2px 10px; text-align:center; font-size:var(--fs-md); font-weight:600; color:var(--ink); background:var(--surface-2); border-radius:var(--r-pill); }
-  .badge{ display:inline-block; font-size:var(--fs-xs); padding:0 8px; border-radius:var(--r-pill); background:var(--warn-bg); color:var(--warn); margin-right:6px; }
+  .badge{ display:inline-block; font-size:var(--fs-xs); padding:0 8px; border-radius:var(--r-pill); background:var(--surface-2); color:var(--ink); border:1px solid var(--line); margin-right:6px; }
+  .badge[style]{ border-color:var(--c); }
+  @supports (background:color-mix(in srgb, red, blue)){
+    .badge[style]{ background:color-mix(in srgb, var(--c) 20%, var(--paper)); color:color-mix(in srgb, var(--c) 45%, var(--ink)); border-color:color-mix(in srgb, var(--c) 55%, var(--paper)); }
+  }
+  .mgr .swatch{ flex:none; width:20px; height:20px; border-radius:50%; background:var(--c, transparent); border:1px solid var(--field-line); }
   .buy{ width:100%; min-height:44px; margin-top:var(--s-2); font-size:var(--fs-sm); font-weight:600; background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   .empty{ color:var(--ink-soft); text-align:center; padding:36px 8px; }
 
@@ -451,10 +456,15 @@
   // 状態。kind は「扱い」: own=手元にある（目標数・所持の点数・最近買った服に数える）／plan=購入予定／gone=処分済み
   // 項目の status には、状態の id を入れる。最初の5つの id は、昔の状態の名前のまま（古いデータ・古い画面と互換）
   const KINDS = { own: '手元にある', plan: '購入予定', gone: '処分済み' };
+  // 状態の色（color）。'' は色なし。色だけに頼らないよう、バッジには状態の名前も出す
+  const STATUS_COLORS = { red: ['赤', '#E5484D'], orange: ['オレンジ', '#F08C00'], yellow: ['黄', '#E0B000'], green: ['緑', '#2FA866'], blue: ['青', '#3B82F6'], purple: ['紫', '#8B5CF6'], gray: ['グレー', '#8A93A3'] };
+  const DEFAULT_COLOR = { own: '', plan: 'yellow', gone: 'gray' };
   const DEFAULT_STATUSES = [
-    { id: '所持', name: '所持', kind: 'own' }, { id: '使用中', name: '使用中', kind: 'own' }, { id: '保管中', name: '保管中', kind: 'own' },
-    { id: '購入予定', name: '購入予定', kind: 'plan' }, { id: '処分済み', name: '処分済み', kind: 'gone' }
+    { id: '所持', name: '所持', kind: 'own', color: '' }, { id: '使用中', name: '使用中', kind: 'own', color: 'blue' }, { id: '保管中', name: '保管中', kind: 'own', color: 'green' },
+    { id: '購入予定', name: '購入予定', kind: 'plan', color: 'yellow' }, { id: '処分済み', name: '処分済み', kind: 'gone', color: 'gray' }
   ];
+  const colorOk = (c) => c === '' || Object.prototype.hasOwnProperty.call(STATUS_COLORS, c);
+  const statusColor = (it) => { const x = statuses.find((v) => v.id === it.status); return x ? x.color : ''; };
   const STATUS_MAX = 12;
   let statuses = DEFAULT_STATUSES.map((x) => Object.assign({}, x));
   const statusOf = (it) => statuses.find((x) => x.id === it.status);
@@ -542,14 +552,16 @@
       if(!x || typeof x !== 'object' || out.length >= STATUS_MAX) return;
       const id = str(x.id, 40), name = str(x.name, 10);
       if(!id || !name || ids.has(id) || !Object.prototype.hasOwnProperty.call(KINDS, x.kind)) return;
-      ids.add(id); out.push({ id, name, kind: x.kind });
+      // 色が無い・不正な（古い版で保存された）ときは、扱いごとの初期色
+      const old = DEFAULT_STATUSES.find((d) => d.id === id);
+      ids.add(id); out.push({ id, name, kind: x.kind, color: (typeof x.color === 'string' && colorOk(x.color)) ? x.color : (old ? old.color : DEFAULT_COLOR[x.kind]) });
     });
     if(!out.length) DEFAULT_STATUSES.forEach((x) => { out.push(Object.assign({}, x)); ids.add(x.id); });
     Object.keys(KINDS).forEach((k) => {
       if(out.some((x) => x.kind === k)) return;
       const d = DEFAULT_STATUSES.find((x) => x.kind === k);
       let id = d.id; if(ids.has(id)) id = 'st_' + newId().slice(0, 8);
-      ids.add(id); out.push({ id, name: d.name, kind: k });
+      ids.add(id); out.push({ id, name: d.name, kind: k, color: d.color });
     });
     statuses = out;
     const own = firstOf('own');
@@ -708,7 +720,7 @@
     const sub = [sub1, sub2].filter(Boolean).map(esc).join('<br>');
     return '<div class="cw"><div class="card' + (isGone(it) ? ' gone' : '') + '" tabindex="0" role="button" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + 'を編集">' +
       '<span class="dot" style="background:' + dotColor(it) + '"></span>' +
-      '<div class="body"><div class="t">' + (it.status !== firstOf('own') ? '<span class="badge">' + esc(statusName(it)) + '</span>' : '') + esc(it.name) + '</div>' +
+      '<div class="body"><div class="t">' + ((it.status !== firstOf('own') || statusColor(it)) ? '<span class="badge"' + (STATUS_COLORS[statusColor(it)] ? ' style="--c:' + STATUS_COLORS[statusColor(it)][1] + '"' : '') + '>' + esc(statusName(it)) + '</span>' : '') + esc(it.name) + '</div>' +
       '<div class="s">' + (sub || '詳細なし') + '</div></div>' +
       '<div class="qty"><b>×' + it.qty + '</b></div></div>' +
       (isPlan(it) ? '<button type="button" class="buy" data-buy="' + esc(it.id) + '">購入済みにする</button>' : '') + '</div>';
@@ -919,6 +931,8 @@
       '<div class="mrow" data-id="' + esc(x.id) + '">' +
       '<input class="m-name" value="' + esc(x.name) + '" maxlength="10" aria-label="状態の名前">' +
       '<select class="m-kind" aria-label="扱い">' + Object.keys(KINDS).map((k) => '<option value="' + k + '"' + (k === x.kind ? ' selected' : '') + '>' + KINDS[k] + '</option>').join('') + '</select>' +
+      '<span class="swatch"' + (STATUS_COLORS[x.color] ? ' style="--c:' + STATUS_COLORS[x.color][1] + '"' : '') + ' aria-hidden="true"></span>' +
+      '<select class="m-color" aria-label="色">' + '<option value="">色なし</option>' + Object.keys(STATUS_COLORS).map((c) => '<option value="' + c + '"' + (c === x.color ? ' selected' : '') + '>' + STATUS_COLORS[c][0] + '</option>').join('') + '</select>' +
       opsHtml(i, i === statuses.length - 1) + '</div>').join('');
   }
   function openStatusMgr(){ $('#stErr').textContent = ''; renderStatusMgr(); stdlg.showModal(); $('#stdlgTitle').focus(); }
@@ -935,6 +949,11 @@
       if(!Object.prototype.hasOwnProperty.call(KINDS, k)) return;
       if(!statuses.some((v) => v !== x && v.kind === x.kind)){ e.target.value = x.kind; $('#stErr').textContent = '「' + KINDS[x.kind] + '」の扱いの状態は、1つ以上必要です。'; return; }
       x.kind = k;
+    } else if(e.target.classList.contains('m-color')){
+      if(!colorOk(e.target.value)) return;
+      x.color = e.target.value;
+      const sw = row.querySelector('.swatch');
+      if(STATUS_COLORS[x.color]) sw.style.setProperty('--c', STATUS_COLORS[x.color][1]); else sw.removeAttribute('style');
     } else return;
     save(); render();
   });
@@ -958,7 +977,7 @@
   $('#stAdd').addEventListener('click', () => {
     if(statuses.length >= STATUS_MAX){ $('#stErr').textContent = '状態は' + STATUS_MAX + '個までです。'; return; }
     $('#stErr').textContent = '';
-    statuses.push({ id: 'st_' + newId().slice(0, 8), name: uniqueName('新しい状態', statuses.map((v) => v.name)), kind: 'own' });
+    statuses.push({ id: 'st_' + newId().slice(0, 8), name: uniqueName('新しい状態', statuses.map((v) => v.name)), kind: 'own', color: '' });
     save(); renderStatusMgr(); render();
     const inputs = $('#stList').querySelectorAll('.m-name'), last = inputs[inputs.length - 1];
     if(last){ last.focus(); last.select(); }
