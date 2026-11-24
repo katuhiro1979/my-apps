@@ -226,6 +226,10 @@
   .gr-n{font-size:calc(12px*var(--fs));color:var(--ink-soft);white-space:nowrap;}
   ul.task-list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
   ul.task-list > li + li{border-top:1px solid var(--line);border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);}
+  /* 状態（要・待・完）の仕切り: 色つきの細い帯に、状態名を入れる */
+  li.st-sep{display:flex;align-items:center;gap:8px;min-height:24px;padding:2px 14px;background:var(--sb);background:color-mix(in srgb,var(--sb) 45%,transparent);color:var(--sc);font-size:calc(12px*var(--fs));font-weight:700;letter-spacing:.06em;border-top:1px solid var(--sc) !important;border-top:1px solid color-mix(in srgb,var(--sc) 35%,transparent) !important;}
+  li.st-sep:first-child{border-top:none !important;}
+  li.st-sep span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--sc);margin-right:6px;vertical-align:0;}
   li.task{position:relative;scroll-margin-top:calc(var(--top-h,56px) + var(--tabs-h,0px) + 56px);scroll-margin-bottom:96px;}
   .task-in{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:0 4px;align-items:center;min-height:58px;padding:4px 2px;background:var(--surface);touch-action:pan-y;}
   .task-in.back{transition:transform .2s ease;}
@@ -1836,16 +1840,25 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       if(canDrag) dayAttr += ' data-dkey="'+g.key+'"';
       const ctx = { today, showDate: g.key===null, fId, pId, drag: canDrag, hideGroup: g.gid!==undefined || (!!groupFilter && groupFilter!=='__none') };
       const row = it=>taskHtml(it, plain, ctx);
+      // 同じ日に、状態（要・待・完など）が2種類以上あるときは、状態が変わるところに仕切りの見出しを入れる
+      const useSep = !plain && g.key!==null && new Set(g.items.map(i=>i.status)).size > 1;
+      const rowsOf = list=>{
+        let prev = null;
+        return list.map(it=>{
+          const sep = (useSep && it.status!==prev) ? stSepHtml(it.status) : '';
+          prev = it.status; return sep+row(it);
+        }).join('');
+      };
       const doneIt = noFold ? [] : g.items.filter(isDone);
       let rows;
       if(doneIt.length>=3){
         // 完了が3件以上続くときは折りたたむ
         const fk = g.gid!==undefined ? 'g:'+g.gid : (g.key===null ? '_all' : g.key);
         const opened = expandedFolds.has(fk) || doneIt.some(i=>i.id===fId);
-        rows = g.items.filter(i=>!isDone(i)).map(row).join('')+
+        rows = rowsOf(g.items.filter(i=>!isDone(i)))+
           '<li class="fold"><button type="button" data-fold="'+escapeHtml(fk)+'" aria-expanded="'+opened+'">'+(opened ? '完了を隠す' : '完了 '+doneIt.length+'件を表示')+'</button></li>'+
           (opened ? doneIt.map(row).join('') : '');
-      } else rows = g.items.map(row).join('');
+      } else rows = rowsOf(g.items);
       return (lines && g.key ? dividerHtml(g.key) : '')+'<section class="'+cls+'"'+dayAttr+'>'+head+'<ul class="task-list">'+rows+'</ul></section>';
     }).join('');
 
@@ -1857,6 +1870,11 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     updateJump();
   }
 
+  // 状態の仕切り（要・待・完）。読み上げには出さず、見た目だけの区切り
+  function stSepHtml(stId){
+    const s = statusById(stId); if(!s) return '';
+    return '<li class="st-sep" aria-hidden="true" style="--sc:var(--c-'+s.color+'-fg);--sb:var(--c-'+s.color+'-bg)"><span>'+escapeHtml(s.name)+'</span></li>';
+  }
   function taskHtml(it, plain, c){
     const st = statusOf(it);
     const done = !!st.done;
