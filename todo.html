@@ -241,6 +241,13 @@
   li.task.plain .task-in{grid-template-columns:minmax(0,1fr) auto;padding:8px 6px 8px 14px;}
   li.task.flash .task-in{animation:flash 1.4s ease-out;}
   @keyframes flash{from{background:color-mix(in srgb,var(--accent) 22%,var(--surface));}to{background:var(--surface);}}
+  /* 他のアプリから飛んできたとき：枠と光で、長めに目立たせる（約4秒かけて消える） */
+  li.task.jump .task-in{animation:jump 4s ease-out;}
+  @keyframes jump{
+    0%,55%{background:color-mix(in srgb,var(--accent) 30%,var(--surface));box-shadow:0 0 0 3px var(--accent),0 0 22px color-mix(in srgb,var(--accent) 60%,transparent);}
+    100%{background:var(--surface);box-shadow:0 0 0 3px transparent,0 0 0 transparent;}
+  }
+  @media (prefers-reduced-motion:reduce){li.task.jump .task-in{animation:none;box-shadow:0 0 0 3px var(--accent);}}
   /* スワイプ時に背面に出る操作表示 */
   .sw{position:absolute;inset:0;display:none;align-items:center;padding:0 20px;font-size:calc(14px*var(--fs));font-weight:700;color:#fff;}
   .sw-l{background:#2e7d4f;}
@@ -2577,7 +2584,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     // 描画直後は画面の高さがまだ変わることがあるので、少し待ってから、項目が画面の中ほどに来るように合わせ直す
     const centerIt = function(){
       const li = document.querySelector('#taskArea li[data-id="'+CSS.escape(it.id)+'"]');
-      if(li) li.scrollIntoView({ block:'center' });
+      if(li){
+        li.scrollIntoView({ block:'center' });
+        if(!li.classList.contains('jump')){ li.classList.remove('flash'); li.classList.add('jump'); setTimeout(function(){ li.classList.remove('jump'); }, 4200); }
+      }
     };
     requestAnimationFrame(centerIt); setTimeout(centerIt, 400);
   }
