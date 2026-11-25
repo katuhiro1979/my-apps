@@ -224,8 +224,10 @@
   .swc::before{content:"";width:24px;height:24px;border-radius:50%;background:var(--gc);box-sizing:border-box;border:2px solid transparent;}
   .swc[aria-pressed="true"]::before{border-color:var(--surface);box-shadow:0 0 0 2px var(--ink);}
   .gr-n{font-size:calc(12px*var(--fs));color:var(--ink-soft);white-space:nowrap;}
-  ul.task-list{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;}
-  ul.task-list > li + li{border-top:1px solid var(--line);border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent);}
+  /* 項目ごとに別のカードにして、カードの間に隙間をあける */
+  ul.task-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+  ul.task-list > li.task{border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;background:var(--surface);}
+  ul.task-list > li.st-sep{border-radius:var(--r);overflow:hidden;}
   /* 状態（要・待・完）の仕切り: 色つきの細い帯に、状態名を入れる */
   li.st-sep{display:flex;align-items:center;gap:8px;min-height:24px;padding:2px 14px;background:var(--sb);background:color-mix(in srgb,var(--sb) 45%,transparent);color:var(--sc);font-size:calc(12px*var(--fs));font-weight:700;letter-spacing:.06em;border-top:1px solid var(--sc) !important;border-top:1px solid color-mix(in srgb,var(--sc) 35%,transparent) !important;}
   li.st-sep:first-child{border-top:none !important;}
@@ -233,7 +235,7 @@
   li.task{position:relative;scroll-margin-top:calc(var(--top-h,56px) + var(--tabs-h,0px) + 56px);scroll-margin-bottom:96px;}
   .task-in{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:0 4px;align-items:center;min-height:58px;padding:4px 2px;background:var(--surface);touch-action:pan-y;}
   .task-in.back{transition:transform .2s ease;}
-  .grp[data-date]:not(.is-focus) ul.task-list,.grp[data-date]:not(.is-focus) .task-in{background:var(--surface-2);} /* 中心の日（明日タブは明日、ほかは今日）以外は薄いグレー */
+  .grp[data-date]:not(.is-focus) ul.task-list > li.task,.grp[data-date]:not(.is-focus) .task-in{background:var(--surface-2);} /* 中心の日（明日タブは明日、ほかは今日）以外は薄いグレー */
   li.task.hasg .task-in{box-shadow:inset 8px 0 0 var(--gb);} /* グループの色の帯 */
   li.task.over .task-in{box-shadow:inset 5px 0 0 var(--danger);}
   li.task.over.hasg .task-in{box-shadow:inset 5px 0 0 var(--danger),inset 13px 0 0 var(--gb);}
