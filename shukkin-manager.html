@@ -705,6 +705,7 @@
   let todoCloud = null, todoFetchAt = 0;
   try{ const c = JSON.parse(localStorage.getItem(TODO_CLOUD.cache) || 'null'); if(c && typeof c.at === 'string' && Array.isArray(c.items)) todoCloud = c; }catch(e){ todoCloud = null; }
   async function fetchTodoCloud(force){
+    if(!todoOn()) return;
     if(Date.now() - todoFetchAt < (force ? 2000 : 10000)) return;
     todoFetchAt = Date.now();
     try{
@@ -734,8 +735,12 @@
     if(meta && typeof meta.at === 'string' && Date.parse(todoCloud.at) > Date.parse(meta.at)) return todoCloud;
     return local;
   }
+  // ToDo表示のON/OFF。端末ごとの設定で、同期はしない（OFFのときは、ToDoの読み込みも通信もしない）
+  const TODO_OFF_KEY = 'shukkin-app-todo-off';
+  const todoOn = () => { try{ return localStorage.getItem(TODO_OFF_KEY) !== '1'; }catch(e){ return true; } };
   function todoByDate(){
     const out = {};
+    if(!todoOn()) return out;
     try{
       const d = todoSource();
       if(!d || !Array.isArray(d.items)) return out;
@@ -755,6 +760,7 @@
   const planSec = (r) => r && r.plan ? secHtml('plan', '予定', '<span class="ln">' + esc(r.plan) + '</span>') : '';
   // ToDoのブロック。link: ''=リンクなし（月の一覧）、'open'=今日画面、'edit'=詳細シート（入力中の内容を残すため別タブ）。max: 表示件数の上限（未完了を先に出す）
   function todoSec(list, link, max){
+    if(!todoOn()) return '';
     list = list || [];
     if(!list.length && !link) return '';
     let shown = list, rest = 0;
@@ -932,6 +938,8 @@ let nights = '', nrange = [];
     $('#pgSet').innerHTML =
       '<div class="card"><h2>業務内容のプリセット</h2><ul class="presets">' + pl + '</ul><button type="button" data-act="padd">プリセットを追加</button></div>' +
       '<div class="card"><h2>有給</h2><div class="fld"><label for="sLeave">1年の付与日数</label><input type="number" id="sLeave" min="0" max="99" step="0.5" inputmode="decimal" value="' + st.settings.leaveTotal + '"></div></div>' +
+      '<div class="card"><h2>ToDo</h2><label class="setrow" style="align-items:center;gap:10px"><input type="checkbox" id="sTodo"' + (todoOn() ? ' checked' : '') + '> 今日・月の画面にToDoを表示する</label>' +
+      '<p class="hint">この端末だけの設定です。OFFのあいだは、ToDoの読み込み（通信）もしません。</p></div>' +
       '<div class="card"><h2>データ</h2><div class="setrow"><button type="button" data-act="export">書き出す（JSON）</button><button type="button" data-act="import">読み込む</button></div>' +
       '<div class="setrow"><button type="button" data-act="rescue">退避データを書き出す</button></div>' +
       '<p class="hint">読み込めるのは、このアプリの書き出しと、旧「出勤簿」の書き出しです。読み込む前に、いまのデータを自動で退避します。</p></div>';
@@ -995,6 +1003,10 @@ let nights = '', nrange = [];
       const r = st.records[curDate];
       const kind = r ? r.kind : 'work';
       patchRec(curDate, { clockIn: i, clockOut: o, kind: kind });
+      render();
+    }else if(e.target.id === 'sTodo'){
+      try{ if(e.target.checked) localStorage.removeItem(TODO_OFF_KEY); else localStorage.setItem(TODO_OFF_KEY, '1'); }catch(err){ toast('この端末では設定を保存できません', null, true); }
+      if(e.target.checked) fetchTodoCloud(true);
       render();
     }else if(e.target.id === 'sLeave'){
       const n = Number(e.target.value);
