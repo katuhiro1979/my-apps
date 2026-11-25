@@ -416,6 +416,14 @@
     $('keyFile').value = '';
   }
 
+  // 最後にバックアップした日時を、アプリ管理の「バックアップ」カードが読めるよう app_kv に残す(失敗してもバックアップ自体は成功のまま)
+  async function markBackup(kind, ok, ng, add) {
+    try {
+      if (!session) return;
+      const { error } = await needSb().from('app_kv').upsert([{ user_id: session.user.id, app_name: 'バックアップ管理', key: 'last-run', value: { at: new Date().toISOString(), kind, ok, ng }, updated_at: new Date().toISOString() }], { onConflict: 'user_id,app_name,key' });
+      if (error) throw new Error(error.message);
+    } catch (e) { add('dim', '  (最終バックアップ日時の記録に失敗: ' + e.message + ')'); }
+  }
   async function doBackup() {
     const log = $('backupLog'); log.replaceChildren();
     const add = (cls, text) => log.append(h('li', { class: cls }, text));
@@ -442,6 +450,7 @@
           okN++;
         } catch (e) { add('ng', `✗ ${g.app}: ${e.message}`); ngN++; }
       }
+      if (okN) await markBackup('暗号化', okN, ngN, add);
       add(ngN ? 'ng' : 'ok', ngN ? `完了: 成功${okN}件 / 失敗${ngN}件` : `完了: ${okN}件すべて成功`);
     } catch (e) { add('ng', 'バックアップを中止しました: ' + e.message); }
     refresh();
@@ -469,6 +478,7 @@
           okN++;
         } catch (e) { add('ng', `✗ ${g.app}: ${e.message}`); ngN++; }
       }
+      if (okN) await markBackup('簡易', okN, ngN, add);
       add(ngN ? 'ng' : 'ok', ngN ? `完了: 成功${okN}件 / 失敗${ngN}件` : `完了: ${okN}件すべて成功`);
     } catch (e) { add('ng', '簡易バックアップを中止しました: ' + e.message); }
     refresh();
