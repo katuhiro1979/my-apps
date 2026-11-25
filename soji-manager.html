@@ -418,6 +418,8 @@
     font-family:inherit; font-size:calc(16px*var(--fs)); color:var(--ink); background:var(--surface-2);
   }
   .field input:focus, .field select:focus{ background:var(--paper); border-color:var(--ink); }
+  .check-row{ display:flex; align-items:center; gap:10px; min-height:44px; margin-bottom:14px; font-size:calc(14px*var(--fs)); font-weight:700; color:var(--ink-soft); cursor:pointer; }
+  .check-row input{ width:22px; height:22px; flex:none; margin:0; cursor:pointer; }
   .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .freq-presets{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .freq-chip{
@@ -648,6 +650,10 @@
           <input type="number" id="f-duration" min="0" step="1" placeholder="15" required>
         </div>
       </div>
+      <label class="check-row">
+        <input type="checkbox" id="f-topover" checked>
+        <span>期限切れになったら「今日やること」に出す</span>
+      </label>
       <div class="modal-actions">
         <button type="button" class="btn-secondary" id="cancelBtn">キャンセル</button>
         <button type="submit" class="btn-primary" id="submitBtn">保存する</button>
@@ -1101,7 +1107,8 @@
 
   function renderToday(){
     const box = $('#todaySection');
-    const due = tasks.filter(t => daysUntil(t.next) <= 0 && !doneToday(t)).sort((a,b) => daysUntil(a.next) - daysUntil(b.next));
+    // 期限切れは、項目ごとの設定（topOver）が「出す」のものだけ載せる
+    const due = tasks.filter(t => (t.topOver !== false ? daysUntil(t.next) <= 0 : daysUntil(t.next) === 0) && !doneToday(t)).sort((a,b) => daysUntil(a.next) - daysUntil(b.next));
     const over = due.some(t => daysUntil(t.next) < 0);
     box.className = 'today' + (due.length ? (over ? ' has-over' : ' has-due') : '');
     let html = `<div class="today-head"><h2>今日やること</h2><span class="today-count">${due.length ? due.length + '件' : ''}</span></div>`;
@@ -1397,6 +1404,7 @@
       freq: String(freqNum >= 1 ? freqNum : 7),
       next: t.next,
       duration: (isFinite(durNum) && durNum >= 0) ? durNum : 0,
+      topOver: t.topOver !== false,
       history: Array.isArray(t.history) ? t.history.filter(isValidDateStr) : []
     };
   }
@@ -1432,6 +1440,7 @@
     $('#f-freq').value = '7';
     $('#f-next').value = addDays(todayISO(), 7);
     $('#f-duration').value = 15;
+    $('#f-topover').checked = true;
     selectedColor = COLORS[tasks.length % COLORS.length];
     renderColorPicker();
     refreshMemberSuggestions();
@@ -1453,6 +1462,7 @@
     $('#f-freq').value = t.freq;
     $('#f-next').value = t.next;
     $('#f-duration').value = t.duration;
+    $('#f-topover').checked = t.topOver !== false;
     selectedColor = t.color;
     renderColorPicker();
     refreshMemberSuggestions();
@@ -1717,7 +1727,8 @@
       last: $('#f-last').value,
       freq: $('#f-freq').value,
       next: $('#f-next').value,
-      duration: Number($('#f-duration').value)
+      duration: Number($('#f-duration').value),
+      topOver: $('#f-topover').checked
     };
     if(editingId){
       const existing = tasks.find(t => t.id === editingId);
