@@ -277,6 +277,12 @@
     15%, 85%{ box-shadow:0 0 0 3px var(--ink); }
   }
   .ticket.ticket-highlight{ animation:ticketHighlight 1.6s ease; }
+  /* 他のアプリから飛んできたとき：枠と光で、長めに目立たせる（約4秒かけて消える） */
+  .ticket.jump{ animation:jumpGlow 4s ease-out; }
+  @keyframes jumpGlow{
+    0%,55%{ box-shadow:0 0 0 3px var(--accent),0 0 22px color-mix(in srgb,var(--accent) 55%,transparent); }
+    100%{ box-shadow:0 0 0 3px transparent,0 0 0 transparent; }
+  }
 
   /* ---------- Member filter ---------- */
   .member-row{ display:flex; flex-wrap:wrap; gap:8px; }
@@ -513,6 +519,7 @@
   }
   @media (prefers-reduced-motion:reduce){
     .ticket.ticket-highlight{ animation:none; }
+    .ticket.jump{ animation:none; box-shadow:0 0 0 3px var(--accent); }
     .timeline .track .fill{ transition:none; }
   }
   @media print{
@@ -1215,6 +1222,7 @@
     renderStats();
     renderList();
     renderCalendar();
+    if(typeof glowJumpTask === 'function') glowJumpTask();
   }
 
   // ---------- Mini calendar ----------
@@ -2120,8 +2128,46 @@
     navigator.serviceWorker.register('soji-sw.js').catch(() => {});
   }
 
+  // 他のアプリ（アプリ管理）から「soji-manager.html#task=タスクID」で開かれたとき、そのタスクを表示して強調する
+  // クラウド同期で画面が作り直されても強調が消えないよう、同期の取り込み後にもう一度合わせる
+  let jumpTask = null, jumpDeadline = 0;
+  function readJumpHash(){
+    try{
+      const m = /(?:^|[#&])task=([^&]+)/.exec(location.hash || '');
+      if(!m) return;
+      jumpTask = decodeURIComponent(m[1]); jumpDeadline = Date.now() + 15000;
+      history.replaceState(null, '', location.pathname + location.search); // 再読み込みで何度も飛ばないよう、ハッシュは消す
+    }catch(e){}
+  }
+  let jumpGlowUntil = 0; // 強調を出している間は、再描画で作り直されても付け直す
+  function glowJumpTask(){
+    if(!jumpTask || Date.now() > jumpGlowUntil) return;
+    const el = listEl.querySelector('.ticket[data-id="' + CSS.escape(jumpTask) + '"]');
+    if(el && !el.classList.contains('jump')) el.classList.add('jump');
+  }
+  function markJumpTask(){
+    const id = jumpTask; if(!id) return;
+    const el = listEl.querySelector('.ticket[data-id="' + CSS.escape(id) + '"]');
+    if(!el) return;
+    el.scrollIntoView({ block:'center' });
+    if(!jumpGlowUntil || Date.now() > jumpGlowUntil){
+      jumpGlowUntil = Date.now() + 4000;
+      setTimeout(function(){ document.querySelectorAll('.ticket.jump').forEach(function(e){ e.classList.remove('jump'); }); }, 4200);
+    }
+    glowJumpTask();
+  }
+  function jumpToTask(){
+    if(!jumpTask || Date.now() > jumpDeadline) return;
+    if(!tasks.some(t => t.id === jumpTask)) return; // まだ同期されていないときは、取り込み後にもう一度試す
+    if(activeMember !== 'all'){ activeMember = 'all'; render(); }
+    markJumpTask();
+    requestAnimationFrame(markJumpTask); setTimeout(markJumpTask, 400);
+  }
+  window.addEventListener('hashchange', function(){ readJumpHash(); jumpToTask(); });
+
   updateImportUndoBtn();
   loadTasks();
+  readJumpHash(); jumpToTask();
 
   // クラウド同期: タスク一覧を同期する（cloud-sync.js）
   if(window.CloudSync){
@@ -2137,6 +2183,7 @@
         catch(e){ toast('クラウドのデータを端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
         render();
         if(historyOverlay.classList.contains('show')) renderHistoryList();
+        jumpToTask(); // 同期で作り直された画面に、もう一度合わせる
       }
     });
   }
