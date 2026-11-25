@@ -214,6 +214,13 @@
   .day.sat .d small{ color:var(--c-off); } .day.sun .d small{ color:var(--danger); }
   .day{ border-left:4px solid var(--line); } .day.k-work{ border-left-color:var(--c-work); } .day.k-off{ border-left-color:var(--c-off); } .day.k-legal{ border-left-color:var(--c-legal); } .day.k-leave{ border-left-color:var(--c-leave); }
   .day.today{ outline:2px solid var(--ink); outline-offset:-2px; }
+  /* 他のアプリから飛んできたとき：枠と光で、長めに目立たせる（約4秒かけて消える） */
+  .day.jump{ animation:jump 4s ease-out; }
+  @keyframes jump{
+    0%,55%{ background:color-mix(in srgb,var(--accent) 22%,var(--paper)); box-shadow:0 0 0 3px var(--accent),0 0 22px color-mix(in srgb,var(--accent) 55%,transparent); }
+    100%{ box-shadow:0 0 0 3px transparent,0 0 0 transparent; }
+  }
+  @media (prefers-reduced-motion:reduce){ .day.jump{ animation:none; box-shadow:0 0 0 3px var(--accent); } }
   .day.past{ background:var(--surface-2); } /* 過ぎた日は薄いグレー */
   .day .mid{ flex:1; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; }
   .day .tm{ font-size:.9rem; color:var(--ink-soft); }
@@ -1262,8 +1269,34 @@ let nights = '', nrange = [];
     navigator.serviceWorker.register('shukkin-sw.js').catch(() => {});
   }
 
+  // 他のアプリ（アプリ管理）から「shukkin-manager.html#day=YYYY-MM-DD」で開かれたとき、月の一覧でその日を表示して強調する
+  function jumpToDay(){
+    let ds = null;
+    try{
+      const m = /(?:^|[#&])day=(\d{4}-\d{2}-\d{2})(?:&|$)/.exec(location.hash || '');
+      if(!m) return;
+      ds = m[1];
+      history.replaceState(null, '', location.pathname + location.search); // 再読み込みで何度も飛ばないよう、ハッシュは消す
+    }catch(e){ return; }
+    const d = toDate(ds);
+    if(!d || isNaN(d.getTime()) || ds !== d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())) return; // 存在しない日付は無視
+    page = 'month'; mv = { y:d.getFullYear(), m:d.getMonth() + 1 };
+    render();
+    window.scrollTo(0, 0);
+    // 描画直後は画面の高さが変わることがあるので、少し待ってから合わせ直す。約4秒、枠と光で目立たせる
+    const mark = function(){
+      const b = document.querySelector('#pgMonth button.day[data-date="' + ds + '"]');
+      if(!b) return;
+      b.scrollIntoView({ block:'center' });
+      if(!b.classList.contains('jump')){ b.classList.add('jump'); setTimeout(function(){ b.classList.remove('jump'); }, 4200); }
+    };
+    requestAnimationFrame(mark); setTimeout(mark, 400);
+  }
+  window.addEventListener('hashchange', jumpToDay);
+
   load();
   render();
+  jumpToDay();
 
   // ---------- クラウド同期（cloud-sync.js） ----------
   function startCloud(){
