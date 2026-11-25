@@ -2561,17 +2561,19 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   // 他のアプリ（アプリ管理）から「todo.html#item=項目ID」で開かれたとき、その項目を表示して強調する
   // 項目が見つからないとき（まだ同期されていない等）は、ID を覚えておいて、クラウド同期の取り込み後にもう一度試す
-  let pendingJumpId = null;
+  let pendingJumpId = null, jumpDeadline = 0; // 古いリンクで開いたまま何時間も後に、突然ジャンプしないよう15秒で打ち切る
   function readJumpHash(){
     try{
       const m = /(?:^|[#&])item=([^&]+)/.exec(location.hash || '');
       if(!m) return;
       pendingJumpId = decodeURIComponent(m[1]);
+      jumpDeadline = Date.now() + 15000;
       history.replaceState(null, '', location.pathname + location.search); // 再読み込みで何度も飛ばないよう、ハッシュは消す
     }catch(e){}
   }
   function jumpToItem(){
     if(!pendingJumpId) return;
+    if(Date.now() > jumpDeadline){ pendingJumpId = null; return; }
     const id = pendingJumpId;
     const it = items.find(i=>String(i.id)===id && !i.deleted && !i.archived);
     if(!it) return; // 見つかるまで覚えておく（普通にToDoが開くだけ）
