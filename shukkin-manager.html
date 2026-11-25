@@ -1284,13 +1284,16 @@ let nights = '', nrange = [];
     render();
     window.scrollTo(0, 0);
     // 描画直後は画面の高さが変わることがあるので、少し待ってから合わせ直す。約4秒、枠と光で目立たせる
-    const mark = function(){
-      const b = document.querySelector('#pgMonth button.day[data-date="' + ds + '"]');
-      if(!b) return;
-      b.scrollIntoView({ block:'center' });
-      if(!b.classList.contains('jump')){ b.classList.add('jump'); setTimeout(function(){ b.classList.remove('jump'); }, 4200); }
-    };
-    requestAnimationFrame(mark); setTimeout(mark, 400);
+    jumpDay = ds; jumpDeadline = Date.now() + 15000; // クラウド同期で再描画されたときも、もう一度合わせるため覚えておく
+    requestAnimationFrame(markJumpDay); setTimeout(markJumpDay, 400);
+  }
+  let jumpDay = null, jumpDeadline = 0;
+  function markJumpDay(){
+    if(!jumpDay) return;
+    const b = document.querySelector('#pgMonth button.day[data-date="' + jumpDay + '"]');
+    if(!b) return;
+    b.scrollIntoView({ block:'center' });
+    if(!b.classList.contains('jump')){ b.classList.add('jump'); setTimeout(function(){ b.classList.remove('jump'); }, 4200); }
   }
   window.addEventListener('hashchange', jumpToDay);
 
@@ -1319,6 +1322,7 @@ let nights = '', nrange = [];
         clearUndo();
         closeOpenSheets();
         render();
+        if(jumpDay && Date.now() < jumpDeadline){ markJumpDay(); jumpDay = null; } // 同期で作り直された画面に、もう一度合わせる
       }
     });
   }
