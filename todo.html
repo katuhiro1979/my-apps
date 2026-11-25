@@ -2552,7 +2552,39 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   document.addEventListener('visibilitychange', function(){ if(!document.hidden){ checkStale(); refreshDay(); if(syncTeiki(todayISO())){ save(); render(); } } });
   setInterval(function(){ if(!document.hidden) refreshDay(); }, 60000);
 
+  // 他のアプリ（アプリ管理）から「todo.html#item=項目ID」で開かれたとき、その項目を表示して強調する
+  // 項目が見つからないとき（まだ同期されていない等）は、ID を覚えておいて、クラウド同期の取り込み後にもう一度試す
+  let pendingJumpId = null;
+  function readJumpHash(){
+    try{
+      const m = /(?:^|[#&])item=([^&]+)/.exec(location.hash || '');
+      if(!m) return;
+      pendingJumpId = decodeURIComponent(m[1]);
+      history.replaceState(null, '', location.pathname + location.search); // 再読み込みで何度も飛ばないよう、ハッシュは消す
+    }catch(e){}
+  }
+  function jumpToItem(){
+    if(!pendingJumpId) return;
+    const id = pendingJumpId;
+    const it = items.find(i=>String(i.id)===id && !i.deleted && !i.archived);
+    if(!it) return; // 見つかるまで覚えておく（普通にToDoが開くだけ）
+    pendingJumpId = null;
+    if(tabHidden.has('all')) tabHidden.delete('all'); // 「すべて」が非表示でも、確実に項目を出すため
+    currentTab = 'all'; statusFilter = null; groupFilter = null;
+    $id('searchBox').value = '';
+    flashId = it.id;
+    render();
+    // 描画直後は画面の高さがまだ変わることがあるので、少し待ってから、項目が画面の中ほどに来るように合わせ直す
+    const centerIt = function(){
+      const li = document.querySelector('#taskArea li[data-id="'+CSS.escape(it.id)+'"]');
+      if(li) li.scrollIntoView({ block:'center' });
+    };
+    requestAnimationFrame(centerIt); setTimeout(centerIt, 400);
+  }
+  window.addEventListener('hashchange', function(){ readJumpHash(); jumpToItem(); });
+
   load();
+  readJumpHash(); jumpToItem();
   if(finePointer()) $id('addText').focus({ preventScroll:true });
 
   // スワイプ操作のヒントを、タッチ端末で一度だけ出す
@@ -2594,6 +2626,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         statuses = nst; groups = ngr; items = nit;
         closeOpenSheets();
         render();
+        jumpToItem();
         showNotice('クラウドの最新データに更新しました。');
       }
     });
