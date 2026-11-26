@@ -1708,8 +1708,14 @@ try{ var t=localStorage.getItem('lending-ledger-theme'); if(t==='light'||t==='da
     try{ const cur = localStorage.getItem(STORE_KEY); if(cur) localStorage.setItem(STORE_KEY+'-prev', cur); }catch(e){ prevSaved = false; }
     items = cleaned;
     try{ localStorage.setItem(COUNTER_KEY, String(Math.max(readCounter(), maxCodeNumber(items), parseInt(parsed && parsed.codeCounter,10) || 0))); }catch(e){}
-    save();
+    const saved = save();
     render();
+    if(!saved){
+      // 別のタブが先に保存していた・保存が止まっている・容量不足のとき。取り込みは反映されていないので、成功と表示しない
+      status.classList.add('error');
+      status.textContent = '取り込んだ内容を保存できませんでした（別のタブが先に保存した、または保存が止まっています）。画面の内容を確かめて、もう一度読み込んでください。';
+      return;
+    }
     // 選択肢（品目名・分類・タグ・借用者）も含まれていれば復元する
     let optMsg = '';
     if(parsed && !Array.isArray(parsed) && parsed.options && typeof parsed.options==='object'){
