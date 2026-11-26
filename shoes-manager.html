@@ -394,6 +394,8 @@
       return false;
     }
   }
+  // 件数は同じでも、値が補正された項目（長い文字の切り詰め・不正な日付や選択肢の除去など）を数える。元データにあって、検証後に値が変わったもの。id の振り直しは数えない
+  const countFixed = (d) => d.filter((x) => { const n = sanitizeItem(x); return n && Object.keys(n).some((k) => k !== 'id' && x[k] !== undefined && JSON.stringify(x[k]) !== JSON.stringify(n[k])); }).length;
   function load(){
     let raw = null;
     try{
@@ -406,6 +408,9 @@
       if(d.length && items.length < d.length){
         if(!items.length) loadFailed = true;
         quarantine(raw, '保存データの一部（' + (d.length - items.length) + '件）を読み込めませんでした。');
+      }else{
+        const fixed = countFixed(d); // 値が補正されたときも、元データを退避して知らせる
+        if(fixed) quarantine(raw, '保存データの一部（' + fixed + '件）の値を補正して読み込みました。');
       }
     }catch(e){
       items = []; loadFailed = true;
@@ -415,6 +420,9 @@
   // 保存できたら true。失敗時は警告を出して false（クラウドへは知らせない）
   function save(){
     try{
+      // 別のタブが先に保存していたら、上書きせずに最新を取り込む（storage イベントが届く前の短い間の上書きを防ぐ）
+      const cur = localStorage.getItem(STORAGE_KEY);
+      if(cur !== null && lastRaw !== null && cur !== lastRaw){ adoptStored(cur); return false; }
       const s = JSON.stringify(items);
       localStorage.setItem(STORAGE_KEY, s); lastRaw = s;
     }catch(e){
