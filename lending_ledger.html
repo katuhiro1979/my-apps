@@ -402,6 +402,9 @@ try{ var t=localStorage.getItem('lending-ledger-theme'); if(t==='light'||t==='da
   let cloud = null; // クラウド同期（右下の☁ボタン）。読み込めない環境では null のまま
   function cloudNotify(){ if(cloud) cloud.notifyChanged(); }
   let items = [];
+  let saveLocked = false; // 壊れた元データを退避できなかったとき、元データを守るため保存を止める
+  let loadFailed = false; // 読み込みに失敗して空で開いている間は、空をクラウドへ送らない
+  let lastRaw; // 最後に読んだ・書いた保存データの文字列。別タブの先行保存の見比べに使う（undefined は未取得）
   let currentTab = 'all';
   // 開いているシート（type: loan / editLoan / editItem / qr / history）は常に1つだけ
   let panel = { type:null, id:null };
@@ -692,10 +695,12 @@ try{ var t=localStorage.getItem('lending-ledger-theme'); if(t==='light'||t==='da
     let raw = null;
     try{
       raw = localStorage.getItem(STORE_KEY);
+      lastRaw = raw;
       items = raw ? JSON.parse(raw) : [];
       if(!Array.isArray(items)) throw new Error('形式が配列ではありません');
     }catch(e){
       items = [];
+      loadFailed = true;
       // 壊れたデータを別キーへ退避してから空で開始する（上書きによる消失を防ぐ）
       if(raw){
         try{
@@ -703,7 +708,8 @@ try{ var t=localStorage.getItem('lending-ledger-theme'); if(t==='light'||t==='da
           localStorage.setItem(backupKey, raw);
           showNotice('保存データを読み込めませんでした。元データは「'+backupKey+'」に退避しました。', true, true);
         }catch(e2){
-          showNotice('保存データを読み込めず、退避もできませんでした。ブラウザのデータを消さずに管理者へご相談ください。', true, true);
+          saveLocked = true;
+          showNotice('保存データを読み込めず、退避もできなかったため、保存を止めています。ブラウザのデータを消さずに管理者へご相談ください。', true, true);
         }
       }
     }
@@ -714,7 +720,28 @@ try{ var t=localStorage.getItem('lending-ledger-theme'); if(t==='light'||t==='da
   }
   // 保存できたら true。失敗時は上部に警告を出して false を返す（成功表示を出さないため）
   function save(){
-    try{ localStorage.setItem(STORE_KEY, JSON.stringify(items)); cloudNotify(); return true; }
+    if(saveLocked){
+      showNotice('元データを退避できていないため、保存を止めています。ブラウザのデータを消さずに、「⋯」メニューの「データ」からバックアップしてください。', true, true);
+      return false;
+    }
+    try{
+      // 別のタブが先に保存していたら、書かずに最新を取り込む（古い画面で上書きして消さないため）
+      const cur = localStorage.getItem(STORE_KEY);
+      if(lastRaw !== undefined && cur !== lastRaw){
+        lastRaw = cur;
+        if(cur !== null){
+          const v = JSON.parse(cur);
+          if(Array.isArray(v)){
+            items = normalizeItems(v);
+            render();
+            showNotice('別のタブでデータが更新されていたため、保存せずに最新の内容へ更新しました。もう一度操作してください。', true, true);
+            return false;
+          }
+        }
+      }
+      const json = JSON.stringify(items);
+      localStorage.setItem(STORE_KEY, json); lastRaw = json; loadFailed = false; cloudNotify(); return true;
+    }
     catch(e){
       console.error('保存に失敗しました', e);
       showNotice('保存に失敗しました。ブラウザの容量不足の可能性があります。このまま閉じると変更が失われます。「⋯」メニューの「データ」から今すぐバックアップしてください。', true, true);
@@ -1713,6 +1740,7 @@ try{ var t=localStorage.getItem('lending-ledger-theme'); if(t==='light'||t==='da
   // 別のタブで保存されたら最新の内容に更新する（古い画面のまま上書きして消すのを防ぐ）
   window.addEventListener('storage', function(e){
     if(e.key===STORE_KEY){
+      lastRaw = e.newValue;
       try{
         const v = JSON.parse(e.newValue || '[]');
         if(!Array.isArray(v)) return;
@@ -1747,12 +1775,15 @@ try{ var t=localStorage.getItem('lending-ledger-theme'); if(t==='light'||t==='da
       key: 'data-v1',
       getData: function(){ return { items: items, options: importedOptions, codeCounter: Math.max(readCounter(), maxCodeNumber(items)) }; },
       hasData: function(){ return items.length > 0; },
+      trustEmpty: function(){ return !loadFailed && !saveLocked; },
       applyData: function(d){
         if(!d || !Array.isArray(d.items)) throw new Error('貸出台帳のデータ形式が違います');
+        if(saveLocked) throw new Error('元データを退避できていないため、反映できません');
         items = normalizeItems(d.items);
         if(d.options && typeof d.options==='object') importedOptions = normalizeOptions(d.options);
         try{
-          localStorage.setItem(STORE_KEY, JSON.stringify(items));
+          lastRaw = JSON.stringify(items);
+          localStorage.setItem(STORE_KEY, lastRaw);
           localStorage.setItem(OPTIONS_KEY, JSON.stringify(importedOptions));
           localStorage.setItem(COUNTER_KEY, String(Math.max(readCounter(), maxCodeNumber(items), parseInt(d.codeCounter,10) || 0)));
         }catch(e){ showNotice('クラウドのデータを端末に保存できませんでした（容量不足の可能性があります）。', true, true); }
