@@ -1014,22 +1014,52 @@
     try{ localStorage.setItem(BACKUP_KEY, JSON.stringify(items)); }catch(e){}
   }
 
-  function loadItems(){
+  let saveLocked = false; // 壊れたデータを退避できなかったとき、元データを守るため保存を止める
+  let loadFailed = false; // 読み込みに失敗して空で開いている間は、空をクラウドへ送らない
+  // 読めない・一部を捨てたデータは、上書きされる前に別のキーへ退避する（最新3件を残す）
+  function quarantine(raw, why){
+    const k = STORAGE_KEY + '-corrupt-' + Date.now();
     try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      items = Array.isArray(arr) ? arr.map(sanitizeItem).filter(Boolean) : [];
+      localStorage.setItem(k, raw);
+      const olds = [];
+      for(let i = 0; i < localStorage.length; i++){ const n = localStorage.key(i); if(n && n.indexOf(STORAGE_KEY + '-corrupt-') === 0) olds.push(n); }
+      olds.sort();
+      while(olds.length > 3) localStorage.removeItem(olds.shift());
+      return why + '元のデータは「' + k + '」に退避しました。';
     }catch(e){
-      console.error('読み込みに失敗しました', e);
-      items = [];
+      saveLocked = true;
+      return why + '元のデータを退避できなかったため、保存を止めています。ブラウザのデータを消さずに、データを書き出してください。';
+    }
+  }
+
+  function loadItems(){
+    let raw = null, msg = '';
+    try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){ /* 読めなければ空で開く */ }
+    items = [];
+    if(raw){
+      let arr = null;
+      try{ arr = JSON.parse(raw); }catch(e){ console.error('読み込みに失敗しました', e); }
+      if(Array.isArray(arr)){
+        items = arr.map(sanitizeItem).filter(Boolean);
+        if(items.length < arr.length) msg = quarantine(raw, (arr.length - items.length) + '件の項目が読めなかったため、表示していません。');
+      }else{
+        loadFailed = true;
+        msg = quarantine(raw, '保存データを読み込めませんでした。');
+      }
     }
     render();
+    if(msg) setTimeout(() => alert(msg), 0);
   }
 
   let saveErrorShown = false;
   function saveItems(){
+    if(saveLocked){
+      alert('元のデータを退避できていないため、保存を止めています。ブラウザのデータを消さずに、データを書き出してください。');
+      return;
+    }
     try{
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      loadFailed = false;
       if(cloud) cloud.notifyChanged();
       saveErrorShown = false;
     }catch(e){
@@ -1899,8 +1929,10 @@
       key: 'data-v1',
       getData: function(){ return { items: items }; },
       hasData: function(){ return items.length > 0; },
+      trustEmpty: function(){ return !loadFailed && !saveLocked; },
       applyData: function(d){
         if(!d || !Array.isArray(d.items)) throw new Error('会員証のデータ形式が違います');
+        if(saveLocked) throw new Error('元データを退避できていないため、反映できません');
         items = d.items.map(sanitizeItem).filter(Boolean);
         try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
         catch(e){ alert('クラウドのデータを端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
