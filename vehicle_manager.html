@@ -414,6 +414,7 @@
   var KEY='vehicle-manager-data';
   var BROKEN_KEY='vehicle-manager-data-broken';   // 読み込めなかった保存データの退避先
   var saveLocked=false;  // 壊れたデータを退避できなかったとき、元データを守るため保存を止める
+  var lastRaw=null;      // 最後に読んだ・書いた保存データの文字列（別のタブの先行保存を見つけるため）
   var loadFailed=false;  // 読み込みに失敗して空で開いている間は、空をクラウドへ送らない
   var TYPES=['車検','自賠責保険','任意保険','自動車税','免許更新','その他'];
   var data=load();
@@ -467,13 +468,42 @@
     });
     return {vehicles:out};
   }
+  // 値が直されたか（使えない値の除去など）。元の値 raw と整えた後 san を比べる。id と、元に無い欄は見ない
+  function valueChanged(raw,san){
+    if(raw==null)return false;
+    if(typeof raw!=='object')return raw!==san&&String(raw)!==String(san);
+    if(!san||typeof san!=='object'||Array.isArray(raw)!==Array.isArray(san)||(Array.isArray(raw)&&raw.length!==san.length))return true;
+    return Object.keys(raw).some(function(k){return k!=='id'&&k in san&&valueChanged(raw[k],san[k]);});
+  }
+  // 直す前の元の文字列を退避する。先に退避があれば時刻つきの別キーへ。書けなければ保存を止める（false）
+  function quarantineKeep(raw){
+    try{
+      if(!localStorage.getItem(BROKEN_KEY))localStorage.setItem(BROKEN_KEY,raw);
+      else if(localStorage.getItem(BROKEN_KEY)!==raw)localStorage.setItem(BROKEN_KEY+'-'+Date.now(),raw);
+      return true;
+    }catch(e){saveLocked=true;return false;}
+  }
   function load(){
     var raw=null;
     try{raw=localStorage.getItem(KEY);}catch(e){}
+    lastRaw=raw;
     if(raw){
       try{
         var d=JSON.parse(raw);
-        if(d&&Array.isArray(d.vehicles))return normalize(d);
+        if(d&&Array.isArray(d.vehicles)){
+          var nd=normalize(d),msg='';
+          if(nd.vehicles.length<d.vehicles.length)msg=(d.vehicles.length-nd.vehicles.length)+'件の項目が読めなかったため、表示していません。';
+          else{
+            // 読めた項目でも、使えない値の除去（日付・写真など）で、値が変わっていないか調べる
+            var fx=d.vehicles.filter(function(x,i){return valueChanged(x,nd.vehicles[i]);}).length;
+            if(fx>0)msg=fx+'件の車両の値を直して開きました（使えない値の除去）。';
+          }
+          if(msg){
+            var kept=quarantineKeep(raw);  // 保存より先に退避する
+            setTimeout(function(){alert(msg+(kept?'元のデータは退避しました。':'元のデータを退避できなかったため、保存を止めています。ブラウザのデータを消さずに、バックアップを書き出してください。'));},0);
+          }
+          return nd;
+        }
       }catch(e){}
       // 読めないデータは、次の保存で上書きされる前に別のキーへ退避する
       loadFailed=true;
@@ -487,7 +517,21 @@
   }
   function save(){
     if(saveLocked){alert('元のデータを退避できていないため、保存を止めています。ブラウザのデータを消さずに、バックアップを書き出してください。');return;}
-    try{localStorage.setItem(KEY,JSON.stringify(data));loadFailed=false;unsavedBanner(false);if(cloud)cloud.notifyChanged();}
+    // 別のタブが先に保存していたら、書かずに最新を取り込む（他タブの変更を上書きしない）
+    var cur=null;
+    try{cur=localStorage.getItem(KEY);}catch(e){}
+    if(cur!==null&&cur!==lastRaw){
+      var d=null;
+      try{d=JSON.parse(cur);}catch(e){}
+      if(d&&Array.isArray(d.vehicles)){
+        closeAllUi();
+        data=normalize(d);lastRaw=cur;editId=null;
+        render();
+        toast('別のタブでデータが更新されていたため、最新の内容を読み込みました。今の操作は反映されていません');
+        return;
+      }
+    }
+    try{var j=JSON.stringify(data);localStorage.setItem(KEY,j);lastRaw=j;loadFailed=false;unsavedBanner(false);if(cloud)cloud.notifyChanged();}
     catch(e){unsavedBanner(true);alert('保存できませんでした（容量が足りない可能性があります）。写真を減らすか、バックアップを書き出してください。');}
   }
   // 保存に失敗している間は、画面上部に「未保存」を出し続ける
@@ -1246,7 +1290,7 @@
         // 入力画面やメニューを開いたまま差し替えると古い対象を書き換えてしまうため、先に閉じる
         var hadOpen=closeAllUi();
         data=normalize(d);
-        try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}
+        try{var j=JSON.stringify(data);localStorage.setItem(KEY,j);lastRaw=j;}catch(e){}
         editId=null;
         hideToast();   // 古いデータに対する「元に戻す」は無効にする
         render();
