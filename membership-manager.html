@@ -1032,9 +1032,33 @@
     }
   }
 
+  // 値が直されたか（切り詰め・使えない値の除去など）。元の値 raw と整えた後 san を比べる。id と、元に無い欄は見ない。
+  // optKeys は、値が使えないとき整えた側から欄ごと無くなる欄（元に値があれば直された扱い）
+  function valueChanged(raw, san, optKeys){
+    if(raw == null) return false;
+    if(typeof raw !== 'object') return raw !== san && String(raw) !== String(san);
+    if(!san || typeof san !== 'object' || Array.isArray(raw) !== Array.isArray(san) || (Array.isArray(raw) && raw.length !== san.length)) return true;
+    return Object.keys(raw).some((k) => {
+      if(k === 'id') return false;
+      if(!(k in san)) return !!optKeys && optKeys.indexOf(k) >= 0 && raw[k] !== '' && raw[k] != null;
+      return valueChanged(raw[k], san[k], optKeys);
+    });
+  }
+  let lastRaw = null; // 最後に読んだ・書いた保存データの文字列（別のタブの先行保存を見つけるため）
+  // 別のタブが先に保存していた最新を取り込む。読めない値のときは取り込まない（false）
+  function adoptStored(cur){
+    let arr = null;
+    try{ arr = JSON.parse(cur); }catch(e){ return false; }
+    if(!Array.isArray(arr)) return false;
+    items = arr.map(sanitizeItem).filter(Boolean);
+    lastRaw = cur;
+    render();
+    return true;
+  }
   function loadItems(){
     let raw = null, msg = '';
     try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){ /* 読めなければ空で開く */ }
+    lastRaw = raw;
     items = [];
     if(raw){
       let arr = null;
@@ -1042,6 +1066,11 @@
       if(Array.isArray(arr)){
         items = arr.map(sanitizeItem).filter(Boolean);
         if(items.length < arr.length) msg = quarantine(raw, (arr.length - items.length) + '件の項目が読めなかったため、表示していません。');
+        else{
+          // 読めた項目でも、長い文字の切り詰めや使えない値の除去で、値が変わっていないか調べる
+          const fixed = arr.filter((x, i) => valueChanged(x, items[i], ['start'])).length;
+          if(fixed > 0) msg = quarantine(raw, fixed + '件の項目の値を直して開きました（長い文字の切り詰めや、使えない値の除去）。');
+        }
       }else{
         loadFailed = true;
         msg = quarantine(raw, '保存データを読み込めませんでした。');
@@ -1057,8 +1086,17 @@
       alert('元のデータを退避できていないため、保存を止めています。ブラウザのデータを消さずに、データを書き出してください。');
       return;
     }
+    // 別のタブが先に保存していたら、書かずに最新を取り込む（storage イベントが届く前の上書きを防ぐ）
+    let cur = null;
+    try{ cur = localStorage.getItem(STORAGE_KEY); }catch(e){ /* 読めなければ見比べない */ }
+    if(cur !== null && cur !== lastRaw && adoptStored(cur)){
+      alert('別のタブでデータが更新されていたため、最新の内容を読み込みました。今の操作は反映されていません。もう一度操作してください。');
+      return;
+    }
     try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      const json = JSON.stringify(items);
+      localStorage.setItem(STORAGE_KEY, json);
+      lastRaw = json;
       loadFailed = false;
       if(cloud) cloud.notifyChanged();
       saveErrorShown = false;
@@ -1075,6 +1113,7 @@
   // 他のタブでデータが変更されたら反映する
   window.addEventListener('storage', (e) => {
     if(e.key !== STORAGE_KEY) return;
+    lastRaw = e.newValue;
     try{
       const arr = e.newValue ? JSON.parse(e.newValue) : [];
       items = Array.isArray(arr) ? arr.map(sanitizeItem).filter(Boolean) : [];
@@ -1934,7 +1973,7 @@
         if(!d || !Array.isArray(d.items)) throw new Error('会員証のデータ形式が違います');
         if(saveLocked) throw new Error('元データを退避できていないため、反映できません');
         items = d.items.map(sanitizeItem).filter(Boolean);
-        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
+        try{ const json = JSON.stringify(items); localStorage.setItem(STORAGE_KEY, json); lastRaw = json; }
         catch(e){ alert('クラウドのデータを端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
         render();
       }
