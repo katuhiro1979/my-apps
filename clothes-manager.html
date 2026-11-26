@@ -492,7 +492,9 @@
   let undoFn = null;
   let loadFailed = false; // 端末のデータが壊れていて読めなかったか（その間は空をクラウドへ送らない）
   let saveLocked = false; // 壊れた元データを退避できなかったとき、元データを守るため保存を止める
+  let lastRaw = null; // 最後に読んだ・書いた保存データの文字列（別のタブの先行保存を見つけるため）
   let droppedCount = 0; // 読み込み時に、名前が無いなどで読めなかった項目の数
+  let fixedCount = 0; // 読み込み時に、値を直した（切り詰め・使えない値の除去）項目の数
   let saveFailed = false; // 直前の端末への保存に失敗したか
   const BACKUP_KEY = 'clothes-manager-data-v1-backup'; // 読み込みで置き換える直前の退避（1世代）
   const BROKEN_KEY = 'clothes-manager-data-v1-broken'; // 壊れていた元の文字列の退避
@@ -578,6 +580,14 @@
     return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
   }
 
+  // 値が直されたか（切り詰め・使えない値の除去など）。元の値 raw と整えた後 san を比べる。id と、元に無い欄は見ない
+  function valueChanged(raw, san){
+    if(raw == null) return false;
+    if(Array.isArray(raw)) return !Array.isArray(san) || raw.length !== san.length || raw.some((r, i) => valueChanged(r, san[i]));
+    if(typeof raw === 'object') return !san || typeof san !== 'object' || Object.keys(raw).some((k) => k !== 'id' && k in san && valueChanged(raw[k], san[k]));
+    return raw !== san && String(raw) !== String(san);
+  }
+
   // ---------- 保存と読み込み ----------
   // 壊れた元の文字列を退避する。先に退避があれば、時刻つきの別キーへ。どちらも書けなければ保存を止める
   function quarantine(){
@@ -591,11 +601,18 @@
   }
   function load(){
     try{
-      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      try{ lastRaw = localStorage.getItem(STORAGE_KEY); }catch(e){ lastRaw = null; }
+      const raw = JSON.parse(lastRaw || '{}');
       const rawItems = Array.isArray(raw.items) ? raw.items : [];
       items = uniqueIds(rawItems.map(sanitizeItem).filter(Boolean));
       droppedCount = rawItems.length - items.length;
+      fixedCount = 0;
       if(droppedCount > 0) quarantine();
+      else{
+        // 読めた項目でも、長い文字の切り詰めや使えない値の除去で、値が変わっていないか調べる（区分・状態の補正の前の値で比べる）
+        fixedCount = rawItems.filter((x, i) => valueChanged(x, items[i])).length;
+        if(fixedCount > 0) quarantine();
+      }
       targets = sanitizeTargets(raw.targets);
       setStatuses(raw.statuses);
       setSections(raw.sections);
@@ -614,8 +631,31 @@
   }
   function save(){
     if(saveLocked){ toast('元のデータを退避できていないため、保存を止めています。ブラウザのデータを消さずに、データを書き出してください。'); return; }
+    // 別のタブが先に保存していたら、書かずに最新を取り込む（他タブの変更を上書きしない）
+    let cur = null;
+    try{ cur = localStorage.getItem(STORAGE_KEY); }catch(e){ /* 読めなければ見比べない */ }
+    if(cur !== null && cur !== lastRaw){
+      let o = null;
+      try{ o = JSON.parse(cur); }catch(e){ /* 読めない値は取り込まない */ }
+      if(o && typeof o === 'object' && Array.isArray(o.items)){
+        items = uniqueIds(o.items.map(sanitizeItem).filter(Boolean));
+        targets = sanitizeTargets(o.targets);
+        setStatuses(o.statuses); setSections(o.sections);
+        lastRaw = cur;
+        // 開いている入力画面は、古い内容で保存してしまわないよう閉じる。元に戻すも無効にする
+        if(dlg.open) dlg.close();
+        if(tdlg.open) tdlg.close();
+        if(sdlg.open) sdlg.close();
+        if(stdlg.open) stdlg.close();
+        if(secdlg.open) secdlg.close();
+        undoFn = null;
+        render();
+        toast('別のタブでデータが更新されていたため、最新の内容を読み込みました。今の操作は反映されていません');
+        return;
+      }
+    }
     saveFailed = false;
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets, sections: SECTIONS, statuses: statuses })); loadFailed = false; /* 新しく保存できたら、壊れた状態は解除する（元の文字列は退避済み） */ }
+    try{ const json = JSON.stringify({ items, targets, sections: SECTIONS, statuses: statuses }); localStorage.setItem(STORAGE_KEY, json); lastRaw = json; loadFailed = false; /* 新しく保存できたら、壊れた状態は解除する（元の文字列は退避済み） */ }
     catch(e){ saveFailed = true; toast('端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
     if(cloud) cloud.notifyChanged(); // 端末へ保存した直後に必ず呼ぶ
   }
@@ -1181,6 +1221,7 @@
   if(saveLocked) setTimeout(() => alert('元のデータを退避できなかったため、保存を止めています。ブラウザのデータを消さずに、データを書き出してください。'), 0);
   else if(loadFailed) toast('端末のデータが読めませんでした。壊れたデータは退避しました。ログイン済みなら、☁の同期でクラウドから戻せます。');
   else if(droppedCount > 0) toast(droppedCount + '件の項目が読めなかったため、表示していません。元のデータは退避しました。');
+  else if(fixedCount > 0) toast(fixedCount + '件の項目の値を直して開きました（長い文字の切り詰めや、使えない値の除去）。元のデータは退避しました。');
 
   // ---------- クラウド同期（cloud-sync.js） ----------
   if(window.CloudSync){
@@ -1204,7 +1245,7 @@
         if(stdlg.open) stdlg.close();
         if(secdlg.open) secdlg.close();
         undoFn = null; $('#toast').classList.remove('show');
-        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets, sections: SECTIONS, statuses: statuses })); }
+        try{ const json = JSON.stringify({ items, targets, sections: SECTIONS, statuses: statuses }); localStorage.setItem(STORAGE_KEY, json); lastRaw = json; }
         catch(e){ toast('クラウドのデータを端末に保存できませんでした。'); }
         render();
       }
