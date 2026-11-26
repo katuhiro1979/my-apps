@@ -491,6 +491,7 @@
   let editingId = null;
   let undoFn = null;
   let loadFailed = false; // 端末のデータが壊れていて読めなかったか（その間は空をクラウドへ送らない）
+  let saveLocked = false; // 壊れた元データを退避できなかったとき、元データを守るため保存を止める
   let droppedCount = 0; // 読み込み時に、名前が無いなどで読めなかった項目の数
   let saveFailed = false; // 直前の端末への保存に失敗したか
   const BACKUP_KEY = 'clothes-manager-data-v1-backup'; // 読み込みで置き換える直前の退避（1世代）
@@ -578,22 +579,30 @@
   }
 
   // ---------- 保存と読み込み ----------
+  // 壊れた元の文字列を退避する。先に退避があれば、時刻つきの別キーへ。どちらも書けなければ保存を止める
+  function quarantine(){
+    let rawStr = '';
+    try{ rawStr = localStorage.getItem(STORAGE_KEY) || ''; }catch(e){ /* 読めなければ退避するものがない */ }
+    if(!rawStr) return;
+    try{
+      if(!localStorage.getItem(BROKEN_KEY)) localStorage.setItem(BROKEN_KEY, rawStr);
+      else if(localStorage.getItem(BROKEN_KEY) !== rawStr) localStorage.setItem(BROKEN_KEY + '-' + Date.now(), rawStr);
+    }catch(e2){ saveLocked = true; }
+  }
   function load(){
     try{
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
       const rawItems = Array.isArray(raw.items) ? raw.items : [];
       items = uniqueIds(rawItems.map(sanitizeItem).filter(Boolean));
       droppedCount = rawItems.length - items.length;
-      if(droppedCount > 0){
-        try{ if(!localStorage.getItem(BROKEN_KEY)) localStorage.setItem(BROKEN_KEY, localStorage.getItem(STORAGE_KEY) || ''); }catch(e2){ /* 退避できなくても続ける */ }
-      }
+      if(droppedCount > 0) quarantine();
       targets = sanitizeTargets(raw.targets);
       setStatuses(raw.statuses);
       setSections(raw.sections);
     }catch(e){
       items = []; targets = Object.create(null); loadFailed = true; SECTIONS = BASE_SECTIONS.slice(); statuses = DEFAULT_STATUSES.map((x) => Object.assign({}, x));
       // 壊れた元の文字列を、消えないように退避しておく
-      try{ if(!localStorage.getItem(BROKEN_KEY)) localStorage.setItem(BROKEN_KEY, localStorage.getItem(STORAGE_KEY) || ''); }catch(e2){ /* 退避できなくても続ける */ }
+      quarantine();
     }
     try{
       const v = JSON.parse(localStorage.getItem(VIEW_KEY) || '{}');
@@ -604,6 +613,7 @@
     }catch(e){ /* 保存した表示設定が壊れていたら既定のまま */ }
   }
   function save(){
+    if(saveLocked){ toast('元のデータを退避できていないため、保存を止めています。ブラウザのデータを消さずに、データを書き出してください。'); return; }
     saveFailed = false;
     try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ items, targets, sections: SECTIONS, statuses: statuses })); loadFailed = false; /* 新しく保存できたら、壊れた状態は解除する（元の文字列は退避済み） */ }
     catch(e){ saveFailed = true; toast('端末に保存できませんでした。ブラウザの設定をご確認ください。'); }
@@ -1168,7 +1178,8 @@
   $('#sort').value = view.sort;
   fillStatusOptions();
   render();
-  if(loadFailed) toast('端末のデータが読めませんでした。壊れたデータは退避しました。ログイン済みなら、☁の同期でクラウドから戻せます。');
+  if(saveLocked) setTimeout(() => alert('元のデータを退避できなかったため、保存を止めています。ブラウザのデータを消さずに、データを書き出してください。'), 0);
+  else if(loadFailed) toast('端末のデータが読めませんでした。壊れたデータは退避しました。ログイン済みなら、☁の同期でクラウドから戻せます。');
   else if(droppedCount > 0) toast(droppedCount + '件の項目が読めなかったため、表示していません。元のデータは退避しました。');
 
   // ---------- クラウド同期（cloud-sync.js） ----------
@@ -1178,9 +1189,10 @@
       key: SYNC_KEY,
       getData: function(){ return { items: items, targets: targets, sections: SECTIONS, statuses: statuses }; },
       hasData: function(){ return !loadFailed && (items.length > 0 || Object.keys(targets).length > 0); },
-      trustEmpty: function(){ return !loadFailed; },
+      trustEmpty: function(){ return !loadFailed && !saveLocked; },
       applyData: function(d){
         if(!d || !Array.isArray(d.items)) throw new Error('衣服管理のデータ形式が違います');
+        if(saveLocked) throw new Error('元データを退避できていないため、反映できません');
         items = uniqueIds(d.items.map(sanitizeItem).filter(Boolean));
         targets = sanitizeTargets(d.targets);
         setStatuses(d.statuses); setSections(d.sections);
