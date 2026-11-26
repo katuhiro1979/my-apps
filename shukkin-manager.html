@@ -579,6 +579,7 @@
   let undoFn = null;
   let lastRaw = null;       // 最後に保存・読み込みした保存データ（古い画面の検出用）
   let loadFailed = false;   // 保存データが壊れていて、空で起動したとき true
+  let saveLocked = false;   // 壊れたデータを退避できなかったとき true。次の保存で元データを失わないよう、保存を止める
 
   // 消えない通知（警告など。閉じるまで残る）
   function notice(msg){ $('#noticeMsg').textContent = msg; $('#notice').hidden = false; }
@@ -596,7 +597,10 @@
         keys.concat(k).sort().slice(0, -3).forEach((x) => localStorage.removeItem(x));
       }
       notice(msg + '元データは「' + k + '」に退避しました（設定→退避データを書き出す）。');
-    }catch(e2){ notice(msg + '退避もできませんでした。ブラウザのデータを消さずにご相談ください。'); }
+    }catch(e2){
+      saveLocked = true; // 退避できないまま保存すると、元データを上書きして失う
+      notice(msg + '元データを退避できなかったため、保存を止めています。ブラウザのデータを消さず、設定→書き出しで控えてください。');
+    }
   }
   function parseStored(raw){
     const d = raw ? JSON.parse(raw) : null;
@@ -624,7 +628,11 @@
   }
   // 保存できたら true。失敗時は警告を出して false（クラウドへは知らせない）
   function save(){
+    if(saveLocked){ notice('元データを退避できていないため、保存を止めています。設定→書き出しで控えてください。'); return false; }
     try{
+      // 別のタブが先に保存していたら、上書きせずに最新を取り込む（storage イベントが届く前の短い間の上書きを防ぐ）
+      const cur = localStorage.getItem(STORAGE_KEY);
+      if(cur !== null && lastRaw !== null && cur !== lastRaw){ adoptStored(cur); return false; }
       const s = JSON.stringify(st);
       localStorage.setItem(STORAGE_KEY, s); lastRaw = s;
     }catch(e){
@@ -1320,9 +1328,10 @@ let nights = '', nrange = [];
       appName: APP_NAME,
       key: SYNC_KEY,
       getData: function(){ return { v:2, presets: st.presets, records: st.records, settings: st.settings }; },
-      trustEmpty: function(){ return !loadFailed; }, // 破損で空になっただけなら、空をクラウドへ送らない
+      trustEmpty: function(){ return !loadFailed && !saveLocked; }, // 破損で空になっただけなら、空をクラウドへ送らない
       hasData: function(){ return Object.keys(st.records).length > 0; },
       applyData: function(d){
+        if(saveLocked) throw new Error('元データを守るため、保存を止めています'); // 破損データを退避できていないとき、上書きしない
         if(!d || typeof d.records !== 'object' || Array.isArray(d.records)) throw new Error('データ形式が違います');
         const res = sanitizeState(d);
         if(!res.state.presets.length) res.state.presets = DEFAULT_PRESETS.map((p) => Object.assign({}, p));
