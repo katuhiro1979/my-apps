@@ -413,6 +413,8 @@
 (function(){
   var KEY='vehicle-manager-data';
   var BROKEN_KEY='vehicle-manager-data-broken';   // 読み込めなかった保存データの退避先
+  var saveLocked=false;  // 壊れたデータを退避できなかったとき、元データを守るため保存を止める
+  var loadFailed=false;  // 読み込みに失敗して空で開いている間は、空をクラウドへ送らない
   var TYPES=['車検','自賠責保険','任意保険','自動車税','免許更新','その他'];
   var data=load();
   var cloud=null;    // 同期モジュール（cloud-sync.js）
@@ -474,12 +476,18 @@
         if(d&&Array.isArray(d.vehicles))return normalize(d);
       }catch(e){}
       // 読めないデータは、次の保存で上書きされる前に別のキーへ退避する
-      try{if(localStorage.getItem(BROKEN_KEY)!==raw)localStorage.setItem(BROKEN_KEY,raw);}catch(e){}
+      loadFailed=true;
+      try{if(localStorage.getItem(BROKEN_KEY)!==raw)localStorage.setItem(BROKEN_KEY,raw);}
+      catch(e){
+        saveLocked=true;
+        setTimeout(function(){alert('保存データを読み込めず、退避もできなかったため、保存を止めています。ブラウザのデータを消さずに、バックアップを書き出してください。');},0);
+      }
     }
     return {vehicles:[]};
   }
   function save(){
-    try{localStorage.setItem(KEY,JSON.stringify(data));unsavedBanner(false);if(cloud)cloud.notifyChanged();}
+    if(saveLocked){alert('元のデータを退避できていないため、保存を止めています。ブラウザのデータを消さずに、バックアップを書き出してください。');return;}
+    try{localStorage.setItem(KEY,JSON.stringify(data));loadFailed=false;unsavedBanner(false);if(cloud)cloud.notifyChanged();}
     catch(e){unsavedBanner(true);alert('保存できませんでした（容量が足りない可能性があります）。写真を減らすか、バックアップを書き出してください。');}
   }
   // 保存に失敗している間は、画面上部に「未保存」を出し続ける
@@ -1231,8 +1239,10 @@
       // キーの順番を固定してから渡す（順番の違いだけで「変更あり」と判定されるのを防ぐ）
       getData:function(){return normalize(data);},
       hasData:function(){return data.vehicles.length>0;},
+      trustEmpty:function(){return !loadFailed&&!saveLocked;},
       applyData:function(d){
         if(!d||!Array.isArray(d.vehicles))throw new Error('車両管理のデータ形式が違います');
+        if(saveLocked)throw new Error('元データを退避できていないため、反映できません');
         // 入力画面やメニューを開いたまま差し替えると古い対象を書き換えてしまうため、先に閉じる
         var hadOpen=closeAllUi();
         data=normalize(d);
