@@ -361,6 +361,7 @@
 (function(){
   var KEY='ipad-manager-data';
   var saveLocked=false;  // 壊れたデータを退避できなかったとき、元データを守るため保存を止める
+  var lastRaw=null;      // 最後に読んだ・書いた保存データの文字列（別のタブの先行保存を見つけるため）
   var loadFailed=false;  // 読み込みに失敗して空で開いている間は、空をクラウドへ送らない
   var loadMsg='';        // 起動時のお知らせ（最初の描画のあとに出す）
   // 種別（追加するときはここと MODELS に足す）。Apple製以外は OS名・補償名を切り替える
@@ -477,15 +478,28 @@
       loadMsg=why+'元のデータを退避できなかったため、保存を止めています。ブラウザのデータを消さずに、バックアップを書き出してください。';
     }
   }
+  // 値が直されたか（使えない値の除去など）。元の値 raw と整えた後 san を比べる。id と、元に無い欄は見ない
+  function valueChanged(raw,san){
+    if(raw==null)return false;
+    if(typeof raw!=='object')return raw!==san&&String(raw)!==String(san);
+    if(!san||typeof san!=='object'||Array.isArray(raw)!==Array.isArray(san)||(Array.isArray(raw)&&raw.length!==san.length))return true;
+    return Object.keys(raw).some(function(k){return k!=='id'&&k in san&&valueChanged(raw[k],san[k]);});
+  }
   function load(){
     var raw=null;
     try{raw=localStorage.getItem(KEY);}catch(e){}
+    lastRaw=raw;
     if(raw===null||raw==='')return {devices:[]};
     var d=null;
     try{d=JSON.parse(raw);}catch(e){}
     if(d&&Array.isArray(d.devices)){
       var s=sanitize(d.devices);
       if(s.length<d.devices.length)quarantine(raw,(d.devices.length-s.length)+'件の項目が読めなかったため、表示していません。');
+      else{
+        // 読めた項目でも、長い文字列でない値の除去（日付・種別・写真など）で、値が変わっていないか調べる
+        var fx=d.devices.filter(function(x,i){return valueChanged(x,s[i]);}).length;
+        if(fx>0)quarantine(raw,fx+'件の項目の値を直して開きました（使えない値の除去）。');
+      }
       return {devices:s};
     }
     loadFailed=true;
@@ -498,7 +512,7 @@
   function applyRemote(d){
     if(saveLocked)throw new Error('元データを退避できていないため、クラウドのデータを反映できません');
     data={devices:sanitize(d.devices)};
-    try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){}
+    try{var j=JSON.stringify(data);localStorage.setItem(KEY,j);lastRaw=j;}catch(e){}
     editId=null;openA={};openC={};
     render();
   }
@@ -517,7 +531,22 @@
   }
   function save(){
     if(saveLocked){alert('元のデータを退避できていないため、保存を止めています。ブラウザのデータを消さずに、バックアップを書き出してください。');return;}
-    try{localStorage.setItem(KEY,JSON.stringify(data));loadFailed=false;if(cloud)cloud.notifyChanged();}
+    // 別のタブが先に保存していたら、書かずに最新を取り込む（他タブの変更を上書きしない）
+    var cur=null;
+    try{cur=localStorage.getItem(KEY);}catch(e){}
+    if(cur!==null&&cur!==lastRaw){
+      var d=null;
+      try{d=JSON.parse(cur);}catch(e){}
+      if(d&&Array.isArray(d.devices)){
+        data={devices:sanitize(d.devices)};lastRaw=cur;
+        editId=null;openA={};openC={};pendingRemote=null;
+        try{if($('formSheet').open)$('formSheet').close();}catch(e){}
+        render();
+        toast('別のタブでデータが更新されていたため、最新の内容を読み込みました。今の操作は反映されていません');
+        return;
+      }
+    }
+    try{var j=JSON.stringify(data);localStorage.setItem(KEY,j);lastRaw=j;loadFailed=false;if(cloud)cloud.notifyChanged();}
     catch(e){alert('保存できませんでした（容量が足りない可能性があります）');}
   }
   function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
