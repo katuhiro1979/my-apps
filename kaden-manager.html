@@ -390,6 +390,9 @@
   }
   let lastRaw = null;       // 最後に保存・読み込みした保存データ（古い画面の検出用）
   let loadFailed = false;   // 保存データが壊れていて、空で起動したとき true
+  let saveLocked = false;   // 壊れたデータを退避できなかったとき true。次の保存で元データを失わないよう、保存を止める
+  // 件数は同じでも、値が補正された項目（長い文字の切り詰め・不正な日付や選択肢の除去など）を数える。元データにあって、検証後に値が変わったもの。id の振り直しは数えない
+  const countFixed = (d) => d.filter((x) => { const n = sanitizeItem(x); return n && Object.keys(n).some((k) => k !== 'id' && x[k] !== undefined && JSON.stringify(x[k]) !== JSON.stringify(n[k])); }).length;
   // 読み込めなかった元データを別キーへ退避する（次の保存で消えないように）
   function quarantine(raw, msg){
     try{
@@ -402,7 +405,10 @@
         keys.concat(k).sort().slice(0, -3).forEach((x) => localStorage.removeItem(x)); // 3世代まで
       }
       notice(msg + '元データは「' + k + '」に退避しました（⋯→退避データを書き出す）。');
-    }catch(e2){ notice(msg + '退避もできませんでした。ブラウザのデータを消さずにご相談ください。'); }
+    }catch(e2){
+      saveLocked = true; // 退避できないまま保存すると、元データを上書きして失う
+      notice(msg + '元データを退避できなかったため、保存を止めています。ブラウザのデータを消さず、⋯→書き出しで控えてください。');
+    }
   }
   function load(){
     let raw = null;
@@ -415,6 +421,9 @@
       if(d.length && items.length < d.length){
         if(!items.length) loadFailed = true;
         quarantine(raw, '保存データの一部（' + (d.length - items.length) + '件）を読み込めませんでした。');
+      }else{
+        const fixed = countFixed(d); // 値が補正されたときも、元データを退避して知らせる
+        if(fixed) quarantine(raw, '保存データの一部（' + fixed + '件）の値を補正して読み込みました。');
       }
     }catch(e){
       items = []; loadFailed = true;
@@ -423,7 +432,11 @@
   }
   // 保存できたら true。失敗時は警告を出して false（クラウドへは知らせない）
   function save(){
+    if(saveLocked){ notice('元データを退避できていないため、保存を止めています。⋯→書き出しで控えてください。'); return false; }
     try{
+      // 別のタブが先に保存していたら、上書きせずに最新を取り込む（storage イベントが届く前の短い間の上書きを防ぐ）
+      const cur = localStorage.getItem(STORAGE_KEY);
+      if(cur !== null && lastRaw !== null && cur !== lastRaw){ adoptStored(cur); return false; }
       const s = JSON.stringify(items);
       localStorage.setItem(STORAGE_KEY, s); lastRaw = s;
     }catch(e){
@@ -958,9 +971,10 @@
       appName: APP_NAME,
       key: SYNC_KEY,
       getData: function(){ return { items: items }; },
-      trustEmpty: function(){ return !loadFailed; }, // 破損で空になっただけなら、空をクラウドへ送らない
+      trustEmpty: function(){ return !loadFailed && !saveLocked; }, // 破損で空になっただけなら、空をクラウドへ送らない
       hasData: function(){ return items.length > 0; },
       applyData: function(d){
+        if(saveLocked) throw new Error('元データを守るため、保存を止めています'); // 破損データを退避できていないとき、上書きしない
         if(!d || !Array.isArray(d.items)) throw new Error('データ形式が違います');
         const next = sanitizeList(d.items);
         // 先に端末へ保存する。失敗したら画面も古いままにして、次回の同期でやり直す
