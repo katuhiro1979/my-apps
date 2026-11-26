@@ -953,6 +953,22 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       if(!Array.isArray(d.items)) throw new Error('タスクの形式が正しくありません'); // 形が違うデータを空として扱い、上書きしない
       statuses = normalizeStatuses(d.statuses);
       groups = normalizeGroups(d.groups); items = normalizeItems(d.items, statuses, groups);
+      // 項目が除かれた・値が補正された（長い文字の切り詰め、不正な日付や状態の置き換え）ときは、元データを退避して知らせる
+      const objs = d.items.filter(it=>it && typeof it === 'object' && !Array.isArray(it));
+      const fixed = objs.filter((x,i)=>{ const n = items[i]; return n && Object.keys(n).some(k=>k!=='id' && x[k]!==undefined && JSON.stringify(x[k])!==JSON.stringify(n[k])); }).length;
+      const dropped = d.items.length - items.length;
+      if(dropped > 0 || fixed > 0){
+        const parts = [];
+        if(dropped > 0) parts.push(dropped+'件を除外');
+        if(fixed > 0) parts.push(fixed+'件の値を補正');
+        try{
+          const k = quarantine(raw);
+          showNotice('保存データの一部を直して開きました（'+parts.join('、')+'）。元データは「'+k+'」に退避しました。', true, true);
+        }catch(e2){
+          saveLocked = true;
+          showNotice('保存データの一部を直して開きましたが、元データを退避できなかったため、保存を止めています。ブラウザのデータを消さずに、バックアップを書き出してください。', true, true);
+        }
+      }
     }catch(e){
       statuses = defaultStatuses(); items = []; groups = []; loadFailed = true;
       // 壊れたデータを別キーへ退避してから空で開始する（上書きによる消失を防ぐ）
@@ -2543,7 +2559,13 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     statuses = newSt;
     groups = normalizeGroups(parsed.groups);
     items = normalizeItems(parsed.items, newSt, groups);
-    save(); render();
+    const saved = save(); render();
+    if(!saved){
+      // 別のタブが先に保存していた・保存が止まっている・容量不足のとき。取り込みは反映されていないので、成功と表示しない
+      st.classList.add('error');
+      st.textContent = '取り込んだ内容を保存できませんでした（別のタブが先に保存した、または保存が止まっています）。画面の内容を確かめて、もう一度インポートしてください。取り込み前のデータはJSONでも保存しました。';
+      return;
+    }
     st.classList.remove('error');
     st.textContent = items.length+'件のタスクを読み込みました。取り込み前のデータはJSONでも保存しました（戻すときは、そのファイルをインポート）。'+(prevSaved ? '' : '（端末内への退避はできませんでした）');
   });
