@@ -585,6 +585,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   let addGroupId = '';
   let dataLoaded = false;             // 保存データの読み込みが終わった印（読み込み前の空の状態で、自動処理が保存しないため）
   let loadFailed = false;            // 保存データが壊れて読み込めなかった印（空の状態でクラウドを上書きしないため）
+  let saveLocked = false;            // 壊れた元データを退避できなかった印（元データを守るため、保存を止める）
   let flashId = null, popId = null;   // 追加直後の強調・完了チェックの動き用（描画のたびに消す）
   const expandedFolds = new Set();    // 開いている「完了N件」の折りたたみ
   let swipedAt = 0, lpFired = 0, suppressChip = false;      // スワイプ直後・長押し直後のクリックを無視するための時刻
@@ -908,7 +909,17 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   // 保存できたら true。失敗時は上部に警告を出して false を返す（成功表示を出さないため）
   let lastRaw = null; // 最後に保存・読み込みした保存データ（古い画面の検出用）
   function save(){
+    if(saveLocked){
+      showNotice('元のデータを退避できていないため、保存を止めています。ブラウザのデータを消さずに、「⋯」メニューの「データ」からバックアップしてください。', true, true);
+      return false;
+    }
     try{
+      // 別のタブが先に保存していたら、書かずに最新を取り込む（取り込めない壊れた値のときは、止めずに保存する）
+      const cur = localStorage.getItem(STORE_KEY);
+      if(cur !== null && lastRaw !== null && cur !== lastRaw){
+        adoptStored(cur);
+        if(lastRaw === cur) return false;
+      }
       const s = JSON.stringify({ items, statuses, groups });
       localStorage.setItem(STORE_KEY, s); lastRaw = s;
       if(items.length) localStorage.setItem(EVER_KEY, '1');
@@ -919,6 +930,19 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       showNotice('保存に失敗しました。ブラウザの容量不足の可能性があります。このまま閉じると変更が失われます。「⋯」メニューの「データ」から今すぐバックアップしてください。', true, true);
       return false;
     }
+  }
+  // 壊れた元データを別キーへ退避する。最初は「-corrupt」、使用済みなら時刻つき。同じ内容は増やさず、最新3件を残す
+  function quarantine(raw){
+    const base = STORE_KEY+'-corrupt';
+    const list = () => Object.keys(localStorage).filter(k=>k===base || k.startsWith(base+'-')).sort();
+    const same = list().find(k=>localStorage.getItem(k) === raw);
+    if(same) return same;
+    let k = base, n = 0;
+    while(localStorage.getItem(k) !== null) k = base+'-'+Date.now()+(n++ ? '-'+n : ''); // 同じ時刻でも、別のキーにする
+    localStorage.setItem(k, raw);
+    const all = list();
+    while(all.length > 3) localStorage.removeItem(all.shift());
+    return k;
   }
   function load(){
     let raw = null;
@@ -934,11 +958,11 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       // 壊れたデータを別キーへ退避してから空で開始する（上書きによる消失を防ぐ）
       if(raw){
         try{
-          const k = STORE_KEY+'-corrupt'; // 毎回増えないよう1つだけ（同じ内容なら書き直さない）
-          if(localStorage.getItem(k) !== raw) localStorage.setItem(k, raw);
+          const k = quarantine(raw);
           showNotice('保存データを読み込めませんでした。元データは「'+k+'」に退避しました。', true, true);
         }catch(e2){
-          showNotice('保存データを読み込めず、退避もできませんでした。ブラウザのデータを消さずに管理者へご相談ください。', true, true);
+          saveLocked = true;
+          showNotice('保存データを読み込めず、退避もできなかったため、保存を止めています。ブラウザのデータを消さずに管理者へご相談ください。', true, true);
         }
       }
     }
@@ -2619,7 +2643,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       key: 'data-v1',
       getData: function(){ return { items, statuses, groups }; },
       // 空の端末でも「以前タスクを保存したことがある」なら、データありとして扱う（全削除がクラウドから復活しないように）
-      trustEmpty: function(){ return !loadFailed; }, // 破損で空になっただけなら、空をクラウドへ送らない
+      trustEmpty: function(){ return !loadFailed && !saveLocked; }, // 破損で空になっただけなら、空をクラウドへ送らない
       hasData: function(){
         if(items.length > 0) return true;
         if(loadFailed) return false; // 破損で空になった端末は、クラウドの内容を取り込む側に倒す
@@ -2627,6 +2651,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       },
       applyData: function(d){
         if(!d || !Array.isArray(d.items)) throw new Error('ToDoのデータ形式が違います');
+        if(saveLocked) throw new Error('元データを退避できていないため、反映できません');
         const nst = normalizeStatuses(d.statuses), ngr = normalizeGroups(d.groups), nit = normalizeItems(d.items, nst, ngr);
         try{
           const s = JSON.stringify({ items:nit, statuses:nst, groups:ngr });
