@@ -7,6 +7,9 @@
 <title>ToDo（新デザイン）</title>
 <meta name="theme-color" content="#F4F5F2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121513" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="todo-new-manifest.json">
+<link rel="icon" href="todo-icon-192.png">
+<link rel="apple-touch-icon" href="todo-icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ToDo">
@@ -2767,7 +2770,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 
   // アプリとしてインストール・オフラインで開けるようにする
   if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
-    /* 新デザインの試用版: 現行の todo.html と service worker を取り合わないよう、登録しない */
+    // 現行の todo.html と service worker を取り合わないよう、このページだけを範囲にして登録する
+    navigator.serviceWorker.register('todo-new-sw.js', { scope: 'todo-new.html' }).catch(()=>{});
   }
 })();
 </script>

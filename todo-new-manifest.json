@@ -1,0 +1,26 @@
+{
+  "name": "ToDo（新デザイン）",
+  "short_name": "ToDo新",
+  "description": "ToDoリストの新デザイン版。保存データは現行のToDoと共通",
+  "id": "todo-new.html",
+  "start_url": "todo-new.html",
+  "scope": "todo-new.html",
+  "display": "standalone",
+  "launch_handler": { "client_mode": "focus-existing" },
+  "background_color": "#FAFAFB",
+  "theme_color": "#5E6AD2",
+  "icons": [
+    {
+      "src": "todo-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "todo-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
