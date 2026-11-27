@@ -884,6 +884,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       seen.add(id);
       const rec = {
         id,
+        ...(typeof it.title==='string' && it.title.replace(/\s+/g,' ').trim() ? { title: it.title.replace(/\s+/g,' ').trim().slice(0,100) } : {}), // 新デザイン（todo-new.html）の「項目」。この画面では見せないが、保存し直しても消さない
         text: String(it.text==null ? '' : it.text).replace(/\r\n?/g,'\n').slice(0,500).trim() || '（無題）',
         date: isDate(it.date) ? it.date : '',
         time: '',
