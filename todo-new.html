@@ -264,6 +264,8 @@
   /* 長い内容は省略せず全文を出し、文字を少し小さくする */
   /* 改行は、編集画面と同じく入力どおりの行で表示する */
   .task-text .ln{display:block;}
+  .task-text .ttl{display:block;font-weight:700;}
+  .task-text .ttl ~ .ln{font-size:.92em;color:var(--ink-soft);}
   .task-text .ln:empty::before{content:"\00a0";}
   .task-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
   .task-side{display:flex;align-items:center;gap:6px;}
@@ -494,6 +496,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
 <dialog class="sheet" id="editDlg" aria-labelledby="editTitle">
   <h3 id="editTitle" tabindex="-1" autofocus>タスクを編集</h3>
   <form id="editForm">
+    <label class="fld">項目（任意）<input type="text" id="editHead" maxlength="100" autocomplete="off"></label>
     <label class="fld">内容<textarea id="editText" rows="3" maxlength="500" required></textarea></label>
     <div class="fld" id="editDpWrap">日付・時刻<div id="editDp" class="dp"></div></div>
     <label class="fld">状態<select id="editStatus"></select></label>
@@ -775,7 +778,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     document.querySelectorAll('dialog.sheet[open]').forEach(d=>{
       if(d.id==='confirmDlg') return;
       // 編集中の文字が変わっているときは、入力を失わないよう閉じずに残す
-      if(d.id==='editDlg' && editingId && $id('editText').value !== editOrig)return;
+      if(d.id==='editDlg' && editingId && ($id('editHead').value+'\u0000'+$id('editText').value) !== editOrig)return;
       d.close();
     });
   }
@@ -932,6 +935,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
       seen.add(id);
       const rec = {
         id,
+        ...(typeof it.title==='string' && it.title.replace(/\s+/g,' ').trim() ? { title: it.title.replace(/\s+/g,' ').trim().slice(0,100) } : {}),
         text: String(it.text==null ? '' : it.text).replace(/\r\n?/g,'\n').slice(0,500).trim() || '（無題）',
         date: isDate(it.date) ? it.date : '',
         time: '',
@@ -1340,7 +1344,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   let editingId = null, editDp = null, editOrig = '';
   function openEdit(id){
     const it = items.find(i=>i.id===id && !i.deleted); if(!it) return;
-    editingId = id; editOrig = it.text;
+    editingId = id; editOrig = (it.title||'')+'\u0000'+it.text; $id('editHead').value = it.title || '';
     $id('editText').value = it.text;
     editDp = mountDatePicker($id('editDp'), { date: it.date, time: it.time, until: it.until, roll: it.roll });
     const sel = $id('editStatus');
@@ -1375,6 +1379,8 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const dp = editDp.get();
     const dateChanged = (it.date||'') !== (dp.date||''), timeChanged = (it.time||'') !== (dp.time||''), wasDone = isDone(it), prevStatus = it.status;
     it.text = text; it.date = dp.date; it.time = dp.time;
+    const head = $id('editHead').value.replace(/\s+/g,' ').trim().slice(0,100);
+    if(head) it.title = head; else delete it.title; // 項目（新デザインのみ。text は今までの内容のまま）
     if(dp.until) it.until = dp.until; else delete it.until;
     if(dp.roll) it.roll = true; else delete it.roll;
     const gv = $id('editGroup').value;
@@ -1817,7 +1823,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
         if(groupFilter==='__none'){ if(groupById(it.group)) return false; }
         else if(it.group!==groupFilter) return false;
       }
-      if(query && !it.text.toLowerCase().includes(query)) return false;
+      if(query && !(it.text+'\n'+(it.title||'')).toLowerCase().includes(query)) return false;
       return true;
     });
 
@@ -1978,7 +1984,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const over = isOverdue(it);
     const id = escapeHtml(it.id);
     const sz = '';
-    const text = '<button type="button" class="task-text'+sz+'" data-act="'+(plain ? 'none' : 'edit')+'"><span class="tt">'+(over && !plain ? '<span class="sr-only">期限切れ：</span>' : '')+it.text.split('\n').map(l=>'<span class="ln">'+escapeHtml(l)+'</span>').join('')+'</span></button>';
+    const text = '<button type="button" class="task-text'+sz+'" data-act="'+(plain ? 'none' : 'edit')+'"><span class="tt">'+(over && !plain ? '<span class="sr-only">期限切れ：</span>' : '')+(it.title ? '<span class="ttl">'+escapeHtml(it.title)+'</span>' : '')+it.text.split('\n').map(l=>'<span class="ln">'+escapeHtml(l)+'</span>').join('')+'</span></button>';
     const menuBtn = '<button type="button" class="icon-btn plain" data-menu="1" aria-haspopup="menu" aria-expanded="false" aria-label="メニュー">'+DOTS+'</button>';
     if(plain){
       const dateTxt = it.date ? fmtMD(it.date)+(it.time ? ' '+it.time : '') : '日付なし';
