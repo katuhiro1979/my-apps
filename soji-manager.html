@@ -418,6 +418,14 @@
     font-family:inherit; font-size:calc(16px*var(--fs)); color:var(--ink); background:var(--surface-2);
   }
   .field input:focus, .field select:focus{ background:var(--paper); border-color:var(--ink); }
+  .field textarea{
+    width:100%; min-height:72px; padding:10px 12px; resize:vertical;
+    border:1px solid var(--line); border-radius:var(--r-s);
+    font-family:inherit; font-size:calc(16px*var(--fs)); line-height:1.5; color:var(--ink); background:var(--surface-2);
+  }
+  .field textarea:focus{ background:var(--paper); border-color:var(--ink); outline:none; }
+  /* 備考は一覧のカードに短く出す（改行はそのまま、長い文は折り返す） */
+  .ticket-note{ margin-top:8px; font-size:calc(13px*var(--fs)); line-height:1.5; color:var(--ink-soft); white-space:pre-wrap; overflow-wrap:anywhere; }
   .check-row{ display:flex; align-items:center; gap:10px; min-height:44px; margin-bottom:14px; font-size:calc(14px*var(--fs)); font-weight:700; color:var(--ink-soft); cursor:pointer; }
   .check-row input{ width:22px; height:22px; flex:none; margin:0; cursor:pointer; }
   .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -649,6 +657,10 @@
           <label for="f-duration">所要時間（分）</label>
           <input type="number" id="f-duration" min="0" step="1" placeholder="15" required>
         </div>
+      </div>
+      <div class="field">
+        <label for="f-note">備考（任意）</label>
+        <textarea id="f-note" rows="3" maxlength="500" placeholder="例：フィルターは目視確認してから交換する"></textarea>
       </div>
       <label class="check-row">
         <input type="checkbox" id="f-topover" checked>
@@ -1182,6 +1194,7 @@
             <span>所要時間：<b>${t.duration}分</b></span>
             <span>実施回数：<b>${(t.history||[]).length}回</b></span>
           </div>
+          ${t.note ? `<div class="ticket-note">${escapeHtml(t.note)}</div>` : ''}
         </div>
         <div class="ticket-actions">
           ${finished
@@ -1405,6 +1418,7 @@
       next: t.next,
       duration: (isFinite(durNum) && durNum >= 0) ? durNum : 0,
       topOver: t.topOver !== false,
+      note: typeof t.note === 'string' ? t.note.slice(0, 500) : '',
       history: Array.isArray(t.history) ? t.history.filter(isValidDateStr) : []
     };
   }
@@ -1441,6 +1455,7 @@
     $('#f-next').value = addDays(todayISO(), 7);
     $('#f-duration').value = 15;
     $('#f-topover').checked = true;
+    $('#f-note').value = '';
     selectedColor = COLORS[tasks.length % COLORS.length];
     renderColorPicker();
     refreshMemberSuggestions();
@@ -1463,6 +1478,7 @@
     $('#f-next').value = t.next;
     $('#f-duration').value = t.duration;
     $('#f-topover').checked = t.topOver !== false;
+    $('#f-note').value = t.note || '';
     selectedColor = t.color;
     renderColorPicker();
     refreshMemberSuggestions();
@@ -1728,7 +1744,8 @@
       freq: $('#f-freq').value,
       next: $('#f-next').value,
       duration: Number($('#f-duration').value),
-      topOver: $('#f-topover').checked
+      topOver: $('#f-topover').checked,
+      note: $('#f-note').value.trim()
     };
     if(editingId){
       const existing = tasks.find(t => t.id === editingId);
