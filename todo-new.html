@@ -140,6 +140,10 @@
   .dp-inputs{display:flex;gap:6px;}
   .dp-inputs input{min-height:40px;padding:4px 8px;font-size:calc(15px*var(--fs));border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-weight:400;}
   .dp-inputs input:disabled{opacity:.5;}
+  .dp-inputs{align-items:center;flex-wrap:wrap;}
+  .dp-inputs input{min-width:0;}
+  .dp-inputs .dp-date,.dp-inputs .dp-until{flex:1.4 1 150px;}
+  .dp-inputs .dp-time{flex:1 1 100px;}
   .dp-sep{align-self:center;color:var(--ink-soft);}
   .dp-roll{display:flex;align-items:center;gap:6px;font-size:calc(14px*var(--fs));color:var(--ink-soft);min-height:32px;}
   .dp-roll input:disabled+*{opacity:.5;}
