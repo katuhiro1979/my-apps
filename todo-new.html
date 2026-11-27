@@ -497,7 +497,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   <h3 id="editTitle" tabindex="-1" autofocus>タスクを編集</h3>
   <form id="editForm">
     <label class="fld">項目（任意）<input type="text" id="editHead" maxlength="100" autocomplete="off"></label>
-    <label class="fld">内容<textarea id="editText" rows="3" maxlength="500" required></textarea></label>
+    <label class="fld">内容<textarea id="editText" rows="3" maxlength="500"></textarea></label>
     <div class="fld" id="editDpWrap">日付・時刻<div id="editDp" class="dp"></div></div>
     <label class="fld">状態<select id="editStatus"></select></label>
     <div class="fld" id="editGroupWrap">グループ<input type="hidden" id="editGroup"><div class="chips" id="editGroupChips"></div></div>
@@ -1344,8 +1344,9 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   let editingId = null, editDp = null, editOrig = '';
   function openEdit(id){
     const it = items.find(i=>i.id===id && !i.deleted); if(!it) return;
-    editingId = id; editOrig = (it.title||'')+'\u0000'+it.text; $id('editHead').value = it.title || '';
-    $id('editText').value = it.text;
+    editingId = id; const body0 = (it.title && it.title===it.text) ? '' : it.text; // 内容が空のときは、項目と同じ文字を text に持つ
+    editOrig = (it.title||'')+'\u0000'+body0; $id('editHead').value = it.title || '';
+    $id('editText').value = body0;
     editDp = mountDatePicker($id('editDp'), { date: it.date, time: it.time, until: it.until, roll: it.roll });
     const sel = $id('editStatus');
     sel.innerHTML = statuses.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+(s.done ? '（完了扱い）' : '')+'</option>').join('');
@@ -1374,8 +1375,10 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
   $id('editForm').addEventListener('submit', function(e){
     e.preventDefault();
     const it = items.find(i=>i.id===editingId); if(!it){ closeDlg($id('editDlg')); showNotice('このタスクは他の端末で削除されたため、保存できませんでした。'); return; }
-    const text = $id('editText').value.trim();
-    if(!text){ $id('editText').focus(); return; }
+    const head0 = $id('editHead').value.replace(/\s+/g,' ').trim().slice(0,100);
+    let text = $id('editText').value.trim();
+    if(!text && !head0){ $id('editText').focus(); return; }
+    if(!text) text = head0; // 内容が空でも保存できる（項目だけ）。他のアプリには、項目が内容として見える
     const dp = editDp.get();
     const dateChanged = (it.date||'') !== (dp.date||''), timeChanged = (it.time||'') !== (dp.time||''), wasDone = isDone(it), prevStatus = it.status;
     it.text = text; it.date = dp.date; it.time = dp.time;
@@ -1984,7 +1987,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const over = isOverdue(it);
     const id = escapeHtml(it.id);
     const sz = '';
-    const text = '<button type="button" class="task-text'+sz+'" data-act="'+(plain ? 'none' : 'edit')+'"><span class="tt">'+(over && !plain ? '<span class="sr-only">期限切れ：</span>' : '')+(it.title ? '<span class="ttl">'+escapeHtml(it.title)+'</span>' : '')+it.text.split('\n').map(l=>'<span class="ln">'+escapeHtml(l)+'</span>').join('')+'</span></button>';
+    const text = '<button type="button" class="task-text'+sz+'" data-act="'+(plain ? 'none' : 'edit')+'"><span class="tt">'+(over && !plain ? '<span class="sr-only">期限切れ：</span>' : '')+(it.title ? '<span class="ttl">'+escapeHtml(it.title)+'</span>' : '')+(it.title && it.title===it.text ? '' : it.text.split('\n').map(l=>'<span class="ln">'+escapeHtml(l)+'</span>').join(''))+'</span></button>';
     const menuBtn = '<button type="button" class="icon-btn plain" data-menu="1" aria-haspopup="menu" aria-expanded="false" aria-label="メニュー">'+DOTS+'</button>';
     if(plain){
       const dateTxt = it.date ? fmtMD(it.date)+(it.time ? ' '+it.time : '') : '日付なし';
