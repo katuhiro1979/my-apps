@@ -1196,6 +1196,7 @@ try{ var t=localStorage.getItem('todo-theme'); if(t==='light'||t==='dark') docum
     const time = date ? (q.time || (q.date ? '' : dp.time)) : '';
     const st = statusById(addStatusId) || statuses[0];
     const it = { id:newId(), text:q.text, date, time, status:st.id, createdAt:new Date().toISOString(), doneAt: st.done ? todayISO() : '' };
+    if(q.text.length <= 100 && q.text.indexOf('\n') < 0) it.title = q.text; // 追加欄の文字は、項目にもなる（内容は空。text は項目と同じ文字）
     if(groupById(addGroupId)) it.group = addGroupId;
     if(date && dp.until && dp.until > date) it.until = dp.until;
     if(date && dp.roll) it.roll = true;
