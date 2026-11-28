@@ -90,6 +90,10 @@
     <p class="note">Google ドライブ for desktop の同期フォルダ(マイドライブ内)を選んでください。中に「SupabaseBackup」フォルダを作ります。</p>
     <p id="dirUnsupported" class="banner warn" hidden>このブラウザはフォルダへの直接保存に対応していません。バックアップは通常のダウンロードで保存されます。保存後に、手動でドライブへ移してください(PC の Chrome / Edge を推奨)。</p>
 
+    <h3 style="font-size:1rem;margin:16px 0 4px">暗号化バックアップ</h3>
+    <label style="display:flex;gap:8px;align-items:center;margin:4px 0"><input type="checkbox" id="encOn" style="width:auto;margin:0"> 暗号化バックアップを使う</label>
+    <p class="note">OFFのときは、鍵の設定と「バックアップを実行」(暗号化あり)を隠します。簡易バックアップだけを使います。過去の暗号化バックアップの復元は、OFFでもできます。</p>
+    <div id="secKey">
     <h3 style="font-size:1rem;margin:16px 0 4px">暗号化の鍵</h3>
     <p id="keyState" class="note"></p>
     <div id="keyNew">
@@ -104,13 +108,16 @@
       <label for="keyFile">別のPCで使う場合: 既存の秘密鍵ファイルを読み込む(公開鍵だけを取り出します)</label>
       <input type="file" id="keyFile" accept=".json,application/json">
     </div>
+    </div>
   </section>
 
   <section class="card" id="cardBackup">
     <h2>3. バックアップ</h2>
+    <div id="secEnc">
     <p class="note">全アプリのデータを取得し、アプリごとに暗号化して保存します。クラウドのデータは変更しません。</p>
     <div class="row"><button class="primary" id="btnBackup" disabled>バックアップを実行</button></div>
     <ul class="log" id="backupLog"></ul>
+    </div>
 
     <h3 style="font-size:1rem;margin:16px 0 4px">簡易バックアップ(暗号化なし)</h3>
     <p class="note">鍵なしで、アプリごとにJSONファイルを作り、指定したフォルダの「SupabaseBackup/_簡易/アプリ名」へ保存します。中身は暗号化されないので、ドライブの共有設定に注意してください。</p>
@@ -130,10 +137,12 @@
     <p class="note">簡易バックアップ(.json)を選んだ場合は、秘密鍵ファイルとパスワードは不要です。</p>
     <label for="rFile">バックアップファイル(.json.enc または 簡易の .json)</label>
     <input type="file" id="rFile" accept=".enc,.json,application/json">
+    <div id="rKeyBox" hidden>
     <label for="rKey">秘密鍵ファイル</label>
     <input type="file" id="rKey" accept=".json,application/json">
     <label for="rPw">秘密鍵のパスワード</label>
     <input type="password" id="rPw" autocomplete="off">
+    </div>
     <div class="row"><button id="btnPreview" disabled>復号して内容を確認</button></div>
     <div id="restoreOut"></div>
     <div class="row" id="restoreActions" hidden>
@@ -345,6 +354,16 @@
   function setPub(j) { try { localStorage.setItem(LS_PUB, JSON.stringify(pubOnly(j))); return true; } catch (e) { return false; } }
   async function pickJson(input) { const f = input.files && input.files[0]; if (!f) throw new Error('ファイルを選んでください'); try { return JSON.parse(await f.text()); } catch (e) { throw new Error('JSON として読めません: ' + f.name); } }
 
+  /* ===== 暗号化バックアップのON/OFF(初期値はOFF。このブラウザだけの設定) ===== */
+  const LS_ENC = 'bk-enc-on';
+  function encEnabled() { try { return localStorage.getItem(LS_ENC) === '1'; } catch (e) { return false; } }
+  function setEnc(on) { try { localStorage.setItem(LS_ENC, on ? '1' : '0'); } catch (e) { /* 保存できなくても画面は切り替える */ } }
+  // 復元の鍵欄は、暗号化ファイル(.enc)を選んだときだけ出す
+  function updateRestoreKeyBox() {
+    const f = $('rFile').files && $('rFile').files[0];
+    $('rKeyBox').hidden = !(f && /\.enc$/i.test(f.name));
+  }
+
   /* ===== 画面の状態 ===== */
   function refresh() {
     const loggedIn = !!session;
@@ -353,6 +372,9 @@
     const pub = getPub();
     $('keyState').textContent = pub ? '公開鍵: 設定済み(バックアップできます)' : '公開鍵: 未設定。鍵を作成するか、秘密鍵ファイルを読み込んでください。';
     $('keyNew').hidden = !!pub;
+    const enc = encEnabled();
+    $('encOn').checked = enc; $('secKey').hidden = !enc; $('secEnc').hidden = !enc;
+    updateRestoreKeyBox();
     $('dirUnsupported').hidden = hasFS;
     $('btnDir').hidden = !hasFS;
     $('btnBackup').disabled = !(loggedIn && pub);
@@ -625,6 +647,8 @@
     $('btnLogin').onclick = doLogin; $('btnLogout').onclick = doLogout;
     $('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
     $('btnDir').onclick = doDir; $('btnDirPerm').onclick = doDirPerm;
+    $('encOn').onchange = () => { setEnc($('encOn').checked); refresh(); };
+    $('rFile').onchange = updateRestoreKeyBox;
     $('btnKeyGen').onclick = doKeyGen; $('keyFile').onchange = doKeyImport;
     $('btnBackup').onclick = doBackup; $('btnSimple').onclick = doSimpleBackup; $('btnHistory').onclick = doHistory;
     $('btnPreview').onclick = doPreview; $('btnRestore').onclick = doRestore;
